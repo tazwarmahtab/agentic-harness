@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from tazos.llm import LLMClient, DryRunLLMClient, resolve_model
+from tazos.llm import LLMClient, LLMResponse, DryRunLLMClient, resolve_model, create_llm_client
 from tazos.registry import Registry, HarnessBundle, load_registry
 from tazos.schemas.agent import Agent
 
@@ -426,10 +426,11 @@ def run_cycle(
     venture_artifacts: dict[str, Path] | None = None,
     llm: LLMClient | None = None,
     dry_run: bool = False,
+    verbose: bool = False,
 ) -> CycleContext:
     """Execute the full daily harness cycle."""
     if llm is None:
-        llm = DryRunLLMClient() if dry_run else HTTPLLMClient()
+        llm = create_llm_client(dry_run=dry_run, verbose=verbose)
 
     # Get the executive harness bundle
     bundle = registry.harnesses.get("HAR-EXEC-001")
@@ -466,15 +467,14 @@ def run_from_path(
     venture_path: Path | None = None,
     venture_artifacts: dict[str, Path] | None = None,
     dry_run: bool = False,
+    verbose: bool = False,
 ) -> CycleContext:
     """Load registry from disk and run one cycle."""
     registry = load_registry(harness_dir, venture_path)
 
     if venture_artifacts is None:
-        # Resolve venture artifact paths from venture.yml
         venture_artifacts = {}
         if registry.venture:
-            # Try to resolve common artifacts
             venture_root = venture_path.parent.parent if venture_path else None
             if venture_root:
                 for key, art in registry.venture.artifacts.items():
@@ -482,5 +482,4 @@ def run_from_path(
                     if art_path.exists():
                         venture_artifacts[key] = art_path
 
-    llm = DryRunLLMClient() if dry_run else HTTPLLMClient()
-    return run_cycle(registry, venture_artifacts, llm, dry_run)
+    return run_cycle(registry, venture_artifacts, llm=None, dry_run=dry_run, verbose=verbose)

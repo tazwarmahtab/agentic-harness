@@ -97,12 +97,17 @@ def cmd_run(args: argparse.Namespace) -> int:
     print(f"Venture: {venture_path}")
     if args.dry_run:
         print("Mode: DRY RUN (no LLM calls)")
+    elif args.prefer:
+        print(f"Backend: {args.prefer}")
+    else:
+        print("Backend: auto-detect")
     print()
 
     ctx = run_from_path(
         harness_dir=harness_dir,
         venture_path=venture_path if venture_path.exists() else None,
         dry_run=args.dry_run,
+        verbose=args.verbose,
     )
 
     print(ctx.summary())
@@ -129,6 +134,8 @@ def main() -> int:
     run_parser = subparsers.add_parser("run", help="Execute the daily harness cycle")
     run_parser.add_argument("--harness", help="Run specific harness only")
     run_parser.add_argument("--dry-run", action="store_true", help="Dry run — no LLM calls")
+    run_parser.add_argument("--prefer", choices=["router", "anthropic"], help="Force specific LLM backend")
+    run_parser.add_argument("--verbose", "-v", action="store_true", help="Show LLM backend selection")
 
     args = parser.parse_args()
 
