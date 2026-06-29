@@ -3,6 +3,7 @@
 Usage:
     python -m tazos validate [--harness NAME] [--verbose]
     python -m tazos status [--harness NAME]
+    python -m tazos run [--dry-run]
 """
 
 from __future__ import annotations
@@ -74,6 +75,40 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    """Execute the daily harness cycle."""
+    from tazos.runtime import run_from_path
+
+    root = find_project_root()
+    harness_dir = root / "tazos" / "harnesses" / "executive"
+    venture_path = root / "tazos" / "ventures" / "netso" / "venture.yml"
+
+    if args.harness:
+        harness_dir = root / "tazos" / "harnesses" / args.harness
+        if not harness_dir.exists():
+            print(f"ERROR: Harness not found: {args.harness}")
+            return 1
+
+    if not harness_dir.exists():
+        print(f"ERROR: Harness directory not found: {harness_dir}")
+        return 1
+
+    print(f"Running harness cycle: {harness_dir.name}")
+    print(f"Venture: {venture_path}")
+    if args.dry_run:
+        print("Mode: DRY RUN (no LLM calls)")
+    print()
+
+    ctx = run_from_path(
+        harness_dir=harness_dir,
+        venture_path=venture_path if venture_path.exists() else None,
+        dry_run=args.dry_run,
+    )
+
+    print(ctx.summary())
+    return 0 if ctx.ok else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="tazos",
@@ -90,12 +125,19 @@ def main() -> int:
     status_parser = subparsers.add_parser("status", help="Show system status")
     status_parser.add_argument("--harness", help="Show specific harness status")
 
+    # run command
+    run_parser = subparsers.add_parser("run", help="Execute the daily harness cycle")
+    run_parser.add_argument("--harness", help="Run specific harness only")
+    run_parser.add_argument("--dry-run", action="store_true", help="Dry run — no LLM calls")
+
     args = parser.parse_args()
 
     if args.command == "validate":
         return cmd_validate(args)
     if args.command == "status":
         return cmd_status(args)
+    if args.command == "run":
+        return cmd_run(args)
 
     parser.print_help()
     return 0
