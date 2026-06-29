@@ -215,7 +215,7 @@ decision_queue_format:
     - action_description
     - financial_impact (if any)
     - risk_assessment
-    - recommended: approve_or_reject
+    - "recommended: approve_or_reject"
     - deadline_for_decision
   actions_available:
     - approve_all
@@ -233,6 +233,6 @@ delegation:
     delegator: HUM-000001
     delegatee: [agent_id]
     capability: [specific_action]
-    duration_hours: [integer]
+    duration_hours: [48]
     auto_expires: true
   current_delegations: []          # populated when founder delegates

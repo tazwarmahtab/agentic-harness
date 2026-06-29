@@ -191,7 +191,7 @@ permissions:
 # MEMORY UPDATE RULES — agents don't write freely
 # ===========================================================================
 update_rules:
-  - agents_submit_memory_candidates: true
-  - reflection_engine_decides: [store, reject, summarize, merge, version]
-  - purpose: "Prevent memory pollution. No agent can write arbitrary memory."
-  - audit: every memory write creates immutable audit record
+  agents_submit_memory_candidates: true
+  reflection_engine_decides: [store, reject, summarize, merge, version]
+  purpose: "Prevent memory pollution. No agent can write arbitrary memory."
+  audit: "every memory write creates immutable audit record"

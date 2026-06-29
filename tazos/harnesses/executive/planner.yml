@@ -1,6 +1,7 @@
 # TAZ OS EXECUTIVE HARNESS — Planner
 # Re-homes LILTAZ orchestrator logic. Determines objectives for today.
 # The planner prioritizes and plans; it does not execute.
+# Validates against: tazos/platform/agent.schema.json
 
 id: AGT-EXEC-PLAN
 name: Executive Planner
@@ -16,22 +17,28 @@ mission: >
   produce a prioritized plan with delegation recommendations and approval
   requests.
 
-# ---------------------------------------------------------------------------
-# Inputs — the planner reads everything, then distills
-# ---------------------------------------------------------------------------
-inputs:
-  - all_harness_inputs: true
-  - venture_artifacts: [dashboard, weekly_plan, backlog, blockers, lessons, latest_session]
-  - founder_context: [goals, strategic_priorities, risk_tolerance, current_focus]
+capabilities:
+  - priority_planning
+  - task_delegation
+  - approval_request_generation
 
-# ---------------------------------------------------------------------------
-# Outputs
-# ---------------------------------------------------------------------------
+inputs:
+  - { name: all_harness_inputs, type: mixed, required: true }
+  - { name: venture_artifacts, type: list, required: true }
+  - { name: founder_context, type: list, required: false }
+
 outputs:
   - { name: priority_list, type: list, becomes_artifact: false }
   - { name: delegation_plan, type: list, becomes_artifact: false }
   - { name: executive_agenda, type: artifact, artifact_type: daily_brief_section }
   - { name: approval_requests, type: list, becomes_artifact: false }
+
+reasoning_structure:
+  - review_all_company_systems
+  - identify_highest_leverage_tasks
+  - apply_priority_framework
+  - produce_prioritized_plan
+  - estimate_founder_workload
 
 # ---------------------------------------------------------------------------
 # Planner prompt — fixed reasoning applied each cycle
@@ -115,3 +122,7 @@ allowed_tools:
   - { capability: read_crm, permission: read }
   - { capability: read_finance, permission: read }
   - { capability: write_memory, permission: write }
+
+models:
+  preferred: "claude-4.5-sonnet"
+  fallback: ["claude-4.5-haiku", "gpt-5.5"]

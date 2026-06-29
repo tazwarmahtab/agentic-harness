@@ -38,7 +38,7 @@ harness_metrics:
     measurement: approval_queue_matches_approval_rules
 
   - name: missed_deadlines
-    target: 0
+    target: "0"
     frequency: weekly
     owner: AGT-EXEC-COO
     measurement: count_of_items_past_deadline

@@ -17,6 +17,32 @@ mission: >
   cross-harness destination, enforcing routing rules, SLAs, and
   escalation paths.
 
+capabilities:
+  - task_routing
+  - handoff_creation
+  - sla_enforcement
+  - escalation_management
+  - cross_harness_dispatch
+
+inputs:
+  - { name: priority_list, type: list, required: true }
+  - { name: delegation_plan, type: list, required: true }
+  - { name: dashboard, type: markdown, required: true }
+  - { name: task_router, type: markdown, required: true }
+  - { name: agents_registry, type: markdown, required: true }
+
+outputs:
+  - { name: handoff_files, type: artifact, artifact_type: handoff }
+  - { name: dispatch_status, type: list }
+  - { name: escalation_alerts, type: event, artifact_type: escalation }
+
+reasoning_structure:
+  - read_priority_list
+  - match_task_to_routing_table
+  - check_for_duplicates
+  - write_handoff_files
+  - enforce_escalation_timers
+
 # ---------------------------------------------------------------------------
 # Routing rules — primary routing table
 # Source of truth: TASK_ROUTER.md + AGENTS_REGISTRY.md (venture artifacts)

@@ -135,26 +135,31 @@ routing:
 # QUEUE PROCESS
 # ===========================================================================
 queue_process:
-  1. gated_action_detected:
-     - identify_matching_gate (from approvals.yml)
-     - capture: action, rationale, risk_assessment, financial_impact
-  2. add_to_queue:
-     - assign: approval_id
-     - set: expiration_timer
-     - calculate: recommended_action (approve / reject / needs_review)
-  3. bundle_for_brief:
-     - chief_of_staff aggregates all pending into daily brief
-     - summary: count + high-level descriptions
-     - detail: available in approval_queue artifact
-  4. founder_reviews:
-     - approve_all: execute all pending
-     - review_individually: present each with context
-     - reject: log rejection + rationale
-  5. post_decision:
-     - execute_approved_actions
-     - log_decision (identity, rationale, alternatives, confidence)
-     - update_dashboard
-     - update_decision_log
+  - step: gated_action_detected
+    actions:
+      - "identify_matching_gate (from approvals.yml)"
+      - "capture: action, rationale, risk_assessment, financial_impact"
+  - step: add_to_queue
+    actions:
+      - "assign: approval_id"
+      - "set: expiration_timer"
+      - "calculate: recommended_action (approve / reject / needs_review)"
+  - step: bundle_for_brief
+    actions:
+      - "chief_of_staff aggregates all pending into daily brief"
+      - "summary: count + high-level descriptions"
+      - "detail: available in approval_queue artifact"
+  - step: founder_reviews
+    actions:
+      - "approve_all: execute all pending"
+      - "review_individually: present each with context"
+      - "reject: log rejection + rationale"
+  - step: post_decision
+    actions:
+      - "execute_approved_actions"
+      - "log_decision (identity, rationale, alternatives, confidence)"
+      - "update_dashboard"
+      - "update_decision_log"
 
 # ===========================================================================
 # EXPIRATION

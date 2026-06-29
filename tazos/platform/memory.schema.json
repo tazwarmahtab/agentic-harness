@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/memory.schema.json",
+  "title": "TAZ OS Memory",
+  "description": "Shared memory for a harness. Three layers: Long-term (persistent facts), Episodic (events, time-sequenced), Semantic (rules, patterns, how things work). All permissions are per-specialist, least-privilege. See Volume 8.",
+  "type": "object",
+  "required": ["id", "name", "harness", "version", "layers", "permissions", "update_rules"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^MEM-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "harness": { "type": "string", "description": "Owning harness ID" },
+    "version": { "type": "string", "default": "1.0.0" },
+
+    "layers": {
+      "type": "object",
+      "required": ["long_term", "episodic", "semantic"],
+      "description": "The three memory layers.",
+      "properties": {
+        "long_term": {
+          "type": "object",
+          "description": "Persistent company facts that rarely change. Keys are memory domains. Each domain is either an array of key-value facts, or an object with ref/description/classification.",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "array",
+                "description": "Memory domain as a list of key-value facts.",
+                "items": {
+                  "type": "object",
+                  "required": ["key", "value"],
+                  "properties": {
+                    "key": { "type": "string" },
+                    "value": { "type": "string" },
+                    "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "description": "Memory domain with ref to venture artifact or directory, and/or description.",
+                "properties": {
+                  "ref": { "type": "string" },
+                  "description": { "type": "string" },
+                  "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] }
+                }
+              }
+            ]
+          }
+        },
+
+        "episodic": {
+          "type": "object",
+          "description": "Events, meetings, decisions (time-sequenced). Keys are event domains.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "ref": { "type": "string", "description": "Venture artifact key or path." },
+              "path": { "type": "string", "description": "Direct path (used when ref is not applicable)." },
+              "role": { "type": "string" },
+              "description": { "type": "string" },
+              "write_access": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Agent IDs or human IDs that may write to this domain."
+              },
+              "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] },
+              "format": {
+                "type": "object",
+                "description": "Required fields for entries in this domain.",
+                "additionalProperties": { "type": "string" }
+              }
+            }
+          }
+        },
+
+        "semantic": {
+          "type": "object",
+          "description": "How the venture operates — rules, patterns, standards. Keys are knowledge domains.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "ref": { "type": "string", "description": "Venture artifact key or path." },
+              "description": { "type": "string" },
+              "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] }
+            }
+          }
+        }
+      }
+    },
+
+    "permissions": {
+      "type": "object",
+      "description": "Per-specialist least-privilege memory permissions. Keys are agent IDs.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["read", "write", "cannot_read"],
+        "properties": {
+          "read": { "type": "array", "items": { "type": "string" } },
+          "write": { "type": "array", "items": { "type": "string" } },
+          "cannot_read": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+
+    "update_rules": {
+      "type": "object",
+      "description": "Rules governing how memory is updated. Prevents memory pollution.",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "boolean" },
+          { "type": "array", "items": { "type": "string", "enum": ["store", "reject", "summarize", "merge", "version"] } },
+          { "type": "string" }
+        ]
+      }
+    }
+  }
+}

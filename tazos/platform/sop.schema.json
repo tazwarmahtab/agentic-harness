@@ -1,0 +1,164 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/sop.schema.json",
+  "title": "TAZ OS Standard Operating Procedure",
+  "description": "A declarative SOP that defines a multi-step process, its phases, owners, actions, rules, and output formats. SOPs are the executable playbooks that agents follow. See Volume 11.",
+  "type": "object",
+  "required": ["id", "name", "owner", "version"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^SOP-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "owner": { "type": "string", "description": "Primary agent or human ID that owns this SOP." },
+    "version": { "type": "string", "default": "1.0.0" },
+    "source": { "type": "string", "description": "Provenance: which real doc/rule this encodes." },
+    "trigger": { "type": "string", "description": "When this SOP fires (e.g. daily_09:00_BDT, weekly_friday_17:00, realtime)." },
+
+    "principle": {
+      "type": "string",
+      "description": "The core principle this SOP enforces. Non-negotiable."
+    },
+
+    "startup_protocol": {
+      "type": "object",
+      "description": "Startup sequence (used by session-protocol SOP). Keys are step_N.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["action", "artifact", "purpose"],
+        "properties": {
+          "action": { "type": "string" },
+          "artifact": { "type": "string" },
+          "purpose": { "type": "string" }
+        }
+      }
+    },
+
+    "shutdown_protocol": {
+      "type": "object",
+      "description": "Shutdown sequence (used by session-protocol SOP). Keys are step_N.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["action", "artifact", "owner", "rule"],
+        "properties": {
+          "action": { "type": "string" },
+          "artifact": { "type": "string" },
+          "owner": { "type": "string" },
+          "rule": { "type": "string" }
+        }
+      }
+    },
+
+    "rules": {
+      "type": "array",
+      "description": "Non-negotiable rules this SOP enforces.",
+      "items": { "type": "string" }
+    },
+
+    "routing": {
+      "type": "object",
+      "description": "Routing table with auto/gated/escalated action lists (used by approval-routing SOP).",
+      "properties": {
+        "auto": { "type": "array", "items": { "type": "string" } },
+        "gated": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["action", "gate", "owner"],
+            "properties": {
+              "action": { "type": "string" },
+              "gate": { "type": "string" },
+              "threshold": { "type": "string" },
+              "owner": { "type": "string" },
+              "expires": { "type": "string" }
+            }
+          }
+        },
+        "escalated": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["trigger", "notify", "urgency"],
+            "properties": {
+              "trigger": { "type": "string" },
+              "gate": { "type": "string" },
+              "notify": { "type": "string" },
+              "urgency": { "type": "string", "enum": ["normal", "high", "immediate"] },
+              "source": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "queue_process": {
+      "type": "array",
+      "description": "Ordered steps in the queue process (used by approval-routing SOP).",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+
+    "expiration": {
+      "type": "object",
+      "description": "Expiration rules for pending approvals.",
+      "properties": {
+        "rule": { "type": "string" },
+        "action": { "type": "string" },
+        "notification": { "type": "string" }
+      }
+    },
+
+    "decision_queue_format": {
+      "type": "object",
+      "description": "Format for bundled decision queue (used by approval-routing SOP).",
+      "properties": {
+        "bundled": { "type": "boolean" },
+        "summary_per_decision": { "type": "array", "items": { "type": "string" } },
+        "actions_available": { "type": "array", "items": { "type": "string" } },
+        "delivery": { "type": "string" }
+      }
+    },
+
+    "delegation": {
+      "type": "object",
+      "description": "Delegation rules (used by approvals SOP).",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "rule": { "type": "string" },
+        "format": {
+          "type": "object",
+          "properties": {
+            "delegator": { "type": "string" },
+            "delegatee": { "type": "array", "items": { "type": "string" } },
+            "capability": { "type": "array", "items": { "type": "string" } },
+            "duration_hours": { "type": "array", "items": { "type": "integer" } },
+            "auto_expires": { "type": "boolean" }
+          }
+        },
+        "current_delegations": { "type": "array" }
+      }
+    },
+
+    "brief_format": {
+      "type": "string",
+      "description": "Template for daily brief output (used by daily-loop SOP)."
+    },
+
+    "daily_brief_format": {
+      "type": "string",
+      "description": "Alternative key for daily brief format (used by chief-of-staff manifest)."
+    },
+
+    "decision_log_format": {
+      "type": "object",
+      "description": "Required fields for decision log entries.",
+      "additionalProperties": { "type": "string" }
+    },
+
+    "meeting_prep_pack_includes": {
+      "type": "array",
+      "description": "Items included in meeting prep packs.",
+      "items": { "type": "string" }
+    }
+  }
+}
