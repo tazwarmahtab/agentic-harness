@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/agent.schema.json",
+  "title": "TAZ OS Agent",
+  "description": "An autonomous worker that executes a well-defined capability within a harness. Agents execute work only — they do not own workflows, memory, scheduling, policy, or orchestration. See Volume 10.",
+  "type": "object",
+  "required": ["id", "name", "harness", "version", "status", "mission", "capabilities", "inputs", "outputs", "allowed_memory", "allowed_tools", "criticality", "reasoning_structure"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^AGT-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "harness": { "type": "string", "description": "Owning harness ID" },
+    "version": { "type": "string", "default": "1.0.0" },
+    "status": { "type": "string", "enum": ["draft", "deployed", "production", "idle", "blocked", "retired"] },
+    "criticality": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+    "mission": { "type": "string", "description": "Exactly one sentence." },
+    "source_persona": { "type": "string", "description": "Path to existing persona .md file this agent re-homes, e.g. Netso_HQ ai_system agent. Null for greenfield." },
+    "capabilities": { "type": "array", "items": { "type": "string" } },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "required"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string", "description": "Type or entity name" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "becomes_artifact": { "type": "boolean", "default": true }
+          }
+        }
+      },
+    "allowed_memory": {
+      "type": "object",
+      "required": ["read", "write", "cannot_read"],
+      "properties": {
+        "read": { "type": "array", "items": { "type": "string" } },
+        "write": { "type": "array", "items": { "type": "string" } },
+        "cannot_read": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "allowed_tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["capability", "permission"],
+        "properties": {
+          "capability": { "type": "string", "description": "Capability requested, NOT provider (e.g. 'send_email', not 'Gmail API')" },
+          "permission": { "type": "string", "enum": ["read", "write", "execute", "request_approval"] }
+        }
+      }
+    },
+    "reasoning_structure": {
+      "type": "array",
+      "description": "Fixed reasoning pipeline every agent follows.",
+      "items": { "type": "string" }
+    },
+    "self_check": {
+      "type": "array",
+      "description": "Mandatory self-check questions before completion.",
+      "items": { "type": "string" }
+    },
+    "evaluation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["metric", "weight"],
+        "properties": {
+          "metric": { "type": "string" },
+          "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "hard_fail_if": { "type": "string", "description": "Condition that forces hard-fail regardless of score" }
+        }
+      }
+    },
+    "failure_handling": {
+      "type": "object",
+      "properties": {
+        "missing_information": { "type": "string", "enum": ["request_clarification", "escalate", "abort"] },
+        "tool_failure": { "type": "string", "enum": ["retry", "fallback", "escalate"] },
+        "low_confidence": { "type": "string", "enum": ["escalate", "proceed_with_caveat", "abort"] },
+        "policy_conflict": { "type": "string", "enum": ["request_approval", "escalate", "abort"] }
+      }
+    },
+    "models": {
+      "type": "object",
+      "properties": {
+        "preferred": { "type": "string" },
+        "fallback": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,238 @@
+# TAZ OS EXECUTIVE HARNESS — Approval Gates
+# Declarative approval rules. Gated actions cannot execute without
+# matching approval. Auto actions flow through without gate.
+# Source: GROUND_TRUTH_CONSTANTS.md + TASK_ROUTER.md escalation rules.
+# Validates against: tazos/platform/policy.schema.json
+
+id: POL-EXEC-001
+name: Executive Approval Gates
+harness: HAR-EXEC-001
+version: 1.0.0
+status: production
+
+# ===========================================================================
+# APPROVAL RULES — every gated action
+# ===========================================================================
+rules:
+  # ---------------------------------------------------------------------------
+  # FINANCIAL GATES
+  # ---------------------------------------------------------------------------
+  - id: POL-EXEC-FIN-001
+    name: Proposal Value Threshold
+    category: financial
+    rule:
+      if:
+        action: create_proposal
+        value_bdt: { greater_than: 5000000 }
+      then: "Block and route to Founder approval queue"
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 72
+    source: "Design decision S6. TASK_ROUTER: proposals routed to Taz."
+
+  - id: POL-EXEC-FIN-002
+    name: DSCR Escalation (Scenario A floor)
+    category: financial
+    rule:
+      if:
+        action: any_financial_output
+        dscr_scenario_a: { less_than: 2.25 }
+      then: "Escalate to Founder + CFO immediately"
+    action: require_approval
+    approval_owner: HUM-000001_plus_AGT-EXEC-CFO
+    approval_expires_hours: 24
+    source: "GROUND_TRUTH_CONSTANTS.md DSCR=2.25x (A). TASK_ROUTER escalation rule 3."
+
+  - id: POL-EXEC-FIN-003
+    name: DSCR Immediate Alert
+    category: financial
+    rule:
+      if:
+        action: any
+        dscr: { less_than: 2.0 }
+      then: "Immediate alert to Founder + CFO + Risk Officer"
+    action: escalate
+    approval_owner: HUM-000001
+    source: "TASK_ROUTER escalation rule 3: DSCR < 2.0x → Immediate alert to MINERVA + Taz"
+
+  - id: POL-EXEC-FIN-004
+    name: Procurement Purchase Order
+    category: financial
+    rule:
+      if:
+        action: create_po
+      then: "Route to Founder approval"
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 48
+    source: "TASK_ROUTER: Procurement PO → ATLAS → Taz"
+
+  - id: POL-EXEC-FIN-005
+    name: Financial Model Non-Standard Assumptions
+    category: financial
+    rule:
+      if:
+        action: write_financial_model
+        assumptions: non_standard
+      then: "Block. Requires CFO + Founder approval."
+    action: require_approval
+    approval_owner: HUM-000001_plus_AGT-EXEC-CFO
+    approval_expires_hours: 48
+
+  # ---------------------------------------------------------------------------
+  # INVESTOR GATES
+  # ---------------------------------------------------------------------------
+  - id: POL-EXEC-INV-001
+    name: External Investor Communication
+    category: commercial
+    rule:
+      if:
+        action: send_communication
+        recipient_type: investor
+      then: "Block and route to Founder approval queue"
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 48
+    source: "Design decision S6. All investor comms require founder sign-off."
+
+  - id: POL-EXEC-INV-002
+    name: Investor-Facing Document Send
+    category: commercial
+    rule:
+      if:
+        action: send_document
+        document_classification: [confidential, restricted]
+        recipient_type: investor
+      then: "Block. Founder must review and approve content."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 72
+
+  # ---------------------------------------------------------------------------
+  # LEGAL / CONTRACT GATES
+  # ---------------------------------------------------------------------------
+  - id: POL-EXEC-LEG-001
+    name: Contract Signature (LOI/PPA/EPC)
+    category: legal
+    rule:
+      if:
+        action: sign_contract
+        contract_type: [loi, ppa, epc, nda]
+      then: "Block. Founder is sole signatory authority."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 72
+    source: "TASK_ROUTER: LOI/PPA/EPC → SCRY → SHIELD review → Taz for signature"
+
+  - id: POL-EXEC-LEG-002
+    name: SREDA/IDCOL/NBR Submission
+    category: legal
+    rule:
+      if:
+        action: submit_regulatory_filing
+        filing_type: [sreda, idcol, nbr]
+      then: "Block. Founder approval required before submission."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 72
+    source: "TASK_ROUTER: SREDA → BEACON → SHIELD → Taz. IDCOL → Taz. NBR → Taz."
+
+  # ---------------------------------------------------------------------------
+  # NUMBER DISCIPLINE (policy-level enforcement)
+  # ---------------------------------------------------------------------------
+  - id: POL-EXEC-AI-001
+    name: Blended Rate Prohibition
+    category: ai_safety
+    rule:
+      if:
+        action: any_financial_output
+        uses_blended_rate_for_savings: true
+      then: "HARD FAIL. Reject output immediately."
+    action: deny
+    source: "GROUND_TRUTH_CONSTANTS.md: Blended rate 14.81 — NEVER use for savings calculations. True Variable Rate 12.98 is correct."
+
+  - id: POL-EXEC-AI-002
+    name: Scenario B Without Confirmation
+    category: ai_safety
+    rule:
+      if:
+        action: any_external_financial_document
+        uses_scenario_b: true
+        nbr_confirmation: false
+      then: "HARD FAIL. Scenario B only active after NBR/customs confirms 0% duty for RESCO."
+    action: deny
+    approval_owner: HUM-000001
+    source: "GROUND_TRUTH_CONSTANTS.md: Scenario B activates ONLY after NBR confirms."
+
+  # ---------------------------------------------------------------------------
+  # GOVERNANCE
+  # ---------------------------------------------------------------------------
+  - id: POL-EXEC-GOV-001
+    name: Pricing Exception
+    category: commercial
+    rule:
+      if:
+        action: set_customer_pricing
+        deviation_from_standard: true
+      then: "Requires Founder approval."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 48
+
+  - id: POL-EXEC-GOV-002
+    name: Supplier Selection
+    category: operations
+    rule:
+      if:
+        action: select_supplier
+        value_bdt: { greater_than: 1000000 }
+      then: "Requires Founder approval."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 48
+
+# ===========================================================================
+# AUTO-ACTIONS — these pass through without gate
+# ===========================================================================
+auto_actions:
+  - schedule_meeting
+  - create_task
+  - summarize_document
+  - update_dashboard
+  - write_blockers
+  - write_handoff
+  - generate_draft (draft only — send is gated)
+  - update_decision_log
+  - generate_kpi_report
+  - read_any_data
+
+# ===========================================================================
+# DECISION QUEUE FORMAT — bundled for founder
+# ===========================================================================
+decision_queue_format:
+  bundled: true                    # never one-by-one approval pings
+  summary_per_decision:
+    - action_description
+    - financial_impact (if any)
+    - risk_assessment
+    - recommended: approve_or_reject
+    - deadline_for_decision
+  actions_available:
+    - approve_all
+    - review_individually
+    - reject
+  delivery: console_queue          # until Slack/WhatsApp wired
+
+# ===========================================================================
+# DELEGATION — explicit, temporary, auto-expires
+# ===========================================================================
+delegation:
+  enabled: true
+  rule: "Delegation is explicit and temporary. No permanent privilege escalation."
+  format:
+    delegator: HUM-000001
+    delegatee: [agent_id]
+    capability: [specific_action]
+    duration_hours: [integer]
+    auto_expires: true
+  current_delegations: []          # populated when founder delegates

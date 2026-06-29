@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/harness.schema.json",
+  "title": "TAZ OS Harness",
+  "description": "A self-contained business system. Each harness contains: Mission, Scope, KPIs, Inputs, Outputs, Planner, Dispatcher, Specialists, Shared Memory, Tools, Approval Gates, SOP Library, Evaluation Metrics, Continuous Improvement Loop. See Volume 4 + canonical template.",
+  "type": "object",
+  "required": ["id", "name", "venture", "version", "status", "mission", "scope", "kpis", "inputs", "outputs"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^HAR-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "venture": { "type": "string", "description": "Venture instance ID, e.g. VEN-NETSO-001" },
+    "version": { "type": "string", "default": "1.0.0" },
+    "status": { "type": "string", "enum": ["draft", "production", "deprecated", "retired"] },
+    "mission": { "type": "string", "description": "Exactly one sentence." },
+    "scope": {
+      "type": "object",
+      "required": ["in_scope", "out_of_scope"],
+      "properties": {
+        "in_scope": { "type": "array", "items": { "type": "string" } },
+        "out_of_scope": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "kpis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "target"],
+        "properties": {
+          "name": { "type": "string" },
+          "target": { "type": "string" },
+          "frequency": { "type": "string", "enum": ["realtime", "daily", "weekly", "monthly", "quarterly"] },
+          "owner": { "type": "string", "description": "Specialist agent ID or human ID" }
+        }
+      }
+    },
+    "inputs": { "type": "array", "items": { "type": "string" } },
+    "outputs": { "type": "array", "items": { "type": "string" } },
+    "components": {
+      "type": "object",
+      "description": "Paths to component manifests within this harness dir.",
+      "properties": {
+        "planner": { "type": "string" },
+        "dispatcher": { "type": "string" },
+        "specialists_dir": { "type": "string" },
+        "memory": { "type": "string" },
+        "tools": { "type": "string" },
+        "approvals": { "type": "string" },
+        "evaluation": { "type": "string" },
+        "sops_dir": { "type": "string" }
+      }
+    }
+  }
+}

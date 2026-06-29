@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/identity.schema.json",
+  "title": "TAZ OS Identity",
+  "description": "Globally unique identity for every object in TAZ OS: humans, harnesses, agents, tools, workflows, memory, artifacts, documents, policies. See Volume 8.",
+  "type": "object",
+  "required": ["id", "type", "name", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique. Format: <TYPE>-<NNNNNN>. Human=HUM, Harness=HAR, Agent=AGT, Tool=TOL, Policy=POL, Artifact=ART, Workflow=WRK, Memory=MEM, Document=DOC, Project=PRJ, Customer=CUS, Supplier=SUP, Investor=INV, Meeting=MTG, Task=TSK.",
+      "pattern": "^(HUM|HAR|AGT|TOL|POL|ART|WRK|MEM|DOC|PRJ|CUS|SUP|INV|MTG|TSK)-[0-9]{6}$",
+      "examples": ["HUM-000001", "AGT-EXEC-004"]
+    },
+    "type": {
+      "type": "string",
+      "enum": ["human", "harness", "agent", "tool", "policy", "artifact", "workflow", "memory", "document", "project", "customer", "supplier", "investor", "meeting", "task"]
+    },
+    "name": { "type": "string" },
+    "owner": {
+      "description": "ID of the owning identity (harness, human, or org). May be null for root.",
+      "oneOf": [
+        { "type": "string", "pattern": "^(HUM|HAR|ORG|AGT)-" },
+        { "type": "null" }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "idle", "deployed", "blocked", "retired", "draft", "production"]
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted", "founder_only"],
+      "default": "internal"
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "version": { "type": "string", "default": "1.0.0" }
+  }
+}

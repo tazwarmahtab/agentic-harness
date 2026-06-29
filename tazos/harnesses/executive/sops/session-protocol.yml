@@ -1,0 +1,81 @@
+# SOP-001 — Session Startup & Shutdown Protocol
+# Owner: AGT-EXEC-COO
+# Frequency: Every session
+# Source: ai_system/System/DO/DASHBOARD.md session protocol
+
+id: SOP-EXEC-001
+name: Session Startup and Shutdown Protocol
+owner: AGT-EXEC-COO
+version: 1.0.0
+source: ai_system/System/DO/DASHBOARD.md
+
+# ===========================================================================
+# STARTUP — executed at every session start
+# ===========================================================================
+startup_protocol:
+  step_1:
+    action: "Read DASHBOARD.md"
+    artifact: dashboard
+    purpose: "Inherit current live state. This is the single source of truth."
+  step_2:
+    action: "Read BLOCKERS.md"
+    artifact: blockers
+    purpose: "Identify what is currently stuck and who holds each blocker."
+  step_3:
+    action: "Read WEEKLY.md"
+    artifact: weekly_plan
+    purpose: "Understand this week's top 3 priorities."
+  step_4:
+    action: "Read AGENTS_REGISTRY.md"
+    artifact: agents_registry
+    purpose: "Confirm which agents are available and their status."
+  step_5:
+    action: "Read TASK_ROUTER.md"
+    artifact: task_router
+    purpose: "Confirm routing rules and SLAs before dispatching."
+  step_6:
+    action: "Read LATEST.md (session log)"
+    artifact: latest_session
+    purpose: "Inherit context from previous session — handoffs, decisions, state."
+
+# ===========================================================================
+# SHUTDOWN — executed at every session end
+# ===========================================================================
+shutdown_protocol:
+  step_1:
+    action: "Update DASHBOARD.md"
+    artifact: dashboard
+    owner: AGT-EXEC-COO
+    rule: "What changed this session? Update after every action, not at end of day."
+  step_2:
+    action: "Update BLOCKERS.md"
+    artifact: blockers
+    owner: AGT-EXEC-COO
+    rule: "Anything newly stuck? Every blocker names a holder."
+  step_3:
+    action: "Update AGENTS_REGISTRY.md"
+    artifact: agents_registry
+    owner: AGT-EXEC-COO
+    rule: "Any agent status changes? Deployed → Active? Blocked → Unblocked?"
+  step_4:
+    action: "Log significant decisions"
+    artifact: decision_log
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    rule: "Every decision with rationale, identity, alternatives, confidence."
+  step_5:
+    action: "Update LATEST.md"
+    artifact: latest_session
+    owner: AGT-EXEC-COO
+    rule: "Session summary, state, handoffs made, pending items."
+
+# ===========================================================================
+# RULES (non-negotiable)
+# ===========================================================================
+rules:
+  - "DASHBOARD.md is the truth. Any agent contradicting it is wrong."
+  - "Read it first. Every session."
+  - "No more than 3 active items. Three is focus. Four is scatter."
+  - "Blockers must name the holder. 'Blocked on Taz approval' — not 'blocked.'"
+  - "Every Friday: review happens (CHECK/REVIEW.md). If no review file, system stopped."
+  - "Every week: exactly 1 P0 item moves from IN_PROGRESS → DONE. Minimum."
+  - "DASHBOARD.md updated after EVERY action. Not end of day. After the action."

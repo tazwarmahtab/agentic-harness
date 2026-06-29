@@ -1,0 +1,31 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / agent scratch
+.remember/
+.superpowers/
+.gstack/
+.obsidian/
+.kluster/
+.smart-env/
+.idea/
+.vscode/
+*.swp
+
+# Runtime state (when a runtime lands later)
+*.log
+*.pid
+tazos/runtime/state/
+tazos/runtime/cache/
+secrets/
+.env
+.env.*
+!.env.example
+
+# Build / index artifacts
+node_modules/
+__pycache__/
+*.pyc
+graphify-out/
+out/
