@@ -97,7 +97,7 @@ class RoutingTable(BaseModel):
 
 class TaskLifecycle(BaseModel):
     states: Optional[list[str]] = None
-    transitions: Optional[list[dict[str, Any]]] = None
+    transitions: Optional[list[dict[str, Any] | str]] = None
     rules: Optional[list[str]] = None
 
 
