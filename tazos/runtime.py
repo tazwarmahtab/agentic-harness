@@ -238,6 +238,21 @@ def _run_agent(
         else:
             output = {"raw_response": response.content}
 
+        # Validate output against ground truth
+        from tazos.evaluator import validate_output
+        from tazos.constants import NETSO_FINANCIAL
+        validation = validate_output(output, agent.id, NETSO_FINANCIAL)
+        if not validation.passed:
+            for violation in validation.violations:
+                ctx.errors.append(f"{agent.id}: {violation}")
+
+        # Attach validation metadata to output
+        output["_validation"] = {
+            "passed": validation.passed,
+            "violations": validation.violations,
+            "warnings": validation.warnings,
+        }
+
         elapsed = int((time.monotonic() - start) * 1000)
         return StepResult(
             step=step_name,
