@@ -97,74 +97,16 @@ class CycleContext:
 # ---------------------------------------------------------------------------
 
 def _build_agent_system_prompt(agent: Agent, bundle: HarnessBundle) -> str:
-    """Build the system prompt for an agent from its manifest."""
-    parts = [
-        f"You are {agent.name}, operating within the {bundle.harness.name}.",
-        f"Mission: {agent.mission}",
-    ]
+    """Build the system prompt for an agent from its manifest.
 
-    if agent.capabilities:
-        parts.append(f"\nCapabilities: {', '.join(agent.capabilities)}")
+    Uses context.build_prompt for full contract serialization including
+    financial ground truth for CFO agents.
+    """
+    from tazos.context import build_prompt
+    from tazos.constants import NETSO_FINANCIAL
 
-    if agent.reasoning_structure:
-        parts.append("\nReasoning process:")
-        for i, step in enumerate(agent.reasoning_structure, 1):
-            parts.append(f"  {i}. {step}")
-
-    if agent.self_check:
-        parts.append("\nBefore outputting, verify:")
-        for item in agent.self_check:
-            parts.append(f"  - {item}")
-
-    if agent.constraints:
-        parts.append("\nConstraints (non-negotiable):")
-        for c in agent.constraints:
-            parts.append(f"  - {c}")
-
-    if agent.allowed_memory:
-        parts.append(f"\nMemory access — read: {agent.allowed_memory.read}")
-        parts.append(f"Memory access — write: {agent.allowed_memory.write}")
-
-    if agent.failure_handling:
-        fh = agent.failure_handling
-        parts.append("\nFailure handling:")
-        if fh.missing_information:
-            parts.append(f"  Missing info: {fh.missing_information}")
-        if fh.tool_failure:
-            parts.append(f"  Tool failure: {fh.tool_failure}")
-        if fh.low_confidence:
-            parts.append(f"  Low confidence: {fh.low_confidence}")
-
-    # Step-specific output instructions
-    parts.append(_step_output_instructions(agent.id))
-
-    return "\n".join(parts)
-
-    return "\n".join(parts)
-
-
-def _step_output_instructions(agent_id: str) -> str:
-    """Append step-specific JSON output instructions to the system prompt."""
-    if agent_id == "AGT-EXEC-DISPATCH":
-        return """
-OUTPUT FORMAT: You MUST respond with ONLY a JSON object (no prose before or after).
-The JSON must have this exact structure:
-{
-  "assignments": [
-    {
-      "agent_id": "AGT-EXEC-XXX",
-      "task": "description of what to do",
-      "input": "specific input for this agent",
-      "priority": "P0|P1|P2|P3",
-      "sla": "time limit"
-    }
-  ],
-  "unrouted": ["tasks with no routing match"],
-  "escalations": ["items that need immediate escalation"]
-}
-Assignments go to agents from the available_agents list. Do NOT assign tasks to agents not in that list.
-"""
-    return ""
+    netso_financial = NETSO_FINANCIAL if agent.financial_rules else None
+    return build_prompt(agent, netso_financial=netso_financial)
 
 
 def _build_task_prompt(
@@ -256,7 +198,19 @@ def _run_agent(
     import time
     start = time.monotonic()
 
-    system_prompt = _build_agent_system_prompt(agent, bundle)
+    # Retrieve memory context for this agent (if memory store available)
+    memory_context = None
+    if ctx.memory_store:
+        try:
+            memory_context = ctx.memory_store.retrieve_for_agent(agent.id, step_name)
+        except AttributeError:
+            pass  # retrieve_for_agent not yet implemented — Phase 7 Task 3
+
+    # Build system prompt with memory context
+    from tazos.context import build_prompt
+    from tazos.constants import NETSO_FINANCIAL
+    netso_financial = NETSO_FINANCIAL if agent.financial_rules else None
+    system_prompt = build_prompt(agent, netso_financial=netso_financial, memory_context=memory_context)
     task_prompt = _build_task_prompt(step_name, agent, ctx, inputs)
 
     # Use agent-level model override if set, else resolve from criticality
