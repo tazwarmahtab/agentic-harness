@@ -102,8 +102,9 @@ class FileProvider:
     Handles read/write of venture artifacts, handoffs, memory, dashboards.
     """
 
-    def __init__(self, venture_root: Path | None = None):
+    def __init__(self, venture_root: Path | None = None, memory_store: Any | None = None):
         self.venture_root = venture_root
+        self.memory_store = memory_store
 
     def execute(
         self,
@@ -112,7 +113,7 @@ class FileProvider:
         agent_id: str,
     ) -> dict[str, Any]:
         if capability in ("read_dashboard", "read_file", "read_any_data"):
-            return self._read_file(inputs)
+            return self._read_file(inputs, agent_id)
         if capability in ("write_dashboard", "write_file"):
             return self._write_file(inputs)
         if capability == "write_handoff":
@@ -127,11 +128,23 @@ class FileProvider:
             return self._generate_report(inputs)
         raise ValueError(f"FileProvider: unknown capability: {capability}")
 
-    def _read_file(self, inputs: dict[str, Any]) -> dict[str, Any]:
+    def _read_file(self, inputs: dict[str, Any], agent_id: str) -> dict[str, Any]:
         path_str = inputs.get("path") or inputs.get("file_path") or ""
-        if not path_str and self.venture_root:
-            # Try to resolve from venture artifacts
-            ref = inputs.get("ref", "")
+        ref = inputs.get("ref", "")
+
+        # If we have a memory store, check memory permission first
+        if self.memory_store and ref:
+            if not self.memory_store.can_read(agent_id, ref):
+                return {"content": "", "error": f"Permission denied: Agent {agent_id} cannot read memory domain {ref}"}
+            # Try to read from memory store first
+            for layer in ["long_term", "episodic", "semantic"]:
+                entries = self.memory_store.read(layer, ref, agent_id)
+                if entries:
+                    # Return combined contents
+                    content = "\n\n".join(e.content for e in entries if e.content)
+                    return {"content": content, "path": f"memory://{layer}/{ref}", "size": len(content)}
+
+        if not path_str and self.venture_root and ref:
             path_str = ref
 
         if not path_str:
@@ -207,10 +220,35 @@ class FileProvider:
         }
 
     def _write_memory(self, inputs: dict[str, Any], agent_id: str) -> dict[str, Any]:
-        """Submit a memory candidate (not direct write — reflection engine decides)."""
+        """Submit a memory candidate or write directly if authorized."""
         key = inputs.get("memory_key", "")
         content = inputs.get("content", "")
         classification = inputs.get("classification", "internal")
+        layer = inputs.get("layer", "long_term")
+        domain = inputs.get("domain", "")
+
+        if self.memory_store:
+            # Check if agent has write permission for this domain
+            if not self.memory_store.can_write(agent_id, domain):
+                return {
+                    "status": "denied",
+                    "error": f"Permission denied: Agent {agent_id} cannot write to memory domain {domain}",
+                }
+
+            # Submit candidate
+            candidate = self.memory_store.submit_candidate(
+                agent_id=agent_id,
+                layer=layer,
+                domain=domain,
+                key=key,
+                content=content,
+                classification=classification,
+            )
+            return {
+                "status": "submitted",
+                "candidate_id": candidate.id,
+                "message": f"Memory candidate {candidate.id} submitted. Reflection engine will decide.",
+            }
 
         candidate = {
             "agent_id": agent_id,
@@ -350,9 +388,11 @@ class ToolGateway:
     def __init__(
         self,
         venture_root: Path | None = None,
+        memory_store: Any | None = None,
         providers: dict[str, ToolProvider] | None = None,
     ):
         self.venture_root = venture_root
+        self.memory_store = memory_store
         self.tools: dict[str, ToolDef] = {}
         self.providers: dict[str, ToolProvider] = providers or {}
         self._rate_counters: dict[str, list[datetime]] = {}
@@ -360,7 +400,7 @@ class ToolGateway:
 
         # Default providers
         if "file" not in self.providers:
-            self.providers["file"] = FileProvider(venture_root)
+            self.providers["file"] = FileProvider(venture_root, memory_store)
         if "approval" not in self.providers:
             self._approval_provider = ApprovalProvider()
             self.providers["approval"] = self._approval_provider

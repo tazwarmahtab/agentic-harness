@@ -19,6 +19,7 @@ from tazos.llm import LLMClient, LLMResponse, DryRunLLMClient, resolve_model, cr
 from tazos.registry import Registry, HarnessBundle, load_registry
 from tazos.schemas.agent import Agent
 from tazos.tools import ToolGateway, ToolResult
+from tazos.memory import MemoryStore, build_memory_from_manifest, Decision
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +52,7 @@ class CycleContext:
     handoffs: list[dict[str, Any]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     tool_gateway: ToolGateway | None = None
+    memory_store: MemoryStore | None = None
 
     def add_result(self, result: StepResult) -> None:
         self.step_results.append(result)
@@ -527,7 +529,8 @@ def step_log(
     bundle: HarnessBundle,
     llm: LLMClient,
 ) -> StepResult:
-    """Step 8: Log decisions, update session context."""
+    """Step 8: Log decisions, review memory candidates, persist to disk."""
+    # Build the cycle summary log entry
     log_entry = {
         "cycle_id": ctx.cycle_id,
         "timestamp": ctx.started_at.isoformat(),
@@ -538,10 +541,34 @@ def step_log(
         "handoffs_created": len(ctx.handoffs),
     }
 
+    # Reflection engine: review pending memory candidates
+    memory_summary = {}
+    if ctx.memory_store:
+        # Auto-review all pending candidates
+        audit_records = ctx.memory_store.review_pending(auto_store=True)
+        memory_summary = {
+            "candidates_reviewed": len(audit_records),
+            "audit_records_created": len(audit_records),
+        }
+
+        # Persist to disk if venture root is available
+        if ctx.tool_gateway and ctx.tool_gateway.venture_root:
+            try:
+                persist_result = ctx.memory_store.persist_to_disk(
+                    ctx.tool_gateway.venture_root,
+                    cycle_id=ctx.cycle_id,
+                )
+                memory_summary["persisted_to"] = persist_result
+            except Exception as e:
+                memory_summary["persist_error"] = str(e)
+
     return StepResult(
         step="log",
         status="success",
-        output={"decision_log_entry": log_entry},
+        output={
+            "decision_log_entry": log_entry,
+            "memory_summary": memory_summary,
+        },
     )
 
 
@@ -589,7 +616,15 @@ def run_cycle(
             venture_root = path.parent
             break
 
-    gateway = ToolGateway(venture_root=venture_root)
+    # Build memory store if memory.yml manifest exists
+    memory_store = None
+    if bundle.memory:
+        # bundle.memory is already a Memory Pydantic model
+        # Convert it to dict for build_memory_from_manifest
+        memory_data = bundle.memory.model_dump()
+        memory_store = build_memory_from_manifest(memory_data, venture_root=venture_root)
+
+    gateway = ToolGateway(venture_root=venture_root, memory_store=memory_store)
     # Register tools from harness tools.yml if available
     if bundle.tools:
         gateway.register_tools_from_dict(
@@ -603,6 +638,7 @@ def run_cycle(
         cycle_id=cycle_id,
         venture_artifacts=venture_artifacts or {},
         tool_gateway=gateway,
+        memory_store=memory_store,
     )
 
     # Run each step

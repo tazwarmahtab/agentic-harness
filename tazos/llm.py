@@ -140,21 +140,56 @@ def _parse_first_json(raw: str) -> dict:
     """Parse the first complete JSON object from a string.
 
     Handles streaming responses where multiple JSON objects may be
-    concatenated. Returns the first complete object as a dict.
+    concatenated, or responses that are truncated (no closing brace).
+    Returns the first complete object as a dict.
     """
+    # Try raw parse first
+    try:
+        result = json.loads(raw)
+        if isinstance(result, dict):
+            return result
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Try extracting from ```json ... ``` blocks
+    import re
+    code_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)```", raw, re.DOTALL)
+    for block in code_blocks:
+        try:
+            result = json.loads(block.strip())
+            if isinstance(result, dict):
+                return result
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+    # Try finding first { ... } that looks like a complete object
     depth = 0
-    end = 0
+    start_idx = -1
     for i, c in enumerate(raw):
         if c == "{":
+            if depth == 0:
+                start_idx = i
             depth += 1
         elif c == "}":
             depth -= 1
-            if depth == 0:
-                end = i + 1
-                break
-    if end == 0:
-        raise ValueError(f"No complete JSON object found in response: {raw[:200]}")
-    return json.loads(raw[:end])
+            if depth == 0 and start_idx >= 0:
+                try:
+                    result = json.loads(raw[start_idx : i + 1])
+                    if isinstance(result, dict):
+                        return result
+                except (json.JSONDecodeError, ValueError):
+                    start_idx = -1
+
+    # Fallback: if response looks like OpenAI format but was truncated,
+    # try to extract the content field directly
+    content_match = re.search(r'"content"\s*:\s*"(.*?)(?:"\s*[,}])', raw, re.DOTALL)
+    if content_match:
+        content = content_match.group(1)
+        # Unescape JSON string escapes
+        content = content.replace("\\n", "\n").replace('\\"', '"').replace("\\\\", "\\")
+        return {"choices": [{"message": {"content": content}}]}
+
+    raise ValueError(f"No complete JSON object found in response: {raw[:200]}")
 
 
 def _detect_anthropic_key() -> str:
