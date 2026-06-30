@@ -211,6 +211,58 @@ class MemoryStore:
                         results.append(entry)
         return results
 
+    def retrieve_for_agent(
+        self,
+        agent_id: str,
+        domain_hint: str | None = None,
+        max_chars: int = 3000,
+    ) -> str:
+        """Retrieve memory context for an agent, formatted for prompt injection.
+
+        Searches all layers for accessible entries matching the domain hint.
+        Returns a formatted string suitable for including in a system prompt.
+        Respects permissions — only returns entries the agent can read.
+        """
+        results: list[str] = []
+        total_chars = 0
+
+        for layer in ["long_term", "episodic", "semantic"]:
+            for domain, entries in self.layers[layer].items():
+                if not self.can_read(agent_id, domain):
+                    continue
+
+                # Filter by domain hint if provided
+                if domain_hint and domain_hint.lower() not in domain.lower():
+                    continue
+
+                active = [e for e in entries if not e.replaced_by]
+                if not active:
+                    continue
+
+                for entry in active:
+                    if total_chars >= max_chars:
+                        break
+
+                    line = ""
+                    if entry.key and entry.value:
+                        line = f"[{layer}/{domain}] {entry.key}: {entry.value}"
+                    elif entry.content:
+                        line = f"[{layer}/{domain}] {entry.content[:200]}"
+                    else:
+                        continue
+
+                    results.append(line)
+                    total_chars += len(line)
+
+            if total_chars >= max_chars:
+                break
+
+        if not results:
+            return ""
+
+        header = f"Memory ({len(results)} entries, {total_chars} chars):"
+        return header + "\n" + "\n".join(results)
+
     # ----- Candidate submission -----
 
     def submit_candidate(

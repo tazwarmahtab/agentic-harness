@@ -215,6 +215,64 @@ class TestMemoryRead:
 
 
 # ---------------------------------------------------------------------------
+# MemoryStore — retrieve_for_agent (prompt injection)
+# ---------------------------------------------------------------------------
+
+class TestMemoryRetrieval:
+    def test_retrieve_returns_accessible_memory(self, store: MemoryStore) -> None:
+        store.seed_from_dict("long_term", "company_facts", [
+            {"key": "entity", "value": "Netso Energy"},
+        ])
+        context = store.retrieve_for_agent("AGT-EXEC-CEO", "company_facts")
+        assert "Netso Energy" in context
+
+    def test_retrieve_respects_permissions(self, store: MemoryStore) -> None:
+        store.seed_from_dict("long_term", "financial_models", [
+            {"key": "revenue", "value": "1M"},
+        ])
+        # COO cannot read financial_models
+        context = store.retrieve_for_agent("AGT-EXEC-COO", "financial_models")
+        assert "1M" not in context
+
+    def test_retrieve_empty_for_unknown_agent(self, store: MemoryStore) -> None:
+        context = store.retrieve_for_agent("AGT-UNKNOWN", "anything")
+        assert context == ""
+
+    def test_retrieve_formats_output(self, store: MemoryStore) -> None:
+        store.seed_from_dict("long_term", "dashboard", [
+            {"key": "status", "value": "on_track"},
+        ])
+        context = store.retrieve_for_agent("AGT-EXEC-COO", "dashboard")
+        assert "on_track" in context
+        assert isinstance(context, str)
+
+    def test_retrieve_searches_all_layers(self, store: MemoryStore) -> None:
+        store.seed_from_dict("semantic", "pricing_model", [
+            {"key": "ppa_rate", "value": "10.00"},
+        ])
+        context = store.retrieve_for_agent("AGT-EXEC-CEO", "pricing")
+        assert "10.00" in context
+
+    def test_retrieve_no_hint_returns_all_accessible(self, store: MemoryStore) -> None:
+        store.seed_from_dict("long_term", "company_facts", [
+            {"key": "entity", "value": "Netso"},
+        ])
+        store.seed_from_dict("episodic", "dashboard", [
+            {"key": "status", "value": "ok"},
+        ])
+        context = store.retrieve_for_agent("AGT-EXEC-CEO")
+        assert "Netso" in context
+        assert "ok" in context
+
+    def test_retrieve_respects_max_chars(self, store: MemoryStore) -> None:
+        store.seed_from_dict("long_term", "big_domain", [
+            {"key": f"key_{i}", "value": "x" * 100} for i in range(50)
+        ])
+        context = store.retrieve_for_agent("AGT-EXEC-CEO", max_chars=200)
+        assert len(context) < 500  # well under 50 * 120 chars
+
+
+# ---------------------------------------------------------------------------
 # MemoryStore — candidate submission and review
 # ---------------------------------------------------------------------------
 
