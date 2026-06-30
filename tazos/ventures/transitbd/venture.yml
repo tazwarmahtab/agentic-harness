@@ -1,0 +1,61 @@
+# TAZ OS Venture Instance — TransitBD
+# Future venture mounted into TAZ OS. Currently in planning phase.
+# Mounted alongside Netso Energy to demonstrate multi-venture architecture.
+
+id: VEN-TRANSIT-001
+name: TransitBD
+type: venture
+status: planning
+classification: internal
+version: 1.0.0
+created_at: "2026-07-01"
+description: >
+  Bangladesh transit/logistics platform. Deferred until Netso locks,
+  but venture structure is pre-built for rapid activation.
+
+# ---------------------------------------------------------------------------
+# Identity — humans with seats in this venture
+# ---------------------------------------------------------------------------
+identities:
+  humans:
+    - id: HUM-000001
+      name: Tazwar Mahtab
+      role: Founder
+      status: active
+      classification: founder_only
+      approval_authority: true
+
+# ---------------------------------------------------------------------------
+# Artifacts — venture-specific files harnesses read/write
+# ---------------------------------------------------------------------------
+artifacts:
+  dashboard:
+    path: ai_system/System/DASHBOARD.md
+    description: "Live operational dashboard"
+    classification: internal
+  weekly_plan:
+    path: ai_system/System/PLAN/WEEKLY.md
+    description: "Weekly priority plan"
+    classification: internal
+  backlog:
+    path: ai_system/System/PLAN/BACKLOG.md
+    description: "Task backlog"
+    classification: internal
+  blockers:
+    path: ai_system/System/ACT/BLOCKERS.md
+    description: "Active blockers"
+    classification: internal
+  lessons:
+    path: ai_system/System/ACT/LESSONS.md
+    description: "Lessons learned"
+    classification: internal
+
+# ---------------------------------------------------------------------------
+# Financial constants — placeholder (TransitBD not yet operational)
+# ---------------------------------------------------------------------------
+financial_constants:
+  capex_per_kw_scenario_a: null
+  true_variable_rate: null
+  blended_rate: null
+  ppa_rate: null
+  customer_savings_pct: null

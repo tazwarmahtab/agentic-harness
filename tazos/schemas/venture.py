@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class VentureStatus(str, Enum):
     ACTIVE = "active"
+    PLANNING = "planning"
     PAUSED = "paused"
     ARCHIVED = "archived"
     DRAFT = "draft"
