@@ -1,0 +1,37 @@
+# TAZ OS Finance Harness
+id: HAR-FIN-001
+name: Finance Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+mission: >
+  Manage all financial operations: unit economics, investor materials,
+  data room preparation, cash flow analysis, and financial reporting.
+  Enforce ground truth constants from GROUND_TRUTH_CONSTANTS.md.
+
+scope:
+  in_scope: [financial_modeling, investor_relations, cash_flow, reporting]
+  out_of_scope: [engineering, procurement, customer_outreach]
+
+kpis:
+  - { name: model_accuracy, target: ">95%" }
+  - { name: investor_update_timeliness, target: "100% on schedule" }
+  - { name: number_discipline_violations, target: "0" }
+
+inputs:
+  - { source: executive, items: [priority_list, handoffs] }
+  - { source: memory, items: [ground_truth_constants, financial_models] }
+
+outputs:
+  - { name: financial_models, type: artifact }
+  - { name: investor_updates, type: artifact }
+  - { name: cash_forecasts, type: artifact }
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml

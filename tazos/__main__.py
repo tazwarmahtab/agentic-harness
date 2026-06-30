@@ -94,7 +94,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     from tazos.runtime import run_from_path
 
     root = find_project_root()
-    harness_dir = root / "tazos" / "harnesses" / "executive"
+    harness_name = args.harness or "executive"
+    harness_dir = root / "tazos" / "harnesses" / harness_name
     venture_path, venture_name = _resolve_venture(args.venture)
 
     # If venture was requested but not found, fail with clear error
@@ -105,14 +106,12 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"  - {v.name} ({v.id})")
         return 1
 
-    if args.harness:
-        harness_dir = root / "tazos" / "harnesses" / args.harness
-        if not harness_dir.exists():
-            print(f"ERROR: Harness not found: {args.harness}")
-            return 1
-
     if not harness_dir.exists():
-        print(f"ERROR: Harness directory not found: {harness_dir}")
+        print(f"ERROR: Harness not found: {harness_dir}")
+        print("Available harnesses:")
+        for d in sorted((root / "tazos" / "harnesses").iterdir()):
+            if d.is_dir() and (d / "harness.yml").exists():
+                print(f"  - {d.name}")
         return 1
 
     print(f"Running harness cycle: {harness_dir.name}")

@@ -595,10 +595,10 @@ def run_cycle(
     if llm is None:
         llm = create_llm_client(dry_run=dry_run, verbose=verbose)
 
-    # Get the executive harness bundle
-    bundle = registry.harnesses.get("HAR-EXEC-001")
-    if not bundle:
-        raise ValueError("Executive harness (HAR-EXEC-001) not found in registry")
+    # Get the first harness bundle (supports any harness, not just executive)
+    if not registry.harnesses:
+        raise ValueError("No harnesses found in registry")
+    bundle = next(iter(registry.harnesses.values()))
 
     venture_id = registry.venture.id if registry.venture else "UNKNOWN"
     from datetime import date
