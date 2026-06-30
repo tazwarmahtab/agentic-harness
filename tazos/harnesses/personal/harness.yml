@@ -1,0 +1,32 @@
+# TAZ OS Personal Harness
+# Founder's personal productivity: calendar, tasks, health, habits, goals.
+
+id: HAR-PER-001
+name: Personal Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+mission: >
+  Keep the founder organized, healthy, and focused. Manage calendar,
+  track tasks, monitor health habits, maintain reading list, and
+  ensure personal goals stay on track alongside company objectives.
+
+scope:
+  in_scope: [calendar, tasks, health, habits, reading, goals, networking]
+  out_of_scope: [company_operations, financial_modeling, engineering]
+
+kpis:
+  - { name: daily_habit_completion, target: ">80%" }
+  - { name: task_completion_rate, target: ">90%" }
+  - { name: reading_minutes_per_week, target: ">120 min" }
+  - { name: exercise_sessions_per_week, target: ">4" }
+  - { name: goal_progress, target: "on_track" }
+
+inputs:
+  - { source: calendar, items: [events, meetings] }
+  - { source: memory, items: [goals, habits, reading_list] }
+
+outputs:
+  - { name: daily_brief, type: artifact }
+  - { name: habit_tracker, type: artifact }
+  - { name: goal_progress, type: artifact }
