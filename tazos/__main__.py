@@ -168,6 +168,63 @@ def cmd_ventures(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_approvals(args: argparse.Namespace) -> int:
+    """Manage the approval queue."""
+    from tazos.approval_queue import ApprovalQueue, ApprovalDecision
+
+    root = find_project_root()
+    queue_path = root / "tazos" / "approvals.jsonl"
+    log_path = root / "tazos" / "decisions.jsonl"
+    queue = ApprovalQueue(persistence_path=queue_path, decision_log_path=log_path)
+
+    action = args.approvals_action
+
+    if action == "list" or action is None:
+        print(queue.summary())
+        return 0
+
+    if action == "approve-all":
+        note = getattr(args, "note", None)
+        results = queue.approve_all(founder_note=note)
+        print(f"Approved {len(results)} items.")
+        for r in results:
+            print(f"  [{r.item_id}] {r.decision}")
+        return 0
+
+    if action == "reject-all":
+        note = getattr(args, "note", None)
+        results = queue.reject_all(founder_note=note)
+        print(f"Rejected {len(results)} items.")
+        for r in results:
+            print(f"  [{r.item_id}] {r.decision}")
+        return 0
+
+    if action == "approve":
+        item_id = args.item_id
+        note = getattr(args, "note", None)
+        result = queue.decide(item_id, ApprovalDecision.APPROVE, founder_note=note)
+        if result:
+            print(f"Approved [{item_id}]")
+        else:
+            print(f"Item {item_id} not found or already decided.")
+            return 1
+        return 0
+
+    if action == "reject":
+        item_id = args.item_id
+        note = getattr(args, "note", None)
+        result = queue.decide(item_id, ApprovalDecision.REJECT, founder_note=note)
+        if result:
+            print(f"Rejected [{item_id}]")
+        else:
+            print(f"Item {item_id} not found or already decided.")
+            return 1
+        return 0
+
+    print("Usage: python -m tazos approvals [list|approve-all|reject-all|approve ID|reject ID]")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="tazos",
@@ -197,6 +254,21 @@ def main() -> int:
     # ventures command
     subparsers.add_parser("ventures", help="List all discovered ventures")
 
+    # approvals command
+    approvals_parser = subparsers.add_parser("approvals", help="Manage approval queue")
+    approvals_sub = approvals_parser.add_subparsers(dest="approvals_action", help="Approval actions")
+    approvals_sub.add_parser("list", help="List pending approvals")
+    aa_parser = approvals_sub.add_parser("approve-all", help="Approve all pending approvals")
+    aa_parser.add_argument("--note", help="Founder note for all approvals")
+    ra_parser = approvals_sub.add_parser("reject-all", help="Reject all pending approvals")
+    ra_parser.add_argument("--note", help="Founder note for all rejections")
+    approve_one = approvals_sub.add_parser("approve", help="Approve a specific item")
+    approve_one.add_argument("item_id", help="Approval item ID (e.g. APR-0001)")
+    approve_one.add_argument("--note", help="Founder note")
+    reject_one = approvals_sub.add_parser("reject", help="Reject a specific item")
+    reject_one.add_argument("item_id", help="Approval item ID")
+    reject_one.add_argument("--note", help="Founder note")
+
     args = parser.parse_args()
 
     if args.command == "validate":
@@ -207,6 +279,8 @@ def main() -> int:
         return cmd_run(args)
     if args.command == "ventures":
         return cmd_ventures(args)
+    if args.command == "approvals":
+        return cmd_approvals(args)
 
     parser.print_help()
     return 0
