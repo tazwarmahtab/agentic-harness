@@ -18,6 +18,7 @@ from typing import Any
 from tazos.llm import LLMClient, LLMResponse, DryRunLLMClient, resolve_model, create_llm_client
 from tazos.registry import Registry, HarnessBundle, load_registry
 from tazos.schemas.agent import Agent
+from tazos.tools import ToolGateway, ToolResult
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +50,7 @@ class CycleContext:
     approval_queue: list[dict[str, Any]] = field(default_factory=list)
     handoffs: list[dict[str, Any]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    tool_gateway: ToolGateway | None = None
 
     def add_result(self, result: StepResult) -> None:
         self.step_results.append(result)
@@ -133,6 +135,8 @@ def _build_agent_system_prompt(agent: Agent, bundle: HarnessBundle) -> str:
 
     # Step-specific output instructions
     parts.append(_step_output_instructions(agent.id))
+
+    return "\n".join(parts)
 
     return "\n".join(parts)
 
@@ -308,14 +312,28 @@ def step_review(
     llm: LLMClient,
 ) -> StepResult:
     """Step 1: Review all inputs — dashboard, blockers, calendar, email."""
-    # Read venture artifacts as inputs
+    # Read venture artifacts via tool gateway
     inputs = {}
-    for key, path in ctx.venture_artifacts.items():
-        if path.exists():
-            try:
-                inputs[key] = path.read_text()[:2000]  # cap for context
-            except Exception:
-                inputs[key] = f"(could not read {path})"
+    if ctx.tool_gateway:
+        for key, path in ctx.venture_artifacts.items():
+            result = ctx.tool_gateway.call(
+                "read_dashboard",
+                {"path": str(path)},
+                agent_id="AGT-EXEC-COO",
+            )
+            if result.ok:
+                content = result.output.get("content", "")
+                inputs[key] = content[:2000] if content else f"(empty: {path})"
+            else:
+                inputs[key] = f"(could not read {path}: {result.error})"
+    else:
+        # Fallback: direct file read
+        for key, path in ctx.venture_artifacts.items():
+            if path.exists():
+                try:
+                    inputs[key] = path.read_text()[:2000]
+                except Exception:
+                    inputs[key] = f"(could not read {path})"
 
     # Delegate to COO for initial scan
     coo = bundle.specialists.get("AGT-EXEC-COO")
@@ -563,11 +581,28 @@ def run_cycle(
     from datetime import date
     cycle_id = f"{date.today().isoformat()}-executive"
 
+    # Initialize tool gateway with venture root for artifact access
+    venture_root = None
+    if venture_artifacts:
+        # Derive venture root from artifact paths
+        for path in venture_artifacts.values():
+            venture_root = path.parent
+            break
+
+    gateway = ToolGateway(venture_root=venture_root)
+    # Register tools from harness tools.yml if available
+    if bundle.tools:
+        gateway.register_tools_from_dict(
+            [t.model_dump() if hasattr(t, 'model_dump') else t
+             for t in (bundle.tools.tools if hasattr(bundle.tools, 'tools') else [])]
+        )
+
     ctx = CycleContext(
         venture_id=venture_id,
         harness_id="HAR-EXEC-001",
         cycle_id=cycle_id,
         venture_artifacts=venture_artifacts or {},
+        tool_gateway=gateway,
     )
 
     # Run each step
