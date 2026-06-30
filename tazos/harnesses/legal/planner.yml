@@ -1,0 +1,18 @@
+# Legal Harness — Planner
+id: AGT-LEG-PLAN
+name: Legal Planner
+harness: HAR-LEG-001
+version: 1.0.0
+status: production
+criticality: critical
+mission: "Prioritize legal work based on cross-harness dispatch, regulatory deadlines, and contract urgency."
+allowed_memory:
+  read: [all_long_term]
+  write: []
+  cannot_read: [founder_personal_notes]
+reasoning_structure:
+  - review_incoming_tasks
+  - check_regulatory_deadlines
+  - prioritize_by_urgency_and_risk
+  - assign_to_specialists
+  - output_priority_list

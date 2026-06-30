@@ -1,0 +1,37 @@
+# TAZ OS Legal Harness
+# Manages legal documents: NDAs, LOIs, PPAs, contract reviews, compliance.
+
+id: HAR-LEG-001
+name: Legal Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+mission: >
+  Manage all legal operations: NDA generation and review, LOI drafting,
+  PPA preparation, contract review, regulatory compliance, and government
+  filings (SREDA, IDCOL, NBR). All signed contracts require founder approval.
+
+scope:
+  in_scope: [nda, loi, ppa, contract_review, compliance, regulatory_filings]
+  out_of_scope: [financial_modeling, engineering, procurement, customer_outreach]
+
+kpis:
+  - { name: contract_review_accuracy, target: "100%" }
+  - { name: regulatory_deadline_hit_rate, target: "100%" }
+  - { name: compliance_gap_detection, target: "100%" }
+  - { name: approval_routing_compliance, target: "100%" }
+
+inputs:
+  - { source: executive, items: [priority_list, handoffs] }
+  - { source: memory, items: [contract_templates, compliance_standards] }
+
+outputs:
+  - { name: nda_documents, type: artifact }
+  - { name: loi_documents, type: artifact }
+  - { name: ppa_documents, type: artifact }
+  - { name: compliance_reports, type: artifact }
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists: specialists/
