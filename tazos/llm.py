@@ -27,10 +27,10 @@ from typing import Any, Protocol
 #   ANTHROPIC_DEFAULT_SONNET_MODEL, _HAIKU_MODEL, _OPUS_MODEL
 # ---------------------------------------------------------------------------
 MODEL_TABLE: dict[str, str] = {
-    "default": os.getenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "oc/mimo-v2.5-free"),
-    "reasoning": os.getenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "ag/gemini-3-flash-agent"),
-    "fast": os.getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "nvidia/stepfun-ai/step-3.7-flash"),
-    "subagent": os.getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL", "nvidia/stepfun-ai/step-3.7-flash"),
+    "default": "ag/claude-sonnet-4-6",
+    "reasoning": os.getenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "oc/mimo-v2.5-free"),
+    "fast": "ag/claude-sonnet-4-6",
+    "subagent": "ag/claude-sonnet-4-6",
 }
 
 # Direct Anthropic model IDs (fallback when 9router is down)
@@ -231,28 +231,53 @@ class RouterLLMClient:
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
 
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            raw = resp.read().decode("utf-8")
+        import time as _time
+        last_error = None
+        models_to_try = [model]
+        # If the requested model fails, fall back through the routing table
+        # Skip reasoning models for structured output reliability
+        for fallback_tier in ["default", "fast"]:
+            fallback = MODEL_TABLE.get(fallback_tier, "")
+            if fallback and fallback not in models_to_try:
+                models_to_try.append(fallback)
 
-            # Handle potential streaming: parse first complete JSON object
-            body = _parse_first_json(raw)
+        for current_model in models_to_try:
+            # Rebuild payload with current model
+            current_payload = {**payload, "model": current_model}
+            current_data = json.dumps(current_payload).encode("utf-8")
 
-            if "error" in body:
-                raise ConnectionError(f"9router error: {body['error']}")
+            for attempt in range(3):
+                try:
+                    retry_req = urllib.request.Request(url, data=current_data, headers=headers, method="POST")
+                    with urllib.request.urlopen(retry_req, timeout=self.timeout) as resp:
+                        raw = resp.read().decode("utf-8")
+                        body = _parse_first_json(raw)
 
-            choice = body["choices"][0]
-            msg = choice.get("message", {})
-            # Some models (reasoning models like mimo) return content via
-            # the reasoning field when content is None/empty.
-            content = msg.get("content") or ""
-            if not content and msg.get("reasoning"):
-                content = msg["reasoning"]
-            return LLMResponse(
-                content=content,
-                model=body.get("model", model),
-                usage=body.get("usage", {}),
-                provider="9router",
-            )
+                        if "error" in body:
+                            raise ConnectionError(f"9router error: {body['error']}")
+
+                        choice = body["choices"][0]
+                        msg = choice.get("message", {})
+                        content = msg.get("content") or ""
+                        if not content and msg.get("reasoning"):
+                            content = msg["reasoning"]
+                        return LLMResponse(
+                            content=content,
+                            model=body.get("model", current_model),
+                            usage=body.get("usage", {}),
+                            provider="9router",
+                        )
+                except (urllib.error.URLError, ConnectionError) as e:
+                    last_error = e
+                    if attempt < 2:
+                        _time.sleep(2 ** attempt)
+                        continue
+                    # 404 means model not found — try next model
+                    if hasattr(e, 'code') and e.code == 404:
+                        break
+                    raise
+
+        raise last_error or ConnectionError("All model attempts failed")
 
 
 # ---------------------------------------------------------------------------

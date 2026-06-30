@@ -131,7 +131,34 @@ def _build_agent_system_prompt(agent: Agent, bundle: HarnessBundle) -> str:
         if fh.low_confidence:
             parts.append(f"  Low confidence: {fh.low_confidence}")
 
+    # Step-specific output instructions
+    parts.append(_step_output_instructions(agent.id))
+
     return "\n".join(parts)
+
+
+def _step_output_instructions(agent_id: str) -> str:
+    """Append step-specific JSON output instructions to the system prompt."""
+    if agent_id == "AGT-EXEC-DISPATCH":
+        return """
+OUTPUT FORMAT: You MUST respond with ONLY a JSON object (no prose before or after).
+The JSON must have this exact structure:
+{
+  "assignments": [
+    {
+      "agent_id": "AGT-EXEC-XXX",
+      "task": "description of what to do",
+      "input": "specific input for this agent",
+      "priority": "P0|P1|P2|P3",
+      "sla": "time limit"
+    }
+  ],
+  "unrouted": ["tasks with no routing match"],
+  "escalations": ["items that need immediate escalation"]
+}
+Assignments go to agents from the available_agents list. Do NOT assign tasks to agents not in that list.
+"""
+    return ""
 
 
 def _build_task_prompt(
@@ -162,6 +189,55 @@ def _build_task_prompt(
     return "\n".join(parts)
 
 
+def _extract_json(text: str) -> dict[str, Any] | None:
+    """Extract the first JSON object from text that may contain markdown.
+
+    Handles:
+      - Raw JSON
+      - JSON wrapped in ```json ... ``` code blocks
+      - JSON preceded/followed by markdown prose
+    Returns None if no valid JSON found.
+    """
+    # Try raw parse first
+    try:
+        result = json.loads(text)
+        if isinstance(result, dict):
+            return result
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # Try extracting from ```json ... ``` blocks
+    import re
+    code_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+    for block in code_blocks:
+        try:
+            result = json.loads(block.strip())
+            if isinstance(result, dict):
+                return result
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+    # Try finding first { ... } that looks like a complete object
+    depth = 0
+    start_idx = -1
+    for i, c in enumerate(text):
+        if c == "{":
+            if depth == 0:
+                start_idx = i
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0 and start_idx >= 0:
+                try:
+                    result = json.loads(text[start_idx : i + 1])
+                    if isinstance(result, dict):
+                        return result
+                except (json.JSONDecodeError, ValueError):
+                    start_idx = -1
+
+    return None
+
+
 def _run_agent(
     agent: Agent,
     bundle: HarnessBundle,
@@ -176,20 +252,30 @@ def _run_agent(
 
     system_prompt = _build_agent_system_prompt(agent, bundle)
     task_prompt = _build_task_prompt(step_name, agent, ctx, inputs)
-    model = resolve_model(agent.criticality.value)
+
+    # Use agent-level model override if set, else resolve from criticality
+    agent_model = None
+    if agent.models and agent.models.preferred:
+        agent_model = agent.models.preferred
+    model = resolve_model(agent.criticality.value, override=agent_model)
+
+    # Use low temperature for structured output agents (dispatcher)
+    temperature = 0.1 if agent.id == "AGT-EXEC-DISPATCH" else 0.3
 
     try:
         response = llm.complete(
             model=model,
             system=system_prompt,
             messages=[{"role": "user", "content": task_prompt}],
+            temperature=temperature,
         )
 
-        # Try to parse as JSON, fall back to raw text
+        # Try to extract JSON (handles code blocks, prose wrapping)
         output: dict[str, Any]
-        try:
-            output = json.loads(response.content)
-        except json.JSONDecodeError:
+        extracted = _extract_json(response.content)
+        if extracted:
+            output = extracted
+        else:
             output = {"raw_response": response.content}
 
         elapsed = int((time.monotonic() - start) * 1000)
@@ -282,10 +368,40 @@ def step_run_specialists(
     bundle: HarnessBundle,
     llm: LLMClient,
 ) -> StepResult:
-    """Step 4: Run assigned specialist agents."""
+    """Step 4: Run assigned specialist agents.
+
+    Expects dispatcher output with 'assignments' list, each entry having
+    'agent_id', 'task', and optional 'input' fields. Falls back to
+    checking for raw_response containing agent mentions if no assignments.
+    """
     delegate_output = ctx.get_step_output("delegate") or {}
-    # Parse dispatcher output to find which agents to run
+
+    # Primary: structured assignments from dispatcher
     assignments = delegate_output.get("assignments", [])
+
+    # Fallback: if dispatcher returned raw text, try to extract agent mentions
+    if not assignments and "raw_response" in delegate_output:
+        raw = delegate_output["raw_response"]
+        # Look for AGT-EXEC-XXX patterns in the raw response
+        import re
+        agent_mentions = re.findall(r"AGT-EXEC-[A-Z]+", raw)
+        # Deduplicate while preserving order
+        seen = set()
+        for agent_id in agent_mentions:
+            if agent_id not in seen and agent_id in bundle.specialists:
+                seen.add(agent_id)
+                assignments.append({
+                    "agent_id": agent_id,
+                    "task": raw[:500],  # pass context
+                    "input": "",
+                })
+
+    if not assignments:
+        return StepResult(
+            step="run_specialists",
+            status="skipped",
+            output={"reason": "No structured assignments from dispatcher"},
+        )
 
     results: list[dict[str, Any]] = []
     for assignment in assignments:
@@ -294,8 +410,14 @@ def step_run_specialists(
             continue
 
         agent = bundle.specialists[agent_id]
-        task_input = assignment.get("task", assignment.get("input", ""))
-        inputs = {"task": task_input, "context": delegate_output}
+        task_input = assignment.get("task", "")
+        task_context = assignment.get("input", "")
+        inputs = {
+            "task": task_input,
+            "context": task_context or delegate_output,
+            "priority": assignment.get("priority", ""),
+            "sla": assignment.get("sla", ""),
+        }
 
         agent_result = _run_agent(agent, bundle, f"specialist:{agent_id}", ctx, inputs, llm)
         results.append({
