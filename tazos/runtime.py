@@ -406,12 +406,12 @@ def step_run_specialists(
             output={"reason": "No structured assignments from dispatcher"},
         )
 
-    results: list[dict[str, Any]] = []
-    for assignment in assignments:
+    import concurrent.futures
+
+    def _prepare_assignment(assignment: dict) -> tuple[str, Agent, dict[str, Any]] | None:
         agent_id = assignment.get("agent_id") or assignment.get("route_to")
         if not agent_id or agent_id not in bundle.specialists:
-            continue
-
+            return None
         agent = bundle.specialists[agent_id]
         task_input = assignment.get("task", "")
         task_context = assignment.get("input", "")
@@ -421,19 +421,32 @@ def step_run_specialists(
             "priority": assignment.get("priority", ""),
             "sla": assignment.get("sla", ""),
         }
+        return agent_id, agent, inputs
 
-        agent_result = _run_agent(agent, bundle, f"specialist:{agent_id}", ctx, inputs, llm)
-        results.append({
-            "agent_id": agent_id,
-            "status": agent_result.status,
-            "output": agent_result.output,
-        })
+    prepared = [p for p in (_prepare_assignment(a) for a in assignments) if p]
 
-        ctx.add_result(agent_result)
+    def _run_prepared(item: tuple[str, Agent, dict[str, Any]]) -> tuple[str, StepResult]:
+        agent_id, agent, inputs = item
+        return agent_id, _run_agent(agent, bundle, f"specialist:{agent_id}", ctx, inputs, llm)
 
-        # Collect approval gates
-        if "approval_required" in agent_result.output:
-            ctx.approval_queue.append(agent_result.output["approval_required"])
+    results: list[dict[str, Any]] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(_run_prepared, item) for item in prepared]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                agent_id, agent_result = future.result()
+            except Exception as e:
+                # Convert unexpected failures into a result so the cycle continues
+                agent_id = "unknown"
+                agent_result = StepResult(step="run_specialists", status="error", error=str(e))
+            ctx.add_result(agent_result)
+            results.append({
+                "agent_id": agent_id,
+                "status": agent_result.status,
+                "output": agent_result.output,
+            })
+            if "approval_required" in agent_result.output:
+                ctx.approval_queue.append(agent_result.output["approval_required"])
 
     return StepResult(
         step="run_specialists",
