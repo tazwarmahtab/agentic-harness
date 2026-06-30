@@ -20,6 +20,7 @@ from tazos.registry import Registry, HarnessBundle, load_registry
 from tazos.schemas.agent import Agent
 from tazos.tools import ToolGateway, ToolResult
 from tazos.memory import MemoryStore, build_memory_from_manifest, Decision
+from tazos.usage import UsageTracker
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +54,8 @@ class CycleContext:
     errors: list[str] = field(default_factory=list)
     tool_gateway: ToolGateway | None = None
     memory_store: MemoryStore | None = None
+    usage_tracker: UsageTracker | None = None
+    usage_tracker: UsageTracker | None = None
 
     def add_result(self, result: StepResult) -> None:
         self.step_results.append(result)
@@ -82,6 +85,13 @@ class CycleContext:
             lines.append("\nErrors:")
             for e in self.errors:
                 lines.append(f"  - {e}")
+        if self.usage_tracker:
+            usage = self.usage_tracker.report()
+            if usage.total_calls > 0:
+                lines.append(f"\nUsage: {usage.total_calls} calls, {usage.total_tokens} tokens")
+                for agent_id, data in usage.by_agent.items():
+                    tokens = data["prompt_tokens"] + data["completion_tokens"]
+                    lines.append(f"  {agent_id}: {tokens} tokens")
         lines.append("\nStep details:")
         for r in self.step_results:
             status_icon = {"success": "✓", "error": "✗", "skipped": "○", "pending": "·"}.get(r.status, "?")
@@ -237,6 +247,10 @@ def _run_agent(
             output = extracted
         else:
             output = {"raw_response": response.content}
+
+        # Track usage
+        if ctx.usage_tracker:
+            ctx.usage_tracker.record(agent.id, model, response.usage)
 
         # Validate output against ground truth
         from tazos.evaluator import validate_output
@@ -601,6 +615,8 @@ def run_cycle(
              for t in (bundle.tools.tools if hasattr(bundle.tools, 'tools') else [])]
         )
 
+    usage_tracker = UsageTracker()
+
     ctx = CycleContext(
         venture_id=venture_id,
         harness_id="HAR-EXEC-001",
@@ -608,6 +624,7 @@ def run_cycle(
         venture_artifacts=venture_artifacts or {},
         tool_gateway=gateway,
         memory_store=memory_store,
+        usage_tracker=usage_tracker,
     )
 
     # Run each step
