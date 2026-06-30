@@ -27,10 +27,10 @@ from typing import Any, Protocol
 #   ANTHROPIC_DEFAULT_SONNET_MODEL, _HAIKU_MODEL, _OPUS_MODEL
 # ---------------------------------------------------------------------------
 MODEL_TABLE: dict[str, str] = {
-    "default": "ag/claude-sonnet-4-6",
-    "reasoning": os.getenv("ANTHROPIC_DEFAULT_OPUS_MODEL", "oc/mimo-v2.5-free"),
-    "fast": "ag/claude-sonnet-4-6",
-    "subagent": "ag/claude-sonnet-4-6",
+    "default": "ag/claude-sonnet-4-6",      # mimo v2.5 — general tasks
+    "reasoning": "oc/mimo-v2.5-free",        # opus tier — complex reasoning
+    "fast": "ag/claude-4.5-haiku",          # codestral — code/structured
+    "subagent": "ag/claude-4.5-haiku",      # codestral — lightweight agents
 }
 
 # Direct Anthropic model IDs (fallback when 9router is down)
@@ -43,10 +43,10 @@ ANTHROPIC_MODEL_TABLE: dict[str, str] = {
 
 # Agent criticality → model tier mapping
 CRITICALITY_TO_MODEL: dict[str, str] = {
-    "critical": "default",
-    "high": "default",
-    "medium": "default",
-    "low": "fast",
+    "critical": "default",    # sonnet — dispatcher, planner
+    "high": "default",        # sonnet — COO, CFO, Chief of Staff
+    "medium": "fast",         # haiku — routine specialists
+    "low": "fast",            # haiku — lightweight tasks
 }
 
 
