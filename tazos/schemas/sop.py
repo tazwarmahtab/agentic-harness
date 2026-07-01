@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class StartupStep(BaseModel):
@@ -44,8 +44,7 @@ class RoutingTable(BaseModel):
 
 
 class QueueProcessStep(BaseModel):
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class ExpirationRules(BaseModel):

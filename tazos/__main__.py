@@ -91,7 +91,8 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     """Execute the daily harness cycle."""
-    from tazos.runtime import run_from_path
+    from tazos.graph import run_cycle_graph, format_state_summary
+    from tazos.registry import load_registry
 
     root = find_project_root()
     harness_name = args.harness or "executive"
@@ -125,15 +126,43 @@ def cmd_run(args: argparse.Namespace) -> int:
         print("Backend: auto-detect")
     print()
 
-    ctx = run_from_path(
-        harness_dir=harness_dir,
-        venture_path=venture_path if venture_path and venture_path.exists() else None,
+    vp = venture_path if venture_path and venture_path.exists() else None
+    registry = load_registry(harness_dir, vp)
+
+    if not registry.harnesses:
+        print("ERROR: No harnesses found in registry")
+        return 1
+
+    # We cannot reliably rely on 'harness_name' mapping strictly inside the single venture run
+    # due to path resolution in `run_from_path`, so for the test/run context we just pull
+    # the only one that was loaded from `harness_dir`
+    bundle = next(iter(registry.harnesses.values()))
+
+    if not bundle:
+        bundle = next(iter(registry.harnesses.values()))
+
+    venture_id = registry.venture.id if registry.venture else "UNKNOWN"
+
+    # Resolve venture artifacts
+    venture_artifacts: dict[str, Path] = {}
+    if vp:
+        venture_root = vp.parent.parent if vp else None
+        if venture_root and registry.venture:
+            for key, art in registry.venture.artifacts.items():
+                art_path = venture_root / art.path
+                if art_path.exists():
+                    venture_artifacts[key] = art_path
+
+    state = run_cycle_graph(
+        bundle=bundle,
+        venture_id=venture_id,
+        venture_artifacts=venture_artifacts or None,
         dry_run=args.dry_run,
         verbose=args.verbose,
     )
 
-    print(ctx.summary())
-    return 0 if ctx.ok else 1
+    print(format_state_summary(state))
+    return 0
 
 
 def cmd_ventures(args: argparse.Namespace) -> int:

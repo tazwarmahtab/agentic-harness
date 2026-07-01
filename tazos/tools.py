@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -556,6 +557,85 @@ class ToolGateway:
                 status="error",
                 error=str(e),
             )
+
+    # ------------------------------------------------------------------
+    # Action executor — used by runtime.step_execute for real execution
+    # ------------------------------------------------------------------
+
+    _SHELL_BLOCKED = frozenset([
+        "rm -rf /", "mkfs", "> /dev/", ":(){", "dd if=", "mv / ",
+    ])
+
+    def execute(self, action: dict[str, Any]) -> dict[str, Any]:
+        """Execute a concrete action dict and return real results.
+
+        Supported action types:
+          - ``shell``: run a subprocess command (with blocklist guard)
+          - ``file_write``: write content to a file path
+
+        Parameters
+        ----------
+        action:
+            Must contain an ``"action_type"`` key.  Additional keys depend
+            on the type — see the individual handlers below.
+
+        Returns
+        -------
+        dict with at least ``{"ok": bool}`` plus type-specific fields.
+        """
+        action_type = action.get("action_type", "")
+        handler = getattr(self, f"_exec_{action_type}", None)
+        if handler is None:
+            return {"ok": False, "error": f"Unknown action_type: {action_type}"}
+        try:
+            return handler(action)
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def _exec_shell(self, action: dict[str, Any]) -> dict[str, Any]:
+        """Run a shell command via subprocess with a safety blocklist."""
+        command = action.get("command", "")
+        if not command:
+            return {"ok": False, "error": "No command provided"}
+
+        cmd_lower = command.lower().strip()
+        for pattern in self._SHELL_BLOCKED:
+            if pattern in cmd_lower:
+                return {"ok": False, "error": f"Blocked dangerous command: {pattern!r}"}
+
+        timeout = action.get("timeout", 30)
+        try:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+            return {
+                "ok": result.returncode == 0,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode,
+            }
+        except subprocess.TimeoutExpired:
+            return {"ok": False, "error": f"Command timed out after {timeout}s"}
+
+    def _exec_file_write(self, action: dict[str, Any]) -> dict[str, Any]:
+        """Write content to a file, resolving relative paths against venture_root."""
+        path_str = action.get("path", "")
+        content = action.get("content", "")
+
+        if not path_str:
+            return {"ok": False, "error": "No path provided"}
+
+        path = Path(path_str)
+        if not path.is_absolute() and self.venture_root:
+            path = self.venture_root / path_str
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        return {"ok": True, "path": str(path), "bytes_written": len(content.encode())}
 
     def _resolve_provider(self, capability: str) -> ToolProvider | None:
         """Resolve a capability to its provider."""
