@@ -30,10 +30,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any, TypedDict
 
-from langgraph.config import RunnableConfig
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langchain_core.runnables import RunnableConfig
+from langgraph.config import get_config
 
 from tazos.constants import NETSO_FINANCIAL
 from tazos.context import build_prompt
@@ -42,7 +42,6 @@ from tazos.llm import LLMClient, create_llm_client, resolve_model
 from tazos.memory import MemoryStore, build_memory_from_manifest
 from tazos.registry import HarnessBundle
 from tazos.schemas.agent import Agent
-from tazos.schemas.harness import AgentTeam, TeamMember
 from tazos.tools import ToolGateway
 from tazos.usage import UsageTracker
 
@@ -143,7 +142,59 @@ def _extract_json(text: str) -> dict[str, Any] | None:
                 except (json.JSONDecodeError, ValueError):
                     start_idx = -1
 
+    # Last resort: try to extract assignments from free-form text
+    # by matching agent mentions against known patterns
     return None
+
+
+def _fallback_routing(
+    text: str,
+    routing_table: Any,
+    available_agents: list[str],
+) -> dict[str, Any]:
+    """Extract assignments from free-form text using routing table matching.
+
+    This is the fallback when structured JSON extraction fails.
+    Matches task descriptions against the routing table and extracts
+    agent mentions from the text.
+    """
+    assignments = []
+
+    # Extract all agent mentions from text
+    agent_mentions = re.findall(r"AGT-EXEC-[A-Z]+", text)
+    seen_agents: set[str] = set()
+
+    for agent_id in agent_mentions:
+        if agent_id in seen_agents or agent_id not in available_agents:
+            continue
+        seen_agents.add(agent_id)
+
+        # Find matching routing entry
+        task_type = "general"
+        sla = "24h"
+        if routing_table:
+            for entry in routing_table.executive_internal or []:
+                if entry.route_to == agent_id:
+                    task_type = entry.task
+                    sla = entry.sla
+                    break
+
+        # Extract task description for this agent (look for nearby text)
+        task_text = text[:500]  # Default to full text
+
+        assignments.append({
+            "agent_id": agent_id,
+            "task": task_text,
+            "input": "",
+            "priority": "P1",
+            "sla": sla,
+        })
+
+    return {
+        "assignments": assignments,
+        "unrouted": [],
+        "escalations": [],
+    }
 
 
 def _build_task_prompt(
@@ -483,13 +534,14 @@ def _run_team(
 # Graph nodes — one function per cycle step
 # ---------------------------------------------------------------------------
 
-def review_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def review_node(state: CycleState) -> dict:
     """Step 1: Review all inputs — dashboard, blockers, calendar, email.
 
     Reads venture artifacts via tool gateway (or direct file read as
     fallback) and delegates the initial scan to the COO specialist.
     """
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
     llm: LLMClient = cfg.get("llm") # type: ignore
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
@@ -550,9 +602,10 @@ def review_node(state: CycleState, config: RunnableConfig | None = None) -> dict
     return update
 
 
-def prioritize_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def prioritize_node(state: CycleState) -> dict:
     """Step 2: Planner generates priority list from review."""
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
@@ -592,9 +645,10 @@ def prioritize_node(state: CycleState, config: RunnableConfig | None = None) -> 
     return update
 
 
-def delegate_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def delegate_node(state: CycleState) -> dict:
     """Step 3: Dispatcher routes priorities to specialist agents."""
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
@@ -631,6 +685,18 @@ def delegate_node(state: CycleState, config: RunnableConfig | None = None) -> di
 
     output = result.get("output", {})
 
+    # Apply fallback routing if no assignments in JSON output
+    if not output.get("assignments"):
+        raw = output.get("raw_response", "")
+        if raw:
+            fallback = _fallback_routing(
+                raw, bundle.dispatcher.routing_table,
+                [a.id for a in bundle.specialists.values()],
+            )
+            output["assignments"] = fallback["assignments"]
+            output["unrouted"] = fallback.get("unrouted", [])
+            output["escalations"] = fallback.get("escalations", [])
+
     # Expand team routes to individual member assignments
     if output.get("assignments") and bundle:
         output["assignments"] = _expand_team_assignments(
@@ -646,14 +712,15 @@ def delegate_node(state: CycleState, config: RunnableConfig | None = None) -> di
     return update
 
 
-def specialists_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def specialists_node(state: CycleState) -> dict:
     """Step 4: Fan-out — run assigned specialist agents concurrently.
 
     Reads dispatcher output for structured assignments.  Falls back to
     regex extraction of ``AGT-EXEC-XXX`` mentions from raw text.
     Specialists run in a thread pool (max 6 workers).
     """
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
@@ -836,9 +903,10 @@ def specialists_node(state: CycleState, config: RunnableConfig | None = None) ->
     return update
 
 
-def summarize_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def summarize_node(state: CycleState) -> dict:
     """Step 5: Chief of Staff composes the daily brief."""
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
@@ -881,13 +949,14 @@ def summarize_node(state: CycleState, config: RunnableConfig | None = None) -> d
     return update
 
 
-def approval_gates_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def approval_gates_node(state: CycleState) -> dict:
     """Step 6: Validate and bundle approval gates for the founder.
 
     Pure logic — no LLM call.  Bundles pending approvals into a
     structured format for console delivery.
     """
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
     chief = bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF") if bundle and bundle.specialists else None
 
@@ -933,13 +1002,14 @@ def should_execute(state: CycleState) -> str:
 # Remaining nodes
 # ---------------------------------------------------------------------------
 
-def execute_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def execute_node(state: CycleState) -> dict:
     """Step 7: Execute approved actions via tool gateway.
 
     Dispatches each handoff through ``ToolGateway.execute()`` and records
     real results.  Without a gateway, handoffs stay in *queued* state.
     """
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
 
     executed: list[dict[str, Any]] = []
@@ -972,13 +1042,14 @@ def execute_node(state: CycleState, config: RunnableConfig | None = None) -> dic
     return update
 
 
-def log_node(state: CycleState, config: RunnableConfig | None = None) -> dict:
+def log_node(state: CycleState) -> dict:
     """Step 8: Log decisions, review memory candidates, persist to disk.
 
     Builds the decision log entry, runs the memory reflection engine,
     and persists memory to disk if a venture root is available.
     """
-    cfg = config.get("configurable", {}) if isinstance(config, dict) else getattr(config, "configurable", {}) if config else {}
+    config = get_config()
+    cfg = config.get("configurable", {})
     memory_store: MemoryStore | None = cfg.get("memory_store")
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
 

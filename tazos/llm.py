@@ -27,10 +27,10 @@ from typing import Any, Protocol
 #   ANTHROPIC_DEFAULT_SONNET_MODEL, _HAIKU_MODEL, _OPUS_MODEL
 # ---------------------------------------------------------------------------
 MODEL_TABLE: dict[str, str] = {
-    "default": "ag/claude-sonnet-4-6",      # mimo v2.5 — general tasks
-    "reasoning": "oc/mimo-v2.5-free",        # opus tier — complex reasoning
-    "fast": "ag/claude-4.5-haiku",          # codestral — code/structured
-    "subagent": "ag/claude-4.5-haiku",      # codestral — lightweight agents
+    "default": "cu/claude-4.5-sonnet",      # paid Claude Sonnet — general tasks
+    "reasoning": "cu/claude-4.5-opus-high-thinking",  # paid Claude Opus — complex reasoning
+    "fast": "cu/claude-4.5-haiku",          # paid Claude Haiku — code/structured
+    "subagent": "cu/claude-4.5-haiku",      # paid Claude Haiku — lightweight agents
 }
 
 # Direct Anthropic model IDs (fallback when 9router is down)
