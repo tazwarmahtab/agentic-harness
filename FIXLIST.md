@@ -22,8 +22,10 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 - **C6** — Free-tier model pool: 5 OpenRouter free models with round-robin in `tazos/llm.py`.
 - **C7** — ThreadPoolExecutor parallelism: teams execute concurrently (graph.py:622, 652, 995).
 - **C8** — LangGraph StateGraph: entire runtime migrated from linear loop to StateGraph pipeline.
-- **C9** — Baseline evaluation harness: tests passing; not yet wired into live `run_cycle_graph`.
+- **C9** — Baseline evaluation harness: wired into `run_cycle_graph`; runs on every step result and emits `evaluation` in `CycleState`.
 - **C10** — Memory persistence backend: SQLite-backed store with `_load_from_sqlite` / `_save_to_sqlite`.
+- **FIX-03** — CRITICAL: `should_execute` now blocks execution when `approval_queue` has pending items.
+- **FIX-06** — HIGH: `_invoke_skill` calls `claude -p` via subprocess.run; `_run_reviewloop` parses real review output for severity counts.
 
 ## Bug Fixes (2026-07-03 audit)
 
@@ -34,21 +36,14 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 - **FIX-12** — MEDIUM: `specialist_results` variable shadowing fixed — team + solo results now merged correctly.
 - **FIX-15** — LOW: `_flatten_for_matching` now handles list values.
 
-## In Progress
-
-- **FIX-03** — CRITICAL: Approval queue disconnected from `should_execute` conditional edge.
-- **FIX-06** — HIGH: `_invoke_skill` is a stub — pipeline never invokes real skills.
-- **C9-wire** — Wire `BaselineEvaluator` into live `run_cycle_graph`.
-
 ## Backlog
 
 | ID | Description                                                  | Priority |
 | -- | ------------------------------------------------------------ | -------- |
 | H1 | Financial-accuracy KPI in DASHBOARD.md                       | P1       |
-| H2 | Approval queue gating wired into graph nodes                 | P1       |
 | H3 | Phase 8: multi-venture support (TransitBD mount)             | P2       |
 | H4 | Phase 9: cross-harness dispatch                              | P3       |
-| M1 | Baseline evaluation + regression detection                   | P1       |
+| M1 | Baseline evaluation + regression detection for releases      | P1       |
 | M3 | Async parallelization (asyncio.gather vs ThreadPoolExecutor) | P2       |
 | M5 | Vector semantic search for memory layer                      | P3       |
 
