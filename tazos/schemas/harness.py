@@ -91,6 +91,23 @@ class Components(BaseModel):
     sops_dir: Optional[str] = None
 
 
+class TeamMember(BaseModel):
+    """A member of an agent team with a defined role."""
+    agent_id: str
+    role: str
+    weight: float = 1.0
+
+
+class AgentTeam(BaseModel):
+    """A team of agents that collaborate on complex tasks."""
+    id: str
+    name: str
+    lead: str
+    members: list[TeamMember]
+    coordination_strategy: str = "sequential"
+    description: Optional[str] = None
+
+
 class ExecutionCycle(BaseModel):
     name: Optional[str] = None
     trigger: Optional[str] = None
@@ -116,6 +133,7 @@ class Harness(BaseModel):
     outputs: list[HarnessOutput]
     components: Optional[Components] = None
     execution_cycle: Optional[ExecutionCycle] = None
+    teams: Optional[list[AgentTeam]] = None
 
     @field_validator("id")
     @classmethod

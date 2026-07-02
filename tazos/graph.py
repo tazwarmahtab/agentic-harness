@@ -42,6 +42,7 @@ from tazos.llm import LLMClient, create_llm_client, resolve_model
 from tazos.memory import MemoryStore, build_memory_from_manifest
 from tazos.registry import HarnessBundle
 from tazos.schemas.agent import Agent
+from tazos.schemas.harness import AgentTeam, TeamMember
 from tazos.tools import ToolGateway
 from tazos.usage import UsageTracker
 
@@ -282,6 +283,202 @@ def _get_step_output(state: CycleState, step_name: str) -> dict[str, Any]:
     return {}
 
 
+def _expand_team_assignments(
+    assignments: list[dict[str, Any]],
+    bundle: HarnessBundle,
+) -> list[dict[str, Any]]:
+    """Expand team routes into individual member assignments.
+
+    When dispatcher routes to TEAM-XXX, expand to all team members so
+    specialists_node can detect 2+ members and trigger team coordination.
+    """
+    expanded: list[dict[str, Any]] = []
+
+    for assignment in assignments:
+        route_to = assignment.get("agent_id") or assignment.get("route_to")
+
+        if route_to and route_to.startswith("TEAM-") and bundle.teams:
+            team = bundle.teams.get(route_to)
+            if team:
+                for member in team.members:
+                    member_assignment = assignment.copy()
+                    member_assignment["agent_id"] = member.agent_id
+                    member_assignment["team_id"] = team.id
+                    member_assignment["team_role"] = member.role
+                    member_assignment["team_weight"] = member.weight
+                    expanded.append(member_assignment)
+            else:
+                expanded.append(assignment)
+        else:
+            expanded.append(assignment)
+
+    return expanded
+
+
+def _run_team(
+    team: AgentTeam,
+    assignments: list[dict[str, Any]],
+    bundle: HarnessBundle,
+    step_name: str,
+    cycle_id: str,
+    venture_id: str,
+    llm: LLMClient,
+    memory_store: MemoryStore | None = None,
+    usage_tracker: UsageTracker | None = None,
+) -> dict[str, Any]:
+    """Execute a team of specialists with shared context.
+
+    Coordination strategies:
+      - sequential: lead runs first, reviewer gets lead's output as input
+      - parallel: all members run simultaneously, results merged
+      - voting: all run, consensus required (2/3 weight agreement)
+    """
+    strategy = team.coordination_strategy
+    lead_agent = bundle.specialists.get(team.lead)
+    if not lead_agent:
+        return {
+            "team_id": team.id,
+            "status": "error",
+            "error": f"Team lead {team.lead} not found",
+            "results": [],
+        }
+
+    task_context = "\n".join(
+        f"- {a.get('agent_id', '?')}: {a.get('task', '')[:200]}"
+        for a in assignments
+    )
+    shared_context = f"Team: {team.name}\nTask: {task_context}"
+
+    team_results: list[dict[str, Any]] = []
+    team_errors: list[str] = []
+
+    if strategy == "sequential":
+        lead_inputs = {
+            "task": shared_context,
+            "role": "lead",
+            "team_members": [m.agent_id for m in team.members],
+        }
+        lead_result = _run_agent_node(
+            lead_agent, bundle, f"{step_name}:team:{team.id}:lead",
+            cycle_id, venture_id, lead_inputs, llm,
+            memory_store=memory_store, usage_tracker=usage_tracker,
+        )
+        team_results.append({
+            "agent_id": team.lead,
+            "role": "lead",
+            "status": lead_result.get("status", "error"),
+            "output": lead_result.get("output", {}),
+        })
+        team_errors.extend(_get_errors(lead_result))
+
+        lead_output = lead_result.get("output", {})
+        for member in team.members:
+            if member.agent_id == team.lead:
+                continue
+            member_agent = bundle.specialists.get(member.agent_id)
+            if not member_agent:
+                continue
+            member_inputs = {
+                "task": shared_context,
+                "role": member.role,
+                "lead_output": lead_output,
+                "weight": member.weight,
+            }
+            member_result = _run_agent_node(
+                member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
+                cycle_id, venture_id, member_inputs, llm,
+                memory_store=memory_store, usage_tracker=usage_tracker,
+            )
+            team_results.append({
+                "agent_id": member.agent_id,
+                "role": member.role,
+                "status": member_result.get("status", "error"),
+                "output": member_result.get("output", {}),
+            })
+            team_errors.extend(_get_errors(member_result))
+
+    elif strategy == "parallel":
+        def _run_member(member: TeamMember) -> tuple[str, dict[str, Any]]:
+            member_agent = bundle.specialists.get(member.agent_id)
+            if not member_agent:
+                return member.agent_id, {
+                    "status": "error",
+                    "error": f"Agent {member.agent_id} not found",
+                }
+            member_inputs = {
+                "task": shared_context,
+                "role": member.role,
+                "weight": member.weight,
+            }
+            result = _run_agent_node(
+                member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
+                cycle_id, venture_id, member_inputs, llm,
+                memory_store=memory_store, usage_tracker=usage_tracker,
+            )
+            return member.agent_id, {
+                "status": result.get("status", "error"),
+                "output": result.get("output", {}),
+            }
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(team.members)) as pool:
+            futures = {pool.submit(_run_member, m): m for m in team.members}
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    agent_id, result = future.result()
+                    team_results.append({"agent_id": agent_id, **result})
+                except Exception as exc:
+                    team_errors.append(f"team:{team.id}:{exc}")
+
+    elif strategy == "voting":
+        def _run_voter(member: TeamMember) -> tuple[str, dict[str, Any], float]:
+            member_agent = bundle.specialists.get(member.agent_id)
+            if not member_agent:
+                return member.agent_id, {"status": "error"}, 0.0
+            member_inputs = {
+                "task": shared_context,
+                "role": member.role,
+                "voting": True,
+                "weight": member.weight,
+            }
+            result = _run_agent_node(
+                member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
+                cycle_id, venture_id, member_inputs, llm,
+                memory_store=memory_store, usage_tracker=usage_tracker,
+            )
+            return member.agent_id, {
+                "status": result.get("status", "error"),
+                "output": result.get("output", {}),
+            }, member.weight
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(team.members)) as pool:
+            futures = {pool.submit(_run_voter, m): m for m in team.members}
+            total_weight = 0.0
+            agree_weight = 0.0
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    agent_id, result, weight = future.result()
+                    team_results.append({"agent_id": agent_id, **result})
+                    total_weight += weight
+                    if result.get("status") == "success":
+                        agree_weight += weight
+                except Exception as exc:
+                    team_errors.append(f"team:{team.id}:{exc}")
+
+            consensus = agree_weight / total_weight >= 0.67 if total_weight > 0 else False
+            team_results.append({
+                "agent_id": "TEAM-CONSENSUS",
+                "status": "success" if consensus else "failed",
+                "output": {"consensus": consensus, "agree_weight": agree_weight, "total_weight": total_weight},
+            })
+
+    return {
+        "team_id": team.id,
+        "status": "success" if not team_errors else "partial",
+        "results": team_results,
+        "errors": team_errors,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Graph nodes — one function per cycle step
 # ---------------------------------------------------------------------------
@@ -422,6 +619,7 @@ def delegate_node(state: CycleState, config: RunnableConfig | None = None) -> di
             if bundle.dispatcher.routing_table else {}
         ),
         "available_agents": [a.id for a in bundle.specialists.values()],
+        "available_teams": list(bundle.teams.keys()) if bundle.teams else [],
     }
 
     result = _run_agent_node(
@@ -431,9 +629,17 @@ def delegate_node(state: CycleState, config: RunnableConfig | None = None) -> di
         memory_store=memory_store, usage_tracker=usage_tracker,
     )
 
+    output = result.get("output", {})
+
+    # Expand team routes to individual member assignments
+    if output.get("assignments") and bundle:
+        output["assignments"] = _expand_team_assignments(
+            output["assignments"], bundle
+        )
+
     update: dict[str, Any] = {
         "step_results": _step_result_to_list(result),
-        "delegate_output": result.get("output", {}),
+        "delegate_output": output,
     }
     if _get_errors(result):
         update["errors"] = _get_errors(result)
@@ -481,7 +687,66 @@ def specialists_node(state: CycleState, config: RunnableConfig | None = None) ->
             "specialists_output": {"specialist_results": [], "approval_count": 0},
         }
 
-    # Prepare assignment tuples
+    # Group assignments by team membership
+    assigned_agent_ids: set[str] = set()
+    for a in assignments:
+        aid = a.get("agent_id") or a.get("route_to")
+        if aid:
+            assigned_agent_ids.add(aid)
+
+    teams_to_run: list[tuple[AgentTeam, list[dict[str, Any]]]] = []
+    team_member_ids: set[str] = set()
+
+    if bundle and bundle.teams:
+        for team in bundle.teams.values():
+            team_members_in_assignments = [
+                m for m in team.members if m.agent_id in assigned_agent_ids
+            ]
+            if len(team_members_in_assignments) >= 2:
+                team_assignments = [
+                    a for a in assignments
+                    if (a.get("agent_id") or a.get("route_to")) in {m.agent_id for m in team_members_in_assignments}
+                ]
+                teams_to_run.append((team, team_assignments))
+                for m in team_members_in_assignments:
+                    team_member_ids.add(m.agent_id)
+
+    solo_assignments = [
+        a for a in assignments
+        if (a.get("agent_id") or a.get("route_to")) not in team_member_ids
+    ]
+
+    # Execute teams
+    specialist_results: list[dict[str, Any]] = []
+    new_errors: list[str] = []
+    new_approvals: list[dict[str, Any]] = []
+    new_handoffs: list[dict[str, Any]] = []
+
+    for team, team_assignments in teams_to_run:
+        team_result = _run_team(
+            team, team_assignments, bundle,
+            "specialists",
+            state["cycle_id"], state["venture_id"],
+            llm,
+            memory_store=memory_store, usage_tracker=usage_tracker,
+        )
+        specialist_results.append({
+            "agent_id": f"TEAM:{team.id}",
+            "status": team_result.get("status", "error"),
+            "output": team_result,
+        })
+        new_errors.extend(team_result.get("errors", []))
+
+        for tr in team_result.get("results", []):
+            output = tr.get("output", {})
+            if "approval_required" in output:
+                new_approvals.append(output["approval_required"])
+            if "handoff" in output:
+                new_handoffs.append(output["handoff"])
+            if "handoffs" in output:
+                new_handoffs.extend(output["handoffs"])
+
+    # Prepare solo specialist assignments
     def _prepare(a: dict[str, Any]) -> tuple[str, Agent, dict[str, Any]] | None:
         agent_id = a.get("agent_id") or a.get("route_to")
         if not bundle or not bundle.specialists or not agent_id or agent_id not in bundle.specialists:
@@ -549,12 +814,16 @@ def specialists_node(state: CycleState, config: RunnableConfig | None = None) ->
             "status": "success" if specialist_results else "skipped",
             "output": {
                 "specialist_results": specialist_results,
+                "teams_run": len(teams_to_run),
+                "solo_run": len(prepared),
                 "approval_count": len(new_approvals),
             },
             "duration_ms": 0,
         }),
         "specialists_output": {
             "specialist_results": specialist_results,
+            "teams_run": len(teams_to_run),
+            "solo_run": len(prepared),
             "approval_count": len(new_approvals),
         },
     }

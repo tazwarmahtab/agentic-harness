@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tazos.schemas.harness import Harness
+from tazos.schemas.harness import Harness, AgentTeam
 from tazos.schemas.agent import Agent
 from tazos.schemas.venture import Venture
 from tazos.schemas.memory import Memory
@@ -32,6 +32,7 @@ class HarnessBundle:
     planner: Agent | None = None
     dispatcher: Agent | None = None
     specialists: dict[str, Agent] = field(default_factory=dict)
+    teams: dict[str, AgentTeam] = field(default_factory=dict)
     memory: Memory | None = None
     tools: ToolRegistry | None = None
     approvals: PolicyCollection | None = None
@@ -148,6 +149,11 @@ def load_registry(
             for yml in sorted(sops_dir.glob("*.yml")):
                 sop = load_sop(yml)
                 bundle.sops[sop.id] = sop
+
+        # Load teams from harness manifest
+        if harness.teams:
+            for team in harness.teams:
+                bundle.teams[team.id] = team
 
         registry.harnesses[harness.id] = bundle
 
