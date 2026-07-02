@@ -1,18 +1,29 @@
 """TAZ OS CLI entry point.
 
 Usage:
-    python -m tazos validate [--harness NAME] [--venture NAME] [--verbose]
-    python -m tazos status [--harness NAME] [--venture NAME]
-    python -m tazos run [--venture NAME] [--dry-run]
-    python -m tazos ventures
+ python -m tazos validate [--harness NAME] [--venture NAME] [--verbose]
+ python -m tazos status [--harness NAME] [--venture NAME]
+ python -m tazos run [--venture NAME] [--dry-run]
+ python -m tazos orchestrate [--one-liner TEXT] [plan_path] [--skip-spec] [--skip-plan] [--skip-review] [--gate spec,plan,review] [--dry-run]
+ python -m tazos ventures
+ python -m tazos approvals [list|approve-all|reject-all|approve ID|reject ID]
 """
 
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import sys
 from pathlib import Path
+from typing import Optional
 
+from tazos.orchestrate.gates import GateManager, Gate, GateDecision
+from tazos.orchestrate.pipeline import (
+    OrchestratePipeline,
+    PipelineContext,
+    Phase,
+    Status,
+)
 from tazos.registry import load_registry
 from tazos.validator import validate_all
 from tazos.discover import discover_ventures, find_venture
@@ -77,7 +88,11 @@ def cmd_status(args: argparse.Namespace) -> int:
         harness_dir = root / "tazos" / "harnesses" / args.harness
 
     if not harness_dir.exists():
-        print(f"ERROR: Harness directory not found: {harness_dir}")
+        print(f"ERROR: Harness not found: {harness_dir}")
+        print("Available harnesses:")
+        for d in sorted((root / "tazos" / "harnesses").iterdir()):
+            if d.is_dir() and (d / "harness.yml").exists():
+                print(f" - {d.name}")
         return 1
 
     registry = load_registry(
@@ -91,7 +106,8 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     """Execute the daily harness cycle."""
-    from tazos.runtime import run_from_path
+    from tazos.graph import run_cycle_graph, format_state_summary
+    from tazos.registry import load_registry
 
     root = find_project_root()
     harness_name = args.harness or "executive"
@@ -103,7 +119,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         print(f"ERROR: Venture '{args.venture}' not found.")
         print("Available ventures:")
         for path, v in discover_ventures(root / "tazos" / "ventures"):
-            print(f"  - {v.name} ({v.id})")
+            print(f" - {v.name} ({v.id})")
         return 1
 
     if not harness_dir.exists():
@@ -111,7 +127,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         print("Available harnesses:")
         for d in sorted((root / "tazos" / "harnesses").iterdir()):
             if d.is_dir() and (d / "harness.yml").exists():
-                print(f"  - {d.name}")
+                print(f" - {d.name}")
         return 1
 
     print(f"Running harness cycle: {harness_dir.name}")
@@ -125,15 +141,88 @@ def cmd_run(args: argparse.Namespace) -> int:
         print("Backend: auto-detect")
     print()
 
-    ctx = run_from_path(
-        harness_dir=harness_dir,
-        venture_path=venture_path if venture_path and venture_path.exists() else None,
+    vp = venture_path if venture_path and venture_path.exists() else None
+    registry = load_registry(harness_dir, vp)
+
+    if not registry.harnesses:
+        print("ERROR: No harnesses found in registry")
+        return 1
+
+    # We cannot reliably rely on 'harness_name' mapping strictly inside the single venture run
+    # due to path resolution in `run_from_path`, so for the test/run context we just pull
+    # the only one that was loaded from `harness_dir`
+    bundle = next(iter(registry.harnesses.values()))
+
+    if not bundle:
+        bundle = next(iter(registry.harnesses.values()))
+
+    venture_id = registry.venture.id if registry.venture else "UNKNOWN"
+
+    # Resolve venture artifacts
+    venture_artifacts: dict[str, Path] = {}
+    if vp:
+        venture_root = vp.parent.parent if vp else None
+        if venture_root and registry.venture:
+            for key, art in registry.venture.artifacts.items():
+                art_path = venture_root / art.path
+                if art_path.exists():
+                    venture_artifacts[key] = art_path
+
+    state = run_cycle_graph(
+        bundle=bundle,
+        venture_id=venture_id,
+        venture_artifacts=venture_artifacts or None,
         dry_run=args.dry_run,
         verbose=args.verbose,
     )
 
-    print(ctx.summary())
-    return 0 if ctx.ok else 1
+    print(format_state_summary(state))
+    return 0
+
+
+def cmd_orchestrate(args: argparse.Namespace) -> int:
+    """Run the end-to-end pipeline: /spec → /autoplan → /implement → /reviewloop → /ship."""
+    root = find_project_root()
+
+    # Resolve plan path
+    plan_path: Optional[Path] = None
+    if args.plan_path:
+        p = Path(args.plan_path)
+        plan_path = p if p.is_absolute() else root / p
+    elif args.one_liner and not args.skip_spec:
+        # /spec will create the plan
+        plan_path = root / ".gstack" / "plans" / f"orch-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
+    elif not args.skip_spec:
+        print("ERROR: Provide --one-liner or --plan-path (or use --skip-spec with existing plan).")
+        return 1
+
+    # Parse gates
+    gates: set[str] = set()
+    if args.gate:
+        for g in args.gate:
+            gates.add(g.strip())
+
+    queue_path = root / "tazos" / "approvals.jsonl"
+    log_path = root / "tazos" / "decisions.jsonl"
+    gate_manager = GateManager(
+        persistence_path=queue_path,
+        decision_log_path=log_path,
+    )
+
+    ctx = PipelineContext(
+        one_liner=args.one_liner,
+        plan_path=plan_path,
+        skip_spec=args.skip_spec,
+        skip_plan=args.skip_plan,
+        skip_review=args.skip_review,
+        gates=gates,
+        project_root=root,
+        dry_run=args.dry_run,
+        max_review_iterations=args.max_review_iterations,
+    )
+
+    pipeline = OrchestratePipeline(ctx, gate_manager)
+    return pipeline.run()
 
 
 def cmd_ventures(args: argparse.Namespace) -> int:
@@ -145,26 +234,26 @@ def cmd_ventures(args: argparse.Namespace) -> int:
 
     if not ventures:
         print("No ventures found.")
-        print(f"  Searched: {ventures_dir}")
-        print("  Add a venture by creating: <ventures_dir>/<name>/venture.yml")
+        print(f" Searched: {ventures_dir}")
+        print(" Add a venture by creating: <ventures_dir>/<name>/venture.yml")
         return 1
 
     print(f"TAZ OS Ventures ({len(ventures)} found):")
     print()
     for path, venture in ventures:
         status_icon = {"active": "🟢", "planning": "🟡", "inactive": "⚫"}.get(venture.status, "❓")
-        print(f"  {status_icon} {venture.name} ({venture.id})")
-        print(f"     Status: {venture.status}")
-        print(f"     Path:   {path.parent}")
+        print(f" {status_icon} {venture.name} ({venture.id})")
+        print(f" Status: {venture.status}")
+        print(f" Path: {path.parent}")
         if venture.description:
             desc = venture.description[:80] + "..." if len(venture.description) > 80 else venture.description
-            print(f"     Desc:   {desc}")
+            print(f" Desc: {desc}")
         print()
 
     print("Usage:")
-    print("  python -m tazos run --venture netso       # Run cycle for Netso")
-    print("  python -m tazos run --venture transitbd    # Run cycle for TransitBD")
-    print("  python -m tazos status --venture netso     # Show Netso status")
+    print(" python -m tazos run --venture netso # Run cycle for Netso")
+    print(" python -m tazos run --venture transitbd # Run cycle for TransitBD")
+    print(" python -m tazos status --venture netso # Show Netso status")
     return 0
 
 
@@ -188,7 +277,7 @@ def cmd_approvals(args: argparse.Namespace) -> int:
         results = queue.approve_all(founder_note=note)
         print(f"Approved {len(results)} items.")
         for r in results:
-            print(f"  [{r.item_id}] {r.decision}")
+            print(f" [{r.item_id}] {r.decision}")
         return 0
 
     if action == "reject-all":
@@ -196,7 +285,7 @@ def cmd_approvals(args: argparse.Namespace) -> int:
         results = queue.reject_all(founder_note=note)
         print(f"Rejected {len(results)} items.")
         for r in results:
-            print(f"  [{r.item_id}] {r.decision}")
+            print(f" [{r.item_id}] {r.decision}")
         return 0
 
     if action == "approve":
@@ -254,6 +343,17 @@ def main() -> int:
     # ventures command
     subparsers.add_parser("ventures", help="List all discovered ventures")
 
+    # orchestrate command
+    orch_parser = subparsers.add_parser("orchestrate", help="Run end-to-end pipeline: /spec → /autoplan → /implement → /reviewloop → /ship")
+    orch_parser.add_argument("plan_path", nargs="?", help="Path to plan document (or use --one-liner)")
+    orch_parser.add_argument("--one-liner", help="One-line description (triggers /spec)")
+    orch_parser.add_argument("--skip-spec", action="store_true", help="Skip /spec phase")
+    orch_parser.add_argument("--skip-plan", action="store_true", help="Skip /autoplan phase")
+    orch_parser.add_argument("--skip-review", action="store_true", help="Skip /reviewloop phase")
+    orch_parser.add_argument("--gate", action="append", help="Enforce gate(s): spec, plan, review (repeatable, default: all)")
+    orch_parser.add_argument("--dry-run", action="store_true", help="Log actions without executing")
+    orch_parser.add_argument("--max-review-iterations", type=int, default=3, help="Max review-fix iterations (default: 3)")
+
     # approvals command
     approvals_parser = subparsers.add_parser("approvals", help="Manage approval queue")
     approvals_sub = approvals_parser.add_subparsers(dest="approvals_action", help="Approval actions")
@@ -277,6 +377,8 @@ def main() -> int:
         return cmd_status(args)
     if args.command == "run":
         return cmd_run(args)
+    if args.command == "orchestrate":
+        return cmd_orchestrate(args)
     if args.command == "ventures":
         return cmd_ventures(args)
     if args.command == "approvals":

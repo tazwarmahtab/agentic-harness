@@ -6,7 +6,7 @@ import re
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AgentStatus(str, Enum):
@@ -79,7 +79,7 @@ class DelegationHeuristic(BaseModel):
     if_conditions: list[str] = Field(..., alias="if")
     then: dict[str, Optional[str]]
 
-    model_config = {"populate_by_name": True}
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class RoutingEntry(BaseModel):

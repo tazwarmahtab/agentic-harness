@@ -31,6 +31,10 @@ outputs:
   - { name: ppa_documents, type: artifact }
   - { name: compliance_reports, type: artifact }
 
+# ===========================================================================
+# TEAMS — logical groupings of specialists
+# ===========================================================================
+teams:
 components:
   planner: planner.yml
   dispatcher: dispatcher.yml
