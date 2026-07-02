@@ -40,10 +40,10 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 
 | ID | Description                                                  | Priority |
 | -- | ------------------------------------------------------------ | -------- |
-| H1 | Financial-accuracy KPI in DASHBOARD.md                       | P1       |
+| H1 | Financial-accuracy KPI in DASHBOARD.md                       | P1 — DONE |
 | H3 | Phase 8: multi-venture support (TransitBD mount)             | P2       |
 | H4 | Phase 9: cross-harness dispatch                              | P3       |
-| M1 | Baseline evaluation + regression detection for releases      | P1       |
+| M1 | Baseline evaluation + regression detection for releases      | P1 — DONE |
 | M3 | Async parallelization (asyncio.gather vs ThreadPoolExecutor) | P2       |
 | M5 | Vector semantic search for memory layer                      | P3       |
 
