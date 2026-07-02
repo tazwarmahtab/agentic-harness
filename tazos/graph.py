@@ -438,7 +438,7 @@ def _run_agent_node(
         result: dict[str, Any] = {
             "step": step_name,
             "agent_id": agent.id,
-            "status": "success",
+        "status": "success" if not validation.passed else "error",
             "output": output,
             "duration_ms": elapsed,
         }
