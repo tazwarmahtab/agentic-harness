@@ -80,6 +80,7 @@ class CycleState(TypedDict, total=False):
     # --- Accumulated results (reducer: list concat) ---
     step_results: Annotated[list[dict[str, Any]], operator.add]
     approval_queue: Annotated[list[dict[str, Any]], operator.add]
+    resolved_approval_ids: Annotated[list[str], operator.add]
     handoffs: Annotated[list[dict[str, Any]], operator.add]
     errors: Annotated[list[str], operator.add]
 
@@ -157,10 +158,12 @@ def _check_completion_criteria(
     if error_count >= error_threshold:
         return True, f"error_threshold_exceeded: {error_count} >= {error_threshold}"
 
-    # Check approval queue cleared
+    # Check approval queue cleared (FIX-03: filter against resolved IDs)
     if criteria.get("approval_cleared"):
-        approval_count = len(state.get("approval_queue", []))
-        if approval_count == 0:
+        approval_queue = state.get("approval_queue", [])
+        resolved_ids = set(state.get("resolved_approval_ids", []))
+        pending = [a for a in approval_queue if a.get("id", "") not in resolved_ids]
+        if len(pending) == 0:
             reasons.append("approvals_cleared")
 
     # Check handoffs executed
@@ -188,10 +191,12 @@ def _summarize_iteration(state: CycleState) -> dict[str, Any]:
     errors = state.get("errors", [])
     iteration = state.get("iteration_count", 0)
 
-    # Extract key metrics
+    # Extract key metrics (FIX-03: filter resolved approvals)
     success_count = sum(1 for r in results if r.get("status") == "success")
     error_count = len(errors)
-    approval_count = len(state.get("approval_queue", []))
+    resolved_ids = set(state.get("resolved_approval_ids", []))
+    approval_queue = state.get("approval_queue", [])
+    approval_count = sum(1 for a in approval_queue if a.get("id", "") not in resolved_ids)
     handoff_count = len(state.get("handoffs", []))
 
     # Compress outputs — keep only essential data
@@ -234,6 +239,7 @@ def _reset_iteration_state(state: CycleState) -> dict[str, Any]:
         # Reset accumulated lists (reducers will start fresh)
         "step_results": [],
         "approval_queue": [],
+        "resolved_approval_ids": [],
         "handoffs": [],
         "errors": [],
         # Clear per-step outputs
@@ -1104,6 +1110,11 @@ def approval_gates_node(state: CycleState) -> dict:
 
     Pure logic — no LLM call.  Bundles pending approvals into a
     structured format for console delivery.
+
+    FIX-03: Cross-references approval_queue items against the
+    ApprovalQueue persistence to resolve approved/rejected items.
+    Only genuinely pending items are surfaced. Approved items are
+    added to resolved_approval_ids so should_execute can unblock.
     """
     config = get_config()
     cfg = config.get("configurable", {})
@@ -1111,14 +1122,41 @@ def approval_gates_node(state: CycleState) -> dict:
     chief = bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF") if bundle and bundle.specialists else None
 
     approval_items = state.get("approval_queue", [])
+    resolved_ids = set(state.get("resolved_approval_ids", []))
+
+    # Cross-reference against ApprovalQueue persistence to resolve
+    from tazos.approval_queue import ApprovalQueue
+    queue: ApprovalQueue | None = cfg.get("approval_queue") # type: ignore
+
+    newly_resolved: list[str] = []
+    still_pending: list[dict[str, Any]] = []
+
+    if queue:
+        pending_ids = {item.id for item in queue.pending()}
+        for item in approval_items:
+            item_id = item.get("id", "")
+            if item_id in resolved_ids:
+                continue  # already resolved
+            if item_id and item_id not in pending_ids:
+                # Not in pending list — was resolved via CLI
+                newly_resolved.append(item_id)
+            else:
+                still_pending.append(item)
+    else:
+        # No queue configured — filter out already-resolved items
+        for item in approval_items:
+            item_id = item.get("id", "")
+            if item_id not in resolved_ids:
+                still_pending.append(item)
+
     bundled = {
-        "total_pending": len(approval_items),
-        "items": approval_items,
+        "total_pending": len(still_pending),
+        "items": still_pending,
         "format": "approve_all | review_individually | reject",
         "delivery": "console_queue",
     }
 
-    return {
+    update: dict[str, Any] = {
         "step_results": _step_result_to_list({
             "step": "approval_gates",
             "agent_id": chief.id if chief else None,
@@ -1128,6 +1166,9 @@ def approval_gates_node(state: CycleState) -> dict:
         }),
         "approval_gates_output": bundled,
     }
+    if newly_resolved:
+        update["resolved_approval_ids"] = newly_resolved
+    return update
 
 
 # ---------------------------------------------------------------------------
@@ -1142,17 +1183,20 @@ def should_execute(state: CycleState) -> str:
     this is the key improvement over the linear runtime which always
     ran every step.
 
-    FIX-03: If handoffs exist but approval_queue has pending items,
-    skip execution — handoffs are blocked until founder approval is
-    resolved. The approval items are logged by approval_gates_node.
+    FIX-03: If handoffs exist but approval_queue has genuinely pending
+    items, skip execution — handoffs are blocked until founder approval
+    is resolved. Resolved items (approved/rejected via CLI) are tracked
+    in resolved_approval_ids and excluded from the blocking check.
     """
     handoffs = state.get("handoffs", [])
     if not handoffs:
         return "log"
 
-    # Block execution if approvals are pending
+    # Block execution only if there are genuinely pending approvals
     approval_queue = state.get("approval_queue", [])
-    if approval_queue:
+    resolved_ids = set(state.get("resolved_approval_ids", []))
+    pending = [a for a in approval_queue if a.get("id", "") not in resolved_ids]
+    if pending:
         return "log"
 
     return "execute"
@@ -1275,7 +1319,7 @@ def log_node(state: CycleState) -> dict:
         "iteration": iteration,
         "steps_completed": [r["step"] for r in results if r.get("status") == "success"],
         "steps_failed": [r["step"] for r in results if r.get("status") == "error"],
-        "approval_queue_size": len(state.get("approval_queue", [])),
+        "approval_queue_size": len(state.get("approval_queue", [])) - len(state.get("resolved_approval_ids", [])),
         "handoffs_created": len(state.get("handoffs", [])),
     }
 
@@ -1383,6 +1427,7 @@ def build_graph(
     tool_gateway: ToolGateway | None = None,
     memory_store: MemoryStore | None = None,
     usage_tracker: UsageTracker | None = None,
+    approval_queue: Any = None,
 ) -> CompiledStateGraph:
     """Build and compile the TAZ OS LangGraph StateGraph.
 
@@ -1545,6 +1590,11 @@ def run_cycle_graph(
 
     cycle_id = f"{date.today().isoformat()}-executive"
 
+    # FIX-03: Build approval queue for founder gating
+    from tazos.approval_queue import ApprovalQueue
+    queue_path = (Path(venture_root) / "ai_system" / "System" / "approvals.jsonl") if venture_root else None
+    approval_queue = ApprovalQueue(persistence_path=queue_path) if queue_path else ApprovalQueue()
+
     # Build and compile the graph
     compiled = build_graph(
         bundle=bundle,
@@ -1552,6 +1602,7 @@ def run_cycle_graph(
         tool_gateway=gateway,
         memory_store=memory_store,
         usage_tracker=usage_tracker,
+        approval_queue=approval_queue,
     )
 
     # Default completion criteria if not provided
@@ -1573,6 +1624,7 @@ def run_cycle_graph(
         "inputs": {},
         "step_results": [],
         "approval_queue": [],
+        "resolved_approval_ids": [],
         "handoffs": [],
         "errors": [],
         # Loop engineering fields
@@ -1590,6 +1642,7 @@ def run_cycle_graph(
             "tool_gateway": gateway,
             "memory_store": memory_store,
             "usage_tracker": usage_tracker,
+            "approval_queue": approval_queue,
         }
     }
 

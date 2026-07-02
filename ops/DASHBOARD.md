@@ -1,5 +1,9 @@
 
 
+
+
+
+
 # Netso Energy — Daily Dashboard
 
 **Cycle:** 2026-07-02-executive
@@ -30,7 +34,7 @@ None — core runtime is functional.
 | ------------------------ | ------------------ | ------------------------------------------------------------- |
 | TAZ OS harnesses         | 11                 | ✅ 11/11 loaded                                                |
 | Specialists              | 51                 | ✅ 51/51                                                       |
-| Tests                    | 291                | ✅ 291 passing (0 regressions)                                 |
+| Tests                    | 306                | ✅ 306 passing (0 regressions)                                 |
 | Ground-truth enforcement | hard gate          | ✅ status flips to "error" on violation                        |
 | Evaluator checks         | 6                  | ✅ blended rate, savings %, DSCR, PPA, Scenario B, list values |
 | Memory retrieval runtime | wired              | ✅ retrieve\_for\_agent() at graph.py:394                      |
@@ -39,22 +43,22 @@ None — core runtime is functional.
 | Context builder          | full prompt        | ✅ 12 agent fields serialized                                  |
 | Free-tier routing        | 5 models           | ✅ round-robin pool active                                     |
 | Baseline eval harness    | pass/block metrics | ✅ BaselineEvaluator class                                     |
-| Evaluator wiring         | run_cycle_graph    | ✅ wired at graph.py:1598-1609                                 |
+| Evaluator wiring         | run\_cycle\_graph  | ✅ wired at graph.py:1598-1609                                 |
 
 ### Financial Accuracy
 
-| Metric                   | Target | Current                            |
-| ------------------------ | ------ | ---------------------------------- |
-| financial_accuracy_rate  | 1.00   | N/A (awaiting first run)           |
-| Total evaluations run    | —      | 0                                  |
-| Violations count         | 0      | 0                                  |
-| Token cost per cycle     | —      | N/A                                |
+| Metric                    | Target | Current                  |
+| ------------------------- | ------ | ------------------------ |
+| financial\_accuracy\_rate | 1.00   | N/A (awaiting first run) |
+| Total evaluations run     | —      | 0                        |
+| Violations count          | 0      | 0                        |
+| Token cost per cycle      | —      | N/A                      |
 
 ## P1 Backlog (Next Session)
 
 | ID      | Task                                                 | Effort | Status |
 | ------- | ---------------------------------------------------- | ------ | ------ |
-| FIX-03  | CRITICAL: Approval queue → should\_execute gating    | 4h     | TODO   |
+| FIX-03  | CRITICAL: Approval queue → should\_execute gating    | 4h     | ✅ DONE |
 | FIX-06  | HIGH: \_invoke\_skill stub → real subprocess         | 4h     | TODO   |
 | C9-wire | Wire BaselineEvaluator into run\_cycle\_graph        | 2h     | ✅ DONE |
 | H1      | Financial-accuracy KPI visible in dashboard          | 1h     | ✅ DONE |

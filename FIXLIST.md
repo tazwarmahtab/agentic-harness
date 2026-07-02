@@ -24,7 +24,10 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 - **C8** — LangGraph StateGraph: entire runtime migrated from linear loop to StateGraph pipeline.
 - **C9** — Baseline evaluation harness: wired into `run_cycle_graph`; runs on every step result and emits `evaluation` in `CycleState`.
 - **C10** — Memory persistence backend: SQLite-backed store with `_load_from_sqlite` / `_save_to_sqlite`.
-- **FIX-03** — CRITICAL: `should_execute` now blocks execution when `approval_queue` has pending items.
+- **FIX-03** — CRITICAL: `should_execute` now blocks execution only on genuinely pending approvals.
+  Resolved items (approved/rejected via CLI) tracked in `resolved_approval_ids` and excluded.
+  `ApprovalQueue` wired through graph config. `approval_gates_node` cross-references queue state.
+  All approval count checks (`completion_criteria`, `log_node`, `_summarize_iteration`) updated.
 - **FIX-06** — HIGH: `_invoke_skill` calls `claude -p` via subprocess.run; `_run_reviewloop` parses real review output for severity counts.
 
 ## Bug Fixes (2026-07-03 audit)
