@@ -2,36 +2,55 @@
 
 Routes tasks to the right model based on agent criticality.
 Supports three backends (tried in order):
-  1. 9router (localhost:20128) — model routing via cu/claude-4.5-* IDs
-  2. Direct Anthropic API — claude-sonnet-4-20250514 / claude-haiku-4-5
-  3. DryRunLLMClient — mock for testing (no API calls)
+1. 9router (localhost:20128) — model routing via cu/claude-4.5-* IDs
+2. Direct Anthropic API — claude-sonnet-4-20250514 / claude-haiku-4-5
+3. DryRunLLMClient — mock for testing (no API calls)
 
 Model routing table mirrors CLAUDE.md / 9router config.
+
+Free-tier subagent dispatch:
+- CRITICALITY_TO_MODEL maps low/medium criticality agents to the "fast"
+  tier by default.
+- When MODE=TAZOS_FREE_TIER is set in the environment, those agents are
+  redirected to the "free" tier which rotates across a pool of verified
+  OpenRouter free models (via 9router) — this avoids rate-limiting on
+  paid Claude endpoints during parallel fan-out.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import threading
 import urllib.request
 import urllib.error
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-
 # ---------------------------------------------------------------------------
 # Model routing table — mirrors CLAUDE.md / 9router config
 #
-# Default models can be overridden via env vars (Claude Code convention):
-#   ANTHROPIC_DEFAULT_SONNET_MODEL, _HAIKU_MODEL, _OPUS_MODEL
+# The "free" tier points to OpenRouter free models via 9router.
+# FREE_MODEL_POOL below provides the round-robin rotation list so that
+# concurrent subagents hit multiple providers instead of one endpoint.
 # ---------------------------------------------------------------------------
 MODEL_TABLE: dict[str, str] = {
-    "default": "cu/claude-4.5-sonnet",      # paid Claude Sonnet — general tasks
-    "reasoning": "cu/claude-4.5-opus-high-thinking",  # paid Claude Opus — complex reasoning
-    "fast": "cu/claude-4.5-haiku",          # paid Claude Haiku — code/structured
-    "subagent": "cu/claude-4.5-haiku",      # paid Claude Haiku — lightweight agents
+    "default": "cu/claude-4.5-sonnet",             # paid Claude Sonnet
+    "reasoning": "cu/claude-4.5-opus-high-thinking", # paid Claude Opus
+    "fast": "cu/claude-4.5-haiku",                  # paid Claude Haiku
+    "subagent": "cu/claude-4.5-haiku",              # paid Claude Haiku
+    "free": "openrouter/google/gemma-4-31b-it:free", # free pool entry
 }
+
+# Pool of verified free-tier models — round-robin indexed.
+FREE_MODEL_POOL: list[str] = [
+    "openrouter/google/gemma-4-31b-it:free",
+    "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
+    "openrouter/meta/llama-4-scout-17b-16e-instruct",
+    "openrouter/google/gemini-2.5-flash",
+]
 
 # Direct Anthropic model IDs (fallback when 9router is down)
 ANTHROPIC_MODEL_TABLE: dict[str, str] = {
@@ -39,16 +58,36 @@ ANTHROPIC_MODEL_TABLE: dict[str, str] = {
     "reasoning": "claude-opus-4-20250514",
     "fast": "claude-haiku-4-5-20251001",
     "subagent": "claude-haiku-4-5-20251001",
+    "free": "claude-sonnet-4-20250514", # best available on direct Anthropic fallback
 }
 
-# Agent criticality → model tier mapping
+# Agent criticality → model tier mapping.
+#
+# SANITY: dispatcher and planner remain on "default" (paid Sonnet) because
+# they perform structured routing/planning that benefits from Claude's
+# instruction-following reliability.
+# Subagents (medium/low criticality) default to the "free" tier which
+# rotates across OpenRouter free models to avoid rate-limiting and cost.
+# Core orchestrators (dispatcher, planner) stay on "default" paid Sonnet.
+# Opt out with TAZOS_PAID_TIER=1.
 CRITICALITY_TO_MODEL: dict[str, str] = {
-    "critical": "default",    # sonnet — dispatcher, planner
-    "high": "default",        # sonnet — COO, CFO, Chief of Staff
-    "medium": "fast",         # haiku — routine specialists
-    "low": "fast",            # haiku — lightweight tasks
+ "critical": "default",   # dispatcher, planner — paid Sonnet
+ "high": "default",       # COO, CFO, Chief of Staff — paid Sonnet
+ "medium": "free",        # routine specialists — free tier round-robin
+ "low": "free",           # lightweight tasks — free tier round-robin
 }
 
+# Round-robin counter (thread-safe via lock)
+_free_model_lock = threading.Lock()
+_free_model_idx = 0
+
+def _next_free_model() -> str:
+    """Return the next model from FREE_MODEL_POOL, cycling round-robin."""
+    global _free_model_idx
+    with _free_model_lock:
+        model = FREE_MODEL_POOL[_free_model_idx % len(FREE_MODEL_POOL)]
+        _free_model_idx += 1
+    return model
 
 # ---------------------------------------------------------------------------
 # Response type
@@ -61,7 +100,6 @@ class LLMResponse:
     model: str
     usage: dict[str, int] = field(default_factory=dict)
     provider: str = "unknown"
-
 
 # ---------------------------------------------------------------------------
 # Protocol
@@ -81,7 +119,6 @@ class LLMClient(Protocol):
     ) -> LLMResponse:
         """Send a completion request and return the response."""
         ...
-
 
 # ---------------------------------------------------------------------------
 # Auto-detection helpers
@@ -212,9 +249,9 @@ class RouterLLMClient:
     """LLM client that talks to 9router / OpenAI-compatible endpoint.
 
     Reads config from environment variables set by Claude Code / ECC:
-      ANTHROPIC_BASE_URL → base URL (default http://localhost:20128/v1)
-      ANTHROPIC_AUTH_TOKEN → Bearer token
-      ANTHROPIC_DEFAULT_SONNET_MODEL / _HAIKU / _OPUS → model overrides
+    ANTHROPIC_BASE_URL → base URL (default http://localhost:20128/v1)
+    ANTHROPIC_AUTH_TOKEN → Bearer token
+    ANTHROPIC_DEFAULT_SONNET_MODEL / _HAIKU / _OPUS → model overrides
     """
 
     def __init__(
@@ -269,9 +306,10 @@ class RouterLLMClient:
         import time as _time
         last_error = None
         models_to_try = [model]
+
         # If the requested model fails, fall back through the routing table
         # Skip reasoning models for structured output reliability
-        for fallback_tier in ["default", "fast"]:
+        for fallback_tier in ["default", "fast", "free"]:
             fallback = MODEL_TABLE.get(fallback_tier, "")
             if fallback and fallback not in models_to_try:
                 models_to_try.append(fallback)
@@ -283,7 +321,9 @@ class RouterLLMClient:
 
             for attempt in range(3):
                 try:
-                    retry_req = urllib.request.Request(url, data=current_data, headers=headers, method="POST")
+                    retry_req = urllib.request.Request(
+                        url, data=current_data, headers=headers, method="POST"
+                    )
                     with urllib.request.urlopen(retry_req, timeout=self.timeout) as resp:
                         raw = resp.read().decode("utf-8")
                         body = _parse_first_json(raw)
@@ -347,7 +387,9 @@ class AnthropicLLMClient:
                 if m == model:
                     tier = t
                     break
-            anthropic_model = ANTHROPIC_MODEL_TABLE.get(tier, "claude-sonnet-4-20250514")
+            anthropic_model = ANTHROPIC_MODEL_TABLE.get(
+                tier, "claude-sonnet-4-20250514"
+            )
 
         payload = {
             "model": anthropic_model,
@@ -364,12 +406,16 @@ class AnthropicLLMClient:
         }
 
         data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(self.API_URL, data=data, headers=headers, method="POST")
+        req = urllib.request.Request(
+            self.API_URL, data=data, headers=headers, method="POST"
+        )
 
         with urllib.request.urlopen(req, timeout=self.timeout) as resp:
             body = json.loads(resp.read().decode("utf-8"))
             content_parts = body.get("content", [])
-            text = "".join(p.get("text", "") for p in content_parts if p.get("type") == "text")
+            text = "".join(
+                p.get("text", "") for p in content_parts if p.get("type") == "text"
+            )
             return LLMResponse(
                 content=text,
                 model=body.get("model", anthropic_model),
@@ -416,10 +462,10 @@ def create_llm_client(
     """Create the best available LLM client.
 
     Priority:
-      1. prefer="router" → RouterLLMClient
-      2. prefer="anthropic" → AnthropicLLMClient
-      3. Auto-detect: try 9router, fall back to Anthropic, then dry run
-      4. dry_run=True → DryRunLLMClient
+    1. prefer="router" → RouterLLMClient
+    2. prefer="anthropic" → AnthropicLLMClient
+    3. Auto-detect: try 9router, fall back to Anthropic, then dry run
+    4. dry_run=True → DryRunLLMClient
     """
     if dry_run:
         return DryRunLLMClient()
@@ -434,7 +480,11 @@ def create_llm_client(
     has_auth_token = bool(os.getenv("ANTHROPIC_AUTH_TOKEN", ""))
 
     # If ANTHROPIC_BASE_URL points to a local proxy (9router), use router client
-    if anthropic_base and ("127.0.0.1" in anthropic_base or "localhost" in anthropic_base or "20128" in anthropic_base):
+    if anthropic_base and (
+        "127.0.0.1" in anthropic_base
+        or "localhost" in anthropic_base
+        or "20128" in anthropic_base
+    ):
         if has_auth_token:
             if verbose:
                 print(f"[llm] Using 9router backend ({anthropic_base})")
@@ -468,9 +518,22 @@ def resolve_model(
     override: str | None = None,
     use_anthropic_ids: bool = False,
 ) -> str:
-    """Resolve model ID from agent criticality or explicit override."""
+    """Resolve model ID from agent criticality or explicit override.
+
+    In free-tier mode (TAZOS_FREE_TIER=1), medium and low criticality
+    agents are routed across the FREE_MODEL_POOL round-robin to spread
+    load and avoid per-endpoint rate limits during parallel fan-out.
+    """
     if override:
         return override
+
     tier = CRITICALITY_TO_MODEL.get(agent_criticality, "default")
     table = ANTHROPIC_MODEL_TABLE if use_anthropic_ids else MODEL_TABLE
-    return table[tier]
+    model_id = table[tier]
+
+    # Free-tier is the default for subagents.
+    # Opt out with TAZOS_PAID_TIER=1.
+    if tier == "free" or (tier == "fast" and os.getenv("TAZOS_PAID_TIER") != "1"):
+        return _next_free_model()
+
+    return model_id

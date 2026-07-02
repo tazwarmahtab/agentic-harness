@@ -57,6 +57,13 @@ class CycleState(TypedDict, total=False):
     their reducer — each node returns a single-element list that gets
     appended to the accumulated list.  Scalar / dict fields are overwritten
     by each node's partial return.
+
+    Loop Engineering Fields:
+        iteration_count: Current iteration number (0-indexed)
+        max_iterations: Maximum allowed iterations (default: 1 for single-pass)
+        completion_criteria: Dict defining when loop should terminate
+        loop_context_summary: Compressed summary from previous iteration
+        iteration_history: List of iteration summaries for tracking progress
     """
 
     # --- Identity (set once at init) ---
@@ -84,6 +91,13 @@ class CycleState(TypedDict, total=False):
     execute_output: dict[str, Any]
     log_output: dict[str, Any]
 
+    # --- Loop Engineering (for multi-iteration execution) ---
+    iteration_count: int
+    max_iterations: int
+    completion_criteria: dict[str, Any]
+    loop_context_summary: str
+    iteration_history: Annotated[list[dict[str, Any]], operator.add]
+
 
 # ---------------------------------------------------------------------------
 # Infrastructure config — passed via RunnableConfig.configurable
@@ -98,6 +112,140 @@ class GraphConfig:
     tool_gateway: ToolGateway | None = None
     memory_store: MemoryStore | None = None
     usage_tracker: UsageTracker | None = None
+
+
+# ---------------------------------------------------------------------------
+# Loop Engineering — Guardrails and Context Management
+# ---------------------------------------------------------------------------
+
+def _check_completion_criteria(
+    state: CycleState,
+    criteria: dict[str, Any],
+) -> tuple[bool, str]:
+    """Check if loop completion criteria are met.
+
+    Returns:
+        (is_complete, reason) tuple
+
+    Supported criteria:
+        - all_tasks_complete: Check if all tasks from PRD/plan are done
+        - error_threshold: Maximum number of errors before stopping
+        - approval_cleared: All approvals must be cleared
+        - handoffs_empty: All handoffs must be executed
+        - custom_check: Custom validation function
+    """
+    reasons = []
+
+    # Check task completion
+    if criteria.get("all_tasks_complete"):
+        prioritize_output = state.get("prioritize_output", {})
+        execute_output = state.get("execute_output", {})
+
+        planned_tasks = prioritize_output.get("tasks", [])
+        executed_tasks = execute_output.get("executed", [])
+
+        if planned_tasks and len(executed_tasks) >= len(planned_tasks):
+            reasons.append("all_tasks_complete")
+        elif not planned_tasks:
+            reasons.append("no_tasks_planned")
+
+    # Check error threshold
+    error_threshold = criteria.get("error_threshold", float("inf"))
+    error_count = len(state.get("errors", []))
+    if error_count >= error_threshold:
+        return True, f"error_threshold_exceeded: {error_count} >= {error_threshold}"
+
+    # Check approval queue cleared
+    if criteria.get("approval_cleared"):
+        approval_count = len(state.get("approval_queue", []))
+        if approval_count == 0:
+            reasons.append("approvals_cleared")
+
+    # Check handoffs executed
+    if criteria.get("handoffs_empty"):
+        execute_output = state.get("execute_output", {})
+        executed = execute_output.get("executed", [])
+        pending = [e for e in executed if e.get("status") == "queued"]
+        if not pending:
+            reasons.append("handoffs_executed")
+
+    # All criteria met
+    if reasons:
+        return True, "; ".join(reasons)
+
+    return False, "criteria_not_met"
+
+
+def _summarize_iteration(state: CycleState) -> dict[str, Any]:
+    """Compress iteration state into essential context for next iteration.
+
+    Implements fresh context per iteration — only preserve critical state,
+    discard verbose outputs to prevent context window overflow.
+    """
+    results = state.get("step_results", [])
+    errors = state.get("errors", [])
+    iteration = state.get("iteration_count", 0)
+
+    # Extract key metrics
+    success_count = sum(1 for r in results if r.get("status") == "success")
+    error_count = len(errors)
+    approval_count = len(state.get("approval_queue", []))
+    handoff_count = len(state.get("handoffs", []))
+
+    # Compress outputs — keep only essential data
+    prioritize_summary = state.get("prioritize_output", {})
+    delegate_summary = state.get("delegate_output", {})
+    specialists_summary = state.get("specialists_output", {})
+
+    return {
+        "iteration": iteration,
+        "timestamp": datetime.now().isoformat(),
+        "metrics": {
+            "steps_completed": success_count,
+            "errors": error_count,
+            "approvals_pending": approval_count,
+            "handoffs_pending": handoff_count,
+        },
+        "key_outputs": {
+            "tasks_planned": len(prioritize_summary.get("tasks", [])),
+            "agents_assigned": len(delegate_summary.get("assignments", [])),
+            "specialists_run": specialists_summary.get("solo_run", 0) + specialists_summary.get("teams_run", 0),
+        },
+        "errors_summary": errors[-5:] if errors else [],  # Keep last 5 errors only
+    }
+
+
+def _reset_iteration_state(state: CycleState) -> dict[str, Any]:
+    """Reset mutable state for fresh iteration while preserving loop context.
+
+    Implements fresh context per iteration — clear step outputs and
+    accumulated lists, but keep iteration tracking and essential history.
+    """
+    iteration = state.get("iteration_count", 0)
+
+    # Summarize current iteration before reset
+    iteration_summary = _summarize_iteration(state)
+
+    return {
+        "iteration_count": iteration + 1,
+        "iteration_history": [iteration_summary],
+        # Reset accumulated lists (reducers will start fresh)
+        "step_results": [],
+        "approval_queue": [],
+        "handoffs": [],
+        "errors": [],
+        # Clear per-step outputs
+        "review_output": {},
+        "prioritize_output": {},
+        "delegate_output": {},
+        "specialists_output": {},
+        "summarize_output": {},
+        "approval_gates_output": {},
+        "execute_output": {},
+        "log_output": {},
+        # Update context summary
+        "loop_context_summary": json.dumps(iteration_summary, indent=2),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -981,7 +1129,7 @@ def approval_gates_node(state: CycleState) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Conditional edge — routes after approval_gates
+# Conditional edges — routing logic
 # ---------------------------------------------------------------------------
 
 def should_execute(state: CycleState) -> str:
@@ -996,6 +1144,55 @@ def should_execute(state: CycleState) -> str:
     if handoffs:
         return "execute"
     return "log"
+
+
+def should_continue_loop(state: CycleState) -> str:
+    """Conditional edge: route after log node to check loop continuation.
+
+    Loop mode decision tree:
+      - If max_iterations == 1: terminate (single-pass mode)
+      - If loop_control says "complete": terminate
+      - If loop_control says "continue": restart at review node
+      - Default: terminate
+
+    Returns:
+      - "loop_control" to check continuation criteria
+      - "END" to terminate
+    """
+    max_iterations = state.get("max_iterations", 1)
+
+    # Single-pass mode — no looping
+    if max_iterations <= 1:
+        return "END"
+
+    # Multi-iteration mode — route to loop control
+    return "loop_control"
+
+
+def should_restart_or_end(state: CycleState) -> str:
+    """Conditional edge: route after loop_control node.
+
+    Checks the loop_control node's decision:
+      - "continue" status → restart at review node
+      - "complete" status → terminate
+
+    Returns:
+      - "review" to restart iteration
+      - "END" to terminate
+    """
+    results = state.get("step_results", [])
+
+    # Find the most recent loop_control result
+    for result in reversed(results):
+        if result.get("step") == "loop_control":
+            status = result.get("status")
+            if status == "continue":
+                return "review"
+            elif status == "complete":
+                return "END"
+
+    # Default: terminate if no loop_control result found
+    return "END"
 
 
 # ---------------------------------------------------------------------------
@@ -1047,6 +1244,9 @@ def log_node(state: CycleState) -> dict:
 
     Builds the decision log entry, runs the memory reflection engine,
     and persists memory to disk if a venture root is available.
+
+    In loop mode: Also checks completion criteria and decides whether
+    to continue to next iteration or terminate.
     """
     config = get_config()
     cfg = config.get("configurable", {})
@@ -1054,10 +1254,13 @@ def log_node(state: CycleState) -> dict:
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
 
     results = state.get("step_results", [])
+    iteration = state.get("iteration_count", 0)
+
     log_entry = {
         "cycle_id": state.get("cycle_id", ""),
         "timestamp": datetime.now().isoformat(),
         "harness_id": state.get("harness_id", ""),
+        "iteration": iteration,
         "steps_completed": [r["step"] for r in results if r.get("status") == "success"],
         "steps_failed": [r["step"] for r in results if r.get("status") == "error"],
         "approval_queue_size": len(state.get("approval_queue", [])),
@@ -1091,6 +1294,73 @@ def log_node(state: CycleState) -> dict:
     }
 
 
+def loop_control_node(state: CycleState) -> dict:
+    """Step 9 (Loop Mode): Check completion criteria and control loop iteration.
+
+    End-loop guardrails:
+      - Check if completion criteria are met
+      - Check max iteration limit
+      - Summarize iteration for context compression
+      - Reset state for fresh iteration OR terminate
+
+    Returns update with loop control decision.
+    """
+    iteration = state.get("iteration_count", 0)
+    max_iterations = state.get("max_iterations", 1)
+    criteria = state.get("completion_criteria", {})
+
+    # Check completion criteria
+    is_complete, reason = _check_completion_criteria(state, criteria)
+
+    # Check max iterations guardrail
+    if iteration >= max_iterations - 1:
+        return {
+            "step_results": _step_result_to_list({
+                "step": "loop_control",
+                "agent_id": None,
+                "status": "complete",
+                "output": {
+                    "reason": "max_iterations_reached",
+                    "iteration": iteration,
+                    "max_iterations": max_iterations,
+                },
+                "duration_ms": 0,
+            }),
+        }
+
+    # Check task completion
+    if is_complete:
+        return {
+            "step_results": _step_result_to_list({
+                "step": "loop_control",
+                "agent_id": None,
+                "status": "complete",
+                "output": {
+                    "reason": reason,
+                    "iteration": iteration,
+                },
+                "duration_ms": 0,
+            }),
+        }
+
+    # Continue to next iteration — reset state with fresh context
+    reset_update = _reset_iteration_state(state)
+    return {
+        "step_results": _step_result_to_list({
+            "step": "loop_control",
+            "agent_id": None,
+            "status": "continue",
+            "output": {
+                "reason": "continuing_to_next_iteration",
+                "iteration": iteration,
+                "next_iteration": iteration + 1,
+            },
+            "duration_ms": 0,
+        }),
+        **reset_update,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Graph construction
 # ---------------------------------------------------------------------------
@@ -1106,11 +1376,20 @@ def build_graph(
 
     Returns a compiled graph ready for ``.invoke()`` or ``.stream()``.
 
-    Graph topology::
+    Graph topology (with loop engineering)::
 
         review ─→ prioritize ─→ delegate ─→ specialists ─→ summarize ─→ approval_gates
-                                                                          ├─(handoffs)─→ execute ─→ log ─→ END
-                                                                          └─(empty)────→ log ─→ END
+                   ↑                                                      ├─(handoffs)─→ execute ─→ log ─→ loop_control
+                   │                                                      └─(empty)────→ log ─→ loop_control
+                   │                                                                                      ├─(continue)─→ review (loop back)
+                   │                                                                                      └─(complete)─→ END
+                   └──────────────────────────────────────────────────────────────────────────────────────┘
+
+    Loop Engineering Features:
+      - Fresh context per iteration (state reset between loops)
+      - End-loop guardrails (completion criteria, max iterations)
+      - Progress tracking (iteration history, context summaries)
+      - Notification hooks (loop blocks/completions)
 
     Pure open-source LangGraph — no LangSmith or LangGraph Cloud
     dependencies.  No checkpointer (in-memory state only).
@@ -1126,6 +1405,7 @@ def build_graph(
     graph.add_node("approval_gates", approval_gates_node)
     graph.add_node("execute", execute_node)
     graph.add_node("log", log_node)
+    graph.add_node("loop_control", loop_control_node)
 
     # --- Entry ---
     graph.set_entry_point("review")
@@ -1150,8 +1430,25 @@ def build_graph(
     # --- execute → log ---
     graph.add_edge("execute", "log")
 
-    # --- Terminal ---
-    graph.add_edge("log", END)
+    # --- Conditional edge: log → loop_control OR END ---
+    graph.add_conditional_edges(
+        "log",
+        should_continue_loop,
+        {
+            "loop_control": "loop_control",
+            "END": END,
+        },
+    )
+
+    # --- Conditional edge: loop_control → review (restart) OR END ---
+    graph.add_conditional_edges(
+        "loop_control",
+        should_restart_or_end,
+        {
+            "review": "review",
+            "END": END,
+        },
+    )
 
     # Compile (no checkpointer — pure local state)
     return graph.compile()
@@ -1169,12 +1466,42 @@ def run_cycle_graph(
     llm: LLMClient | None = None,
     dry_run: bool = False,
     verbose: bool = False,
+    max_iterations: int = 1,
+    completion_criteria: dict[str, Any] | None = None,
 ) -> CycleState:
     """Execute the full daily harness cycle via LangGraph.
 
     Drop-in replacement for ``runtime.run_cycle`` — same inputs, same
     logical flow, but executed as a compiled StateGraph with conditional
     routing.
+
+    Loop Engineering Parameters:
+        max_iterations: Maximum number of loop iterations (default: 1 for single-pass).
+            Set to >1 to enable multi-iteration loop mode with fresh context per iteration.
+
+        completion_criteria: Dict specifying when to terminate the loop early.
+            Supported keys:
+              - all_tasks_complete (bool): Stop when all planned tasks are executed
+              - error_threshold (int): Stop if error count exceeds this value
+              - approval_cleared (bool): Stop when approval queue is empty
+              - handoffs_empty (bool): Stop when all handoffs are executed
+
+    Loop Mode Example:
+        >>> state = run_cycle_graph(
+        ...     bundle=bundle,
+        ...     max_iterations=5,
+        ...     completion_criteria={
+        ...         "all_tasks_complete": True,
+        ...         "error_threshold": 3,
+        ...     },
+        ... )
+
+    The loop will:
+      1. Execute the full cycle (review → prioritize → delegate → specialists → summarize → approval_gates → execute → log)
+      2. Check completion criteria at loop_control node
+      3. If criteria met OR max_iterations reached: terminate
+      4. If criteria not met: reset state with fresh context and restart at review node
+      5. Track iteration history for progress monitoring
     """
     if llm is None:
         llm = create_llm_client(dry_run=dry_run, verbose=verbose)
@@ -1215,7 +1542,15 @@ def run_cycle_graph(
         usage_tracker=usage_tracker,
     )
 
-    # Initial state
+    # Default completion criteria if not provided
+    if completion_criteria is None:
+        completion_criteria = {
+            "all_tasks_complete": True,
+            "error_threshold": 5,
+            "handoffs_empty": True,
+        }
+
+    # Initial state with loop engineering fields
     initial_state: CycleState = {
         "venture_id": venture_id,
         "harness_id": harness_id,
@@ -1228,6 +1563,12 @@ def run_cycle_graph(
         "approval_queue": [],
         "handoffs": [],
         "errors": [],
+        # Loop engineering fields
+        "iteration_count": 0,
+        "max_iterations": max_iterations,
+        "completion_criteria": completion_criteria,
+        "loop_context_summary": "",
+        "iteration_history": [],
     }
 
     config: RunnableConfig = {

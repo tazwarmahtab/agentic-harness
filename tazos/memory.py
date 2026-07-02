@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 
 # ---------------------------------------------------------------------------
@@ -95,6 +95,161 @@ class MemoryCandidate:
     status: str = "pending"  # pending, approved, rejected
 
 
+@dataclass
+class ProceduralMemoryEntry:
+    """Procedural memory entry — skills, SOPs, instructions."""
+    id: str
+    name: str
+    description: str
+    content: str
+    tags: list[str] = field(default_factory=list)
+    file_path: str | None = None
+    classification: str = "internal"
+    created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    last_used: str | None = None
+    usage_count: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Procedural Memory Store
+# ---------------------------------------------------------------------------
+
+class ProceduralMemory:
+    """Procedural memory — skills, SOPs, and instructions.
+
+    Stores reusable procedures as markdown files that can be dynamically
+    loaded based on context. Maps to SOP files in harnesses.
+    """
+
+    def __init__(self, sop_root: Path | None = None):
+        self.entries: dict[str, ProceduralMemoryEntry] = {}
+        self.sop_root = sop_root or Path.cwd() / "sops"
+        self._counter = 0
+
+    def _next_id(self, prefix: str = "PROC") -> str:
+        self._counter += 1
+        return f"{prefix}-{self._counter:06d}"
+
+    def add_procedure(
+        self,
+        name: str,
+        description: str,
+        content: str,
+        tags: list[str] | None = None,
+        file_path: str | None = None,
+        classification: str = "internal",
+    ) -> ProceduralMemoryEntry:
+        """Add a new procedural memory entry."""
+        entry = ProceduralMemoryEntry(
+            id=self._next_id("PROC"),
+            name=name,
+            description=description,
+            content=content,
+            tags=tags or [],
+            file_path=file_path,
+            classification=classification,
+        )
+        self.entries[entry.id] = entry
+        return entry
+
+    def load_from_file(self, file_path: Path) -> ProceduralMemoryEntry:
+        """Load a procedure from a markdown file."""
+        content = file_path.read_text()
+        name = file_path.stem
+
+        # Extract description from first paragraph or header
+        lines = content.split("\n")
+        description = ""
+        for line in lines[1:6]:  # Check first few lines
+            if line.strip() and not line.startswith("#"):
+                description = line.strip()
+                break
+
+        return self.add_procedure(
+            name=name,
+            description=description,
+            content=content,
+            file_path=str(file_path),
+        )
+
+    def load_from_directory(self, directory: Path) -> int:
+        """Load all .md files from a directory as procedures."""
+        count = 0
+        if not directory.exists():
+            return count
+
+        for md_file in directory.glob("**/*.md"):
+            try:
+                self.load_from_file(md_file)
+                count += 1
+            except Exception:
+                continue
+
+        return count
+
+    def search_by_tags(self, tags: list[str]) -> list[ProceduralMemoryEntry]:
+        """Find procedures matching any of the given tags."""
+        results = []
+        for entry in self.entries.values():
+            if any(tag in entry.tags for tag in tags):
+                results.append(entry)
+        return results
+
+    def search_by_keyword(self, keyword: str) -> list[ProceduralMemoryEntry]:
+        """Search procedures by keyword in name, description, or content."""
+        keyword_lower = keyword.lower()
+        results = []
+        for entry in self.entries.values():
+            searchable = f"{entry.name} {entry.description} {entry.content}".lower()
+            if keyword_lower in searchable:
+                results.append(entry)
+        return results
+
+    def get(self, proc_id: str) -> ProceduralMemoryEntry | None:
+        """Get a procedure by ID and track usage."""
+        entry = self.entries.get(proc_id)
+        if entry:
+            entry.usage_count += 1
+            entry.last_used = datetime.now().isoformat()
+        return entry
+
+    def retrieve_for_context(
+        self,
+        keywords: list[str] | None = None,
+        tags: list[str] | None = None,
+        max_entries: int = 5,
+    ) -> str:
+        """Retrieve relevant procedures for agent context."""
+        results: list[ProceduralMemoryEntry] = []
+
+        if tags:
+            results.extend(self.search_by_tags(tags))
+
+        if keywords:
+            for keyword in keywords:
+                results.extend(self.search_by_keyword(keyword))
+
+        # Deduplicate and sort by usage
+        unique = {e.id: e for e in results}
+        sorted_entries = sorted(
+            unique.values(),
+            key=lambda e: e.usage_count,
+            reverse=True,
+        )[:max_entries]
+
+        if not sorted_entries:
+            return ""
+
+        lines = ["# Procedural Memory (SOPs)", ""]
+        for entry in sorted_entries:
+            lines.append(f"## {entry.name}")
+            lines.append(f"{entry.description}")
+            lines.append(f"```\n{entry.content[:500]}\n```")
+            lines.append("")
+
+        return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Memory Store
 # ---------------------------------------------------------------------------
@@ -113,6 +268,7 @@ class MemoryStore:
         self,
         permissions: dict[str, dict[str, list[str]]] | None = None,
         update_rules: dict[str, Any] | None = None,
+        llm_client: Any | None = None,
     ):
         self.layers: dict[str, dict[str, list[MemoryEntry]]] = {
             "long_term": defaultdict(list),
@@ -124,6 +280,10 @@ class MemoryStore:
         self.candidates: list[MemoryCandidate] = []
         self.audit_trail: list[AuditRecord] = []
         self._counter = 0
+        self.procedural = ProceduralMemory()
+        self.llm_client = llm_client
+        self._episodic_size_threshold = 100  # Consolidate after N entries
+        self._last_consolidation: str | None = None
 
     def _next_id(self, prefix: str = "MEM") -> str:
         self._counter += 1
@@ -196,7 +356,7 @@ class MemoryStore:
         return result
 
     def search(self, query: str, agent_id: str) -> list[MemoryEntry]:
-        """Search memory entries by content match."""
+        """Search memory entries by content match (basic RAG)."""
         results = []
         query_lower = query.lower()
         for layer in self.layers:
@@ -209,6 +369,82 @@ class MemoryStore:
                     searchable = f"{entry.key or ''} {entry.value or ''} {entry.content} {entry.description if hasattr(entry, 'description') else ''}".lower()
                     if query_lower in searchable:
                         results.append(entry)
+        return results
+
+    def search_episodic_by_time(
+        self,
+        agent_id: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        domain: str | None = None,
+    ) -> list[MemoryEntry]:
+        """Search episodic memory by time range (SQL-style filtering)."""
+        results = []
+        for domain_name, entries in self.layers["episodic"].items():
+            if domain and domain_name != domain:
+                continue
+            if not self.can_read(agent_id, domain_name):
+                continue
+
+            for entry in entries:
+                if entry.replaced_by:
+                    continue
+
+                # Filter by date range
+                if start_date and entry.created_at < start_date:
+                    continue
+                if end_date and entry.created_at > end_date:
+                    continue
+
+                results.append(entry)
+
+        # Sort by timestamp descending
+        results.sort(key=lambda e: e.created_at, reverse=True)
+        return results
+
+    def retrieve_hybrid(
+        self,
+        agent_id: str,
+        query: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        max_entries: int = 10,
+    ) -> dict[str, list[MemoryEntry]]:
+        """Dual retrieval strategy: RAG for semantic + SQL for episodic.
+
+        Combines semantic search (RAG) across semantic/long_term memory
+        with time-series queries (SQL-style) for episodic memory.
+        """
+        results = {
+            "semantic": [],
+            "episodic": [],
+            "long_term": [],
+        }
+
+        # RAG search for semantic and long_term layers
+        query_lower = query.lower()
+        for layer in ["semantic", "long_term"]:
+            for domain in self.layers[layer]:
+                if not self.can_read(agent_id, domain):
+                    continue
+                for entry in self.layers[layer][domain]:
+                    if entry.replaced_by:
+                        continue
+                    searchable = f"{entry.key or ''} {entry.value or ''} {entry.content}".lower()
+                    if query_lower in searchable:
+                        results[layer].append(entry)
+
+        # SQL-style time-series query for episodic
+        results["episodic"] = self.search_episodic_by_time(
+            agent_id=agent_id,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        # Limit results per layer
+        for layer in results:
+            results[layer] = results[layer][:max_entries]
+
         return results
 
     def retrieve_for_agent(
@@ -262,6 +498,179 @@ class MemoryStore:
 
         header = f"Memory ({len(results)} entries, {total_chars} chars):"
         return header + "\n" + "\n".join(results)
+
+    def consolidate_episodic_to_semantic(
+        self,
+        agent_id: str = "system",
+        use_llm: bool = True,
+    ) -> list[MemoryEntry]:
+        """Consolidate episodic memory into semantic memory.
+
+        Uses LLM to extract durable facts and patterns from time-series events.
+        Returns the new semantic entries created.
+        """
+        # Collect recent episodic entries
+        episodic_entries = []
+        for domain, entries in self.layers["episodic"].items():
+            active = [e for e in entries if not e.replaced_by]
+            episodic_entries.extend(active)
+
+        if not episodic_entries:
+            return []
+
+        # Sort by timestamp
+        episodic_entries.sort(key=lambda e: e.created_at)
+
+        # If no LLM client, do simple keyword extraction
+        if not use_llm or not self.llm_client:
+            return self._consolidate_simple(episodic_entries, agent_id)
+
+        # Use LLM to summarize and extract patterns
+        return self._consolidate_with_llm(episodic_entries, agent_id)
+
+    def _consolidate_simple(
+        self,
+        episodic_entries: list[MemoryEntry],
+        agent_id: str,
+    ) -> list[MemoryEntry]:
+        """Simple consolidation without LLM — extract common patterns."""
+        # Group entries by domain
+        by_domain: dict[str, list[MemoryEntry]] = defaultdict(list)
+        for entry in episodic_entries:
+            by_domain[entry.domain].append(entry)
+
+        new_semantic = []
+        for domain, entries in by_domain.items():
+            # Create a summary entry
+            content_parts = [e.content[:100] for e in entries[:5]]
+            summary = f"Summary of {len(entries)} events: " + "; ".join(content_parts)
+
+            semantic_entry = MemoryEntry(
+                id=self._next_id("MEM"),
+                layer="semantic",
+                domain=domain,
+                content=summary,
+                classification="internal",
+                source_agent=agent_id,
+            )
+            self.layers["semantic"][domain].append(semantic_entry)
+            new_semantic.append(semantic_entry)
+
+        self._last_consolidation = datetime.now().isoformat()
+        return new_semantic
+
+    def _consolidate_with_llm(
+        self,
+        episodic_entries: list[MemoryEntry],
+        agent_id: str,
+    ) -> list[MemoryEntry]:
+        """LLM-powered consolidation — extract durable facts and patterns."""
+        # Build prompt for LLM
+        entries_text = "\n".join(
+            f"- [{e.domain}] {e.created_at}: {e.content[:200]}"
+            for e in episodic_entries[:50]  # Limit to recent 50
+        )
+
+        prompt = f"""Analyze these episodic memory entries and extract durable facts, patterns, and rules.
+
+Episodic entries:
+{entries_text}
+
+Extract:
+1. Durable facts (things that remain true)
+2. Patterns (recurring behaviors or decisions)
+3. Rules or standards (how things should work)
+
+Format each finding as:
+DOMAIN: <domain_name>
+CONTENT: <the fact/pattern/rule>
+---
+"""
+
+        try:
+            # Call LLM (pseudo-code, actual implementation depends on llm_client interface)
+            response = self.llm_client.generate(prompt)
+
+            # Parse LLM response and create semantic entries
+            new_semantic = []
+            sections = response.split("---")
+
+            for section in sections:
+                if "DOMAIN:" not in section:
+                    continue
+
+                lines = section.strip().split("\n")
+                domain = ""
+                content = ""
+
+                for line in lines:
+                    if line.startswith("DOMAIN:"):
+                        domain = line.replace("DOMAIN:", "").strip()
+                    elif line.startswith("CONTENT:"):
+                        content = line.replace("CONTENT:", "").strip()
+
+                if domain and content:
+                    semantic_entry = MemoryEntry(
+                        id=self._next_id("MEM"),
+                        layer="semantic",
+                        domain=domain,
+                        content=content,
+                        classification="internal",
+                        source_agent=agent_id,
+                    )
+                    self.layers["semantic"][domain].append(semantic_entry)
+                    new_semantic.append(semantic_entry)
+
+            self._last_consolidation = datetime.now().isoformat()
+            return new_semantic
+
+        except Exception:
+            # Fallback to simple consolidation
+            return self._consolidate_simple(episodic_entries, agent_id)
+
+    def check_consolidation_needed(self) -> bool:
+        """Check if episodic memory needs consolidation."""
+        total_episodic = sum(
+            len([e for e in entries if not e.replaced_by])
+            for entries in self.layers["episodic"].values()
+        )
+        return total_episodic >= self._episodic_size_threshold
+
+    def get_memory_health_metrics(self) -> dict[str, Any]:
+        """Get memory health metrics."""
+        metrics = {
+            "timestamp": datetime.now().isoformat(),
+            "layers": {},
+            "last_consolidation": self._last_consolidation,
+            "consolidation_needed": self.check_consolidation_needed(),
+        }
+
+        for layer in ["long_term", "episodic", "semantic"]:
+            domains = self.layers[layer]
+            active_entries = sum(
+                len([e for e in entries if not e.replaced_by])
+                for entries in domains.values()
+            )
+            total_entries = sum(len(entries) for entries in domains.values())
+
+            metrics["layers"][layer] = {
+                "domains": len(domains),
+                "active_entries": active_entries,
+                "total_entries": total_entries,
+                "superseded_entries": total_entries - active_entries,
+            }
+
+        metrics["procedural"] = {
+            "total_procedures": len(self.procedural.entries),
+            "avg_usage": (
+                sum(e.usage_count for e in self.procedural.entries.values())
+                / len(self.procedural.entries)
+                if self.procedural.entries
+                else 0
+            ),
+        }
+
+        return metrics
 
     # ----- Candidate submission -----
 
@@ -591,6 +1000,11 @@ class MemoryStore:
             lines.append(f"  {layer}: {len(domains)} domains, {active} entries")
         lines.append(f"  Candidates: {len(self.candidates)} ({sum(1 for c in self.candidates if c.status == 'pending')} pending)")
         lines.append(f"  Audit records: {len(self.audit_trail)}")
+        lines.append(f"  Procedural: {len(self.procedural.entries)} procedures")
+        if self._last_consolidation:
+            lines.append(f"  Last consolidation: {self._last_consolidation}")
+        if self.check_consolidation_needed():
+            lines.append(f"  ⚠ Consolidation recommended")
         return "\n".join(lines)
 
 

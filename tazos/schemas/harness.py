@@ -94,18 +94,25 @@ class Components(BaseModel):
 class TeamMember(BaseModel):
     """A member of an agent team with a defined role."""
     agent_id: str
-    role: str
+    role: str = "specialist"
     weight: float = 1.0
 
 
 class AgentTeam(BaseModel):
-    """A team of agents that collaborate on complex tasks."""
+    """A team of agents that collaborate on complex tasks.
+
+    Supports backward-compatible loading: if `lead`/`members` are missing
+    but `specialists` (legacy flat list) is present, they are populated
+    automatically from YAML-side unknowns via the loader.
+    """
     id: str
     name: str
-    lead: str
-    members: list[TeamMember]
-    coordination_strategy: str = "sequential"
     description: Optional[str] = None
+    lead: Optional[str] = None
+    members: list[TeamMember] = []
+    coordination_strategy: str = "sequential"
+    # Legacy field — kept for partial backward compatibility during migration
+    specialists: list[str] = []
 
 
 class ExecutionCycle(BaseModel):

@@ -134,6 +134,3 @@ failure_handling:
   low_confidence: escalate_to_coo
   policy_conflict: request_approval
 
-models:
-  preferred: "claude-4.5-sonnet"
-  fallback: ["claude-4.5-haiku", "gpt-5.5"]

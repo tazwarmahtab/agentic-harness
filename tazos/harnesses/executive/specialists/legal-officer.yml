@@ -80,6 +80,3 @@ failure_handling:
   low_confidence: escalate_to_founder
   policy_conflict: request_approval
 
-models:
-  preferred: "claude-4.5-sonnet"
-  fallback: ["claude-4.5-opus-high-thinking", "gpt-5.5"]

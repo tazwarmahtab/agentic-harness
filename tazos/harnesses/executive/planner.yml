@@ -123,6 +123,3 @@ allowed_tools:
   - { capability: read_finance, permission: read }
   - { capability: write_memory, permission: write }
 
-models:
-  preferred: "claude-4.5-sonnet"
-  fallback: ["claude-4.5-haiku", "gpt-5.5"]
