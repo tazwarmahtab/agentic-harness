@@ -39,6 +39,7 @@ from langgraph.config import get_config
 from tazos.constants import NETSO_FINANCIAL
 from tazos.context import build_prompt
 from tazos.evaluator import validate_output
+from tazos.harnesses.evaluator.evaluator_harness import BaselineEvaluator
 from tazos.llm import LLMClient, create_llm_client, resolve_model
 from tazos.memory import MemoryStore, build_memory_from_manifest
 from tazos.registry import HarnessBundle
@@ -1140,11 +1141,21 @@ def should_execute(state: CycleState) -> str:
     When no handoffs are queued, the execute step is skipped entirely —
     this is the key improvement over the linear runtime which always
     ran every step.
+
+    FIX-03: If handoffs exist but approval_queue has pending items,
+    skip execution — handoffs are blocked until founder approval is
+    resolved. The approval items are logged by approval_gates_node.
     """
     handoffs = state.get("handoffs", [])
-    if handoffs:
-        return "execute"
-    return "log"
+    if not handoffs:
+        return "log"
+
+    # Block execution if approvals are pending
+    approval_queue = state.get("approval_queue", [])
+    if approval_queue:
+        return "log"
+
+    return "execute"
 
 
 def should_continue_loop(state: CycleState) -> str:
@@ -1583,6 +1594,19 @@ def run_cycle_graph(
     }
 
     result_state = compiled.invoke(initial_state, config=config)
+
+    # --- C9: Run BaselineEvaluator on cycle results ---
+    evaluator = BaselineEvaluator(llm=llm, memory=memory_store)
+    eval_results = []
+    for step in result_state.get("step_results", []):
+        output = step.get("output", {})
+        agent_id = step.get("agent_id", "")
+        if agent_id and output:
+            eval_result = evaluator.evaluate(agent_id=agent_id, output=output)
+            eval_results.append(eval_result)
+    eval_report = evaluator.report(eval_results) if eval_results else {}
+    result_state["evaluation"] = eval_report
+
     return result_state
 
 

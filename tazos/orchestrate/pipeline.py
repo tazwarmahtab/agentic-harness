@@ -235,7 +235,7 @@ class OrchestratePipeline:
             return True
 
         # Invoke /spec via the skill system
-        rc = self._invoke_skill("spec", self.ctx.one_liner)
+        rc, _stdout = self._invoke_skill("spec", self.ctx.one_liner)
         if rc != 0:
             result.status = Status.FAILED
             result.error = f"/spec exited with code {rc}"
@@ -277,7 +277,7 @@ class OrchestratePipeline:
             self.ctx.record(result)
             return True
 
-        rc = self._invoke_skill("autoplan", str(self.ctx.plan_path))
+        rc, _stdout = self._invoke_skill("autoplan", str(self.ctx.plan_path))
         if rc != 0:
             result.status = Status.FAILED
             result.error = f"/autoplan exited with code {rc}"
@@ -335,7 +335,7 @@ class OrchestratePipeline:
             task_str = step["task"]
             cmd = f'/orchestrate custom "{chain_str}" "{task_str}"'
 
-            rc = self._invoke_skill("orchestrate", f"custom {cmd}")
+            rc, _stdout = self._invoke_skill("orchestrate", f"custom {cmd}")
             if rc != 0:
                 print(f"    ✗ Step {step['id']} failed (exit {rc})")
                 all_passed = False
@@ -389,13 +389,22 @@ class OrchestratePipeline:
             iteration += 1
             print(f"  --- Iteration {iteration}/{self.ctx.max_review_iterations} ---")
 
-            # Run /review
-            rc = self._invoke_skill("review", "")
+            # Run /review and parse findings from stdout
+            rc, stdout = self._invoke_skill("review", "")
             if rc != 0:
                 print(f"  /review returned exit code {rc}")
 
-            # Classify findings (stub — real impl would parse review output)
+            # Parse severity counts from review output
             iteration_findings = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+            for line in stdout.lower().split("\n"):
+                if "critical" in line:
+                    iteration_findings["critical"] += 1
+                elif "high" in line:
+                    iteration_findings["high"] += 1
+                elif "medium" in line:
+                    iteration_findings["medium"] += 1
+                elif "low" in line or "note" in line:
+                    iteration_findings["low"] += 1
             for severity, count in iteration_findings.items():
                 findings_summary[severity] = findings_summary.get(severity, 0) + count
 
@@ -452,7 +461,7 @@ class OrchestratePipeline:
             self.ctx.record(result)
             return True
 
-        rc = self._invoke_skill("ship", "")
+        rc, _stdout = self._invoke_skill("ship", "")
         if rc != 0:
             result.status = Status.FAILED
             result.error = f"/ship exited with code {rc}"
@@ -633,24 +642,50 @@ class OrchestratePipeline:
         plan_path = self.ctx.plan_path or Path(".gstack") / "plans" / f"orchestrate-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
         return f"/spec {self.ctx.one_liner} --plan-file {plan_path}"
 
-    def _invoke_skill(self, skill: str, args: str) -> int:
-        """Invoke a gstack skill. Returns exit code.
+    def _invoke_skill(self, skill: str, args: str) -> tuple[int, str]:
+        """Invoke a gstack skill via claude CLI. Returns (exit_code, stdout).
 
-        STUB: Currently logs the invocation and returns 0.
-        Production: shell out via subprocess.run with list args (no shell=True).
+        Uses `claude -p` to invoke slash commands as Claude Code skills.
+        The skill prompt is sent as the full message to the CLI.
         """
-        cmd_map = {
-            "spec": ["/spec", args],
-            "autoplan": ["/autoplan", args],
-            "implement": ["/implement", args],
-            "orchestrate": ["/orchestrate", args],
-            "review": ["/review"],
-            "ship": ["/ship"],
+        import subprocess
+
+        skill_map = {
+            "spec": "/spec",
+            "autoplan": "/autoplan",
+            "implement": "/implement",
+            "orchestrate": "/orchestrate",
+            "review": "/review",
+            "ship": "/ship",
         }
-        cmd = cmd_map.get(skill, [f"/{skill}", args])
-        print(f"  → Invoking: {' '.join(cmd)}")
-        # Production: subprocess.run(cmd, check=False)  # list form, no shell=True
-        return 0
+
+        slash_cmd = skill_map.get(skill, f"/{skill}")
+        prompt = f"{slash_cmd} {args}".strip() if args else slash_cmd
+
+        print(f"  → Invoking: claude -p \"{prompt[:80]}...\"")
+
+        try:
+            result = subprocess.run(
+                ["claude", "-p", prompt],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=600,  # 10 minute timeout per skill invocation
+                cwd=str(self.ctx.project_root),
+            )
+
+            if result.returncode != 0:
+                stderr_preview = result.stderr[:200] if result.stderr else ""
+                print(f"  ✗ Skill '{skill}' exited with code {result.returncode}: {stderr_preview}")
+
+            return result.returncode, result.stdout
+
+        except FileNotFoundError:
+            print(f"  ⚠ 'claude' CLI not found in PATH. Skipping skill '{skill}'.")
+            return 1, ""
+        except subprocess.TimeoutExpired:
+            print(f"  ✗ Skill '{skill}' timed out after 600s.")
+            return 124, ""
 
     def _prompt_continue_or_abort(self, step_id: int) -> str:
         """Prompt user to continue or abort after step failure."""
