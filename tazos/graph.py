@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import concurrent.futures
+import copy
 import json
 import operator
 import re
@@ -438,7 +439,7 @@ def _run_agent_node(
         result: dict[str, Any] = {
             "step": step_name,
             "agent_id": agent.id,
-        "status": "success" if not validation.passed else "error",
+        "status": "success" if validation.passed else "error",
             "output": output,
             "duration_ms": elapsed,
         }
@@ -500,7 +501,7 @@ def _expand_team_assignments(
             team = bundle.teams.get(route_to)
             if team:
                 for member in team.members:
-                    member_assignment = assignment.copy()
+                    member_assignment = copy.deepcopy(assignment)
                     member_assignment["agent_id"] = member.agent_id
                     member_assignment["team_id"] = team.id
                     member_assignment["team_role"] = member.role

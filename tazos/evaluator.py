@@ -90,6 +90,8 @@ def _flatten_for_matching(d: dict[str, Any]) -> str:
             parts.append(str(v))
         elif isinstance(v, dict):
             parts.append(_flatten_for_matching(v))
+        elif isinstance(v, list):
+            parts.extend(str(item) for item in v)
     return " ".join(parts)
 
 

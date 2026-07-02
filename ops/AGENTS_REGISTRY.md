@@ -137,4 +137,4 @@
 
 **Total Agents:** 67 (11 harnesses × ~6 agents each)
 **Active Ventures:** 2 (Netso Energy, TransitBD)
-**Platform Status:** PRODUCTION READY
+**Platform Status:** BETA — awaiting memory persistence backend and live evaluator wiring

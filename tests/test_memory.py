@@ -182,9 +182,9 @@ class TestMemoryRead:
         store.seed_from_dict("episodic", "dashboard", [
             {"key": "status", "value": "old"},
         ])
-        # Manually supersede
+        # Manually supersede (frozen dataclass bypass)
         entry = store.layers["episodic"]["dashboard"][0]
-        entry.replaced_by = "MEM-FAKE"
+        object.__setattr__(entry, 'replaced_by', 'MEM-FAKE')
 
         entries = store.read("episodic", "dashboard", "AGT-EXEC-COO")
         assert len(entries) == 0

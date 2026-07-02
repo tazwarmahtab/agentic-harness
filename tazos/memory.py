@@ -43,9 +43,9 @@ class Classification(Enum):
     FOUNDER_ONLY = "founder_only"
 
 
-@dataclass
+@dataclass(frozen=True)
 class MemoryEntry:
-    """Memory entry — mutable replaced_by field for versioning."""
+    """Immutable memory entry. Use object.__setattr__ for replaced_by."""
     id: str
     layer: str           # long_term, episodic, semantic
     domain: str          # e.g. company_facts, daily_dashboard, pricing_model
@@ -66,7 +66,7 @@ class MemoryEntry:
         return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
-@dataclass
+@dataclass(frozen=True)
 class AuditRecord:
     """Immutable audit record for a memory operation."""
     id: str
@@ -269,6 +269,7 @@ class MemoryStore:
         permissions: dict[str, dict[str, list[str]]] | None = None,
         update_rules: dict[str, Any] | None = None,
         llm_client: Any | None = None,
+        db_path: Path | None = None,
     ):
         self.layers: dict[str, dict[str, list[MemoryEntry]]] = {
             "long_term": defaultdict(list),
@@ -284,6 +285,11 @@ class MemoryStore:
         self.llm_client = llm_client
         self._episodic_size_threshold = 100  # Consolidate after N entries
         self._last_consolidation: str | None = None
+        self.db_path: Path | None = db_path
+
+        # Load existing entries from SQLite if db_path is provided
+        if self.db_path is not None:
+            self._load_from_sqlite()
 
     def _next_id(self, prefix: str = "MEM") -> str:
         self._counter += 1
@@ -781,9 +787,9 @@ CONTENT: <the fact/pattern/rule>
             replaced_by=None,
         )
 
-        # Mark old entry as superseded
+        # Mark old entry as superseded (frozen dataclass bypass)
         if old_entry:
-            old_entry.replaced_by = new_entry.id
+            object.__setattr__(old_entry, 'replaced_by', new_entry.id)
 
         self.layers[candidate.layer][candidate.domain].append(new_entry)
         return new_entry
@@ -813,7 +819,7 @@ CONTENT: <the fact/pattern/rule>
                 source_agent=candidate.agent_id,
                 version=old_entry.version + 1,
             )
-            old_entry.replaced_by = new_entry.id
+            object.__setattr__(old_entry, 'replaced_by', new_entry.id)
             self.layers[candidate.layer][candidate.domain].append(new_entry)
             return new_entry
 
@@ -907,7 +913,120 @@ CONTENT: <the fact/pattern/rule>
 
         return results
 
-    # ----- Persistence -----
+    # ----- SQLite persistence -----
+
+    def _load_from_sqlite(self) -> None:
+        """Load all memory entries from SQLite database into self.layers."""
+        import sqlite3
+
+        if self.db_path is None or not self.db_path.exists():
+            return
+
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            cursor = conn.execute(
+                "SELECT id, layer, domain, key, value, ref, content, "
+                "classification, source_agent, created_at, version, "
+                "replaced_by, content_hash "
+                "FROM memory_entries"
+            )
+            max_counter = 0
+            for row in cursor:
+                entry_id, layer, domain = row[0], row[1], row[2]
+                if layer not in self.layers:
+                    continue
+
+                entry = MemoryEntry(
+                    id=entry_id,
+                    layer=layer,
+                    domain=domain,
+                    key=row[3],
+                    value=row[4],
+                    ref=row[5],
+                    content=row[6] or "",
+                    classification=row[7] or "internal",
+                    source_agent=row[8],
+                    created_at=row[9],
+                    version=row[10] or 1,
+                    replaced_by=row[11],
+                )
+                self.layers[layer][domain].append(entry)
+
+                # Advance counter to avoid ID collisions
+                try:
+                    num = int(entry_id.split("-")[-1])
+                    if num > max_counter:
+                        max_counter = num
+                except (ValueError, IndexError):
+                    pass
+
+            self._counter = max(self._counter, max_counter)
+        finally:
+            conn.close()
+
+    def _save_to_sqlite(self, venture_id: str = "") -> None:
+        """Upsert all memory entries to SQLite database."""
+        import sqlite3
+
+        if self.db_path is None:
+            return
+
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS memory_entries ("
+                "    id TEXT PRIMARY KEY,"
+                "    layer TEXT NOT NULL,"
+                "    domain TEXT NOT NULL,"
+                "    key TEXT,"
+                "    value TEXT,"
+                "    ref TEXT,"
+                "    content TEXT,"
+                "    classification TEXT DEFAULT 'internal',"
+                "    source_agent TEXT,"
+                "    created_at TEXT NOT NULL,"
+                "    version INTEGER DEFAULT 1,"
+                "    replaced_by TEXT,"
+                "    venture_id TEXT,"
+                "    content_hash TEXT"
+                ")"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_mem_layer_domain "
+                "ON memory_entries(layer, domain)"
+            )
+            for layer in self.layers:
+                for domain, entries in self.layers[layer].items():
+                    for entry in entries:
+                        conn.execute(
+                            "INSERT OR REPLACE INTO memory_entries "
+                            "(id, layer, domain, key, value, ref, content, "
+                            "classification, source_agent, created_at, version, "
+                            "replaced_by, venture_id, content_hash) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            (
+                                entry.id,
+                                entry.layer,
+                                entry.domain,
+                                entry.key,
+                                entry.value,
+                                entry.ref,
+                                entry.content,
+                                entry.classification,
+                                entry.source_agent,
+                                entry.created_at,
+                                entry.version,
+                                entry.replaced_by,
+                                venture_id or None,
+                                entry.content_hash,
+                            ),
+                        )
+            conn.commit()
+        finally:
+            conn.close()
+
+    # ----- Disk persistence -----
 
     def persist_to_disk(self, venture_root: Path, cycle_id: str = "") -> dict[str, Any]:
         """Write memory state to disk. Returns summary of what was written.
@@ -915,6 +1034,7 @@ CONTENT: <the fact/pattern/rule>
         Writes:
           - audit.log (JSON-lines, append-only)
           - TAZOS_MEMORY.md (human-readable memory snapshot)
+          - SQLite database (if db_path configured)
         """
         written: dict[str, str] = {}
 
@@ -943,6 +1063,12 @@ CONTENT: <the fact/pattern/rule>
         with open(memory_path, "w") as f:
             f.write(self.to_markdown())
         written["memory_snapshot"] = str(memory_path)
+
+        # Persist to SQLite if db_path is configured
+        if self.db_path is not None:
+            venture_id = venture_root.name if venture_root else ""
+            self._save_to_sqlite(venture_id=venture_id)
+            written["sqlite_db"] = str(self.db_path)
 
         return written
 
@@ -1015,15 +1141,22 @@ CONTENT: <the fact/pattern/rule>
 def build_memory_from_manifest(
     manifest: dict[str, Any],
     venture_root: Path | None = None,
+    db_path: Path | None = None,
 ) -> MemoryStore:
     """Build a MemoryStore from a parsed memory.yml manifest.
 
     Seeds long_term/episodic/semantic layers from manifest data.
     Venture artifact refs are resolved to file paths if venture_root is provided.
+    If db_path is provided, loads existing entries from SQLite and configures
+    future persist_to_disk calls to write to SQLite as well.
     """
     permissions = manifest.get("permissions", {})
     update_rules = manifest.get("update_rules", {})
-    store = MemoryStore(permissions=permissions, update_rules=update_rules)
+    store = MemoryStore(
+        permissions=permissions,
+        update_rules=update_rules,
+        db_path=db_path,
+    )
 
     layers = manifest.get("layers", {})
 
