@@ -56,10 +56,10 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 
 | Dimension                | Before | After | Delta |
 | ------------------------ | ------ | ----- | ----- |
-| Runtime                  | 2/10   | 7/10  | +5    |
+| Runtime                  | 2/10   | 8/10  | +6    |
 | Ground-truth enforcement | 0/10   | 8/10  | +8    |
 | Parallelization          | 0/10   | 5/10  | +5    |
 | Memory retrieval runtime | 0/10   | 8/10  | +8    |
 | Context engineering      | 2/10   | 5/10  | +3    |
 
-**Composite: 2.8/10 → 6.6/10** (target for production: 7/10+)
+**Composite: 2.8/10 → 6.8/10** (target for production: 7/10+)
