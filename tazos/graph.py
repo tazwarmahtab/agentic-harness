@@ -844,8 +844,12 @@ def review_node(state: CycleState) -> dict:
                     inputs[key] = p.read_text()[:2000]
                 else:
                     inputs[key] = f"(could not read {path_str})"
-            except Exception:
-                inputs[key] = f"(could not read {path_str})"
+            except Exception as exc:
+                import logging
+                logging.getLogger("tazos.graph").warning(
+                    "review_node: failed to read artifact %s: %s", path_str, exc
+                )
+                inputs[key] = f"(could not read {path_str}: {exc})"
 
     coo = bundle.specialists.get("AGT-EXEC-COO") if bundle and bundle.specialists else None
     if not coo:
@@ -1501,6 +1505,10 @@ def log_node(state: CycleState) -> dict:
                 memory_summary["persisted_to"] = persist_result
             except Exception as exc:
                 memory_summary["persist_error"] = str(exc)
+                import logging
+                logging.getLogger("tazos.graph").error(
+                    "log_node: persist_to_disk failed: %s", exc
+                )
 
     output = {"decision_log_entry": log_entry, "memory_summary": memory_summary}
     return {

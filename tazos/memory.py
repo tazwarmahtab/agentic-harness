@@ -271,6 +271,7 @@ class MemoryStore:
         llm_client: Any | None = None,
         db_path: Path | None = None,
         embedding_provider: Any | None = None,
+        max_audit_records: int = 200,
     ):
         self.layers: dict[str, dict[str, list[MemoryEntry]]] = {
             "long_term": defaultdict(list),
@@ -281,6 +282,7 @@ class MemoryStore:
         self.update_rules = update_rules or {}
         self.candidates: list[MemoryCandidate] = []
         self.audit_trail: list[AuditRecord] = []
+        self._max_audit_records = max_audit_records
         self._counter = 0
         self.procedural = ProceduralMemory()
         self.llm_client = llm_client
@@ -827,6 +829,10 @@ CONTENT: <the fact/pattern/rule>
             previous_entry_id=entry.replaced_by if entry else None,
         ))
 
+        # Enforce audit trail cap — keep most recent entries
+        if len(self.audit_trail) > self._max_audit_records:
+            self.audit_trail = self.audit_trail[-self._max_audit_records:]
+
         # Mark candidate processed
         candidate.status = decision.value
         return entry
@@ -990,6 +996,10 @@ CONTENT: <the fact/pattern/rule>
                     decision=decision.value,
                     reason=f"Auto-reviewed: {candidate.id} → {decision.value}",
                 ))
+
+                # Enforce audit trail cap
+                if len(self.audit_trail) > self._max_audit_records:
+                    self.audit_trail = self.audit_trail[-self._max_audit_records:]
                 results.append(self.audit_trail[-1])
             else:
                 candidate.status = "reviewed"
