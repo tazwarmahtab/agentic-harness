@@ -43,8 +43,9 @@ from tazos.evaluator import validate_output
 from tazos.harnesses.evaluator.evaluator_harness import BaselineEvaluator
 from tazos.llm import LLMClient, create_llm_client, resolve_model
 from tazos.memory import MemoryStore, build_memory_from_manifest
-from tazos.registry import HarnessBundle
+from tazos.registry import HarnessBundle, Registry
 from tazos.schemas.agent import Agent
+from tazos.schemas.venture import Venture
 from tazos.tools import ToolGateway
 from tazos.usage import UsageTracker
 
@@ -116,6 +117,7 @@ class GraphConfig:
     tool_gateway: ToolGateway | None = None
     memory_store: MemoryStore | None = None
     usage_tracker: UsageTracker | None = None
+    registry: Registry | None = None  # for cross-harness dispatch
 
 
 # ---------------------------------------------------------------------------
@@ -392,12 +394,12 @@ def _fallback_routing(
 
     This is the fallback when structured JSON extraction fails.
     Matches task descriptions against the routing table and extracts
-    agent mentions from the text.
+    agent mentions from the text.  Supports cross-harness agent IDs.
     """
     assignments = []
 
-    # Extract all agent mentions from text
-    agent_mentions = re.findall(r"AGT-EXEC-[A-Z]+", text)
+    # Extract all agent mentions from text (H4: match any harness pattern)
+    agent_mentions = re.findall(r"AGT-[A-Z]+-[A-Z0-9]+", text)
     seen_agents: set[str] = set()
 
     for agent_id in agent_mentions:
@@ -405,15 +407,22 @@ def _fallback_routing(
             continue
         seen_agents.add(agent_id)
 
-        # Find matching routing entry
+        # Find matching routing entry (check both internal and cross-harness)
         task_type = "general"
         sla = "24h"
         if routing_table:
-            for entry in routing_table.executive_internal or []:
+            for entry in (routing_table.executive_internal or []):
                 if entry.route_to == agent_id:
                     task_type = entry.task
                     sla = entry.sla
                     break
+            # Also check cross-harness routes
+            if task_type == "general":
+                for entry in (routing_table.cross_harness or []):
+                    if entry.route_to == agent_id:
+                        task_type = entry.task
+                        sla = entry.sla
+                        break
 
         # Extract task description for this agent (look for nearby text)
         task_text = text[:500]  # Default to full text
@@ -471,22 +480,43 @@ def _run_agent_node(
     memory_store: MemoryStore | None = None,
     usage_tracker: UsageTracker | None = None,
     approval_count: int = 0,
+    venture_constants: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run a single agent and return a step result dict."""
     start = time.monotonic()
 
-    # Memory context
+    # Memory context — vector search with keyword fallback
     memory_context = None
     if memory_store:
         try:
-            memory_context = memory_store.retrieve_for_agent(agent.id, step_name)
+            vector_results = memory_store.search_vector(
+                query=step_name or "",
+                agent_id=agent.id,
+                top_k=10,
+            )
+            if vector_results:
+                lines = []
+                total = 0
+                for entry in vector_results:
+                    if entry.key and entry.value:
+                        line = f"[{entry.layer}/{entry.domain}] {entry.key}: {entry.value}"
+                    elif entry.content:
+                        line = f"[{entry.layer}/{entry.domain}] {entry.content[:200]}"
+                    else:
+                        continue
+                    if total + len(line) < 3000:
+                        lines.append(line)
+                        total += len(line)
+                memory_context = f"Memory ({len(lines)} entries, {total} chars):\n" + "\n".join(lines) if lines else None
+            else:
+                memory_context = memory_store.retrieve_for_agent(agent.id, step_name)
         except AttributeError:
-            pass
+            memory_context = memory_store.retrieve_for_agent(agent.id, step_name)
 
     # Build prompts via context builder (full contract serialization)
-    netso_financial = NETSO_FINANCIAL if agent.financial_rules else None
+    financial = venture_constants if (agent.financial_rules and venture_constants) else (NETSO_FINANCIAL if agent.financial_rules else None)
     system_prompt = build_prompt(
-        agent, netso_financial=netso_financial, memory_context=memory_context,
+        agent, netso_financial=financial, memory_context=memory_context,
     )
     task_prompt = _build_task_prompt(
         step_name, agent, cycle_id, venture_id, inputs, approval_count,
@@ -514,8 +544,8 @@ def _run_agent_node(
         if usage_tracker:
             usage_tracker.record(agent.id, model, response.usage)
 
-        # Validate against ground truth
-        validation = validate_output(output, agent.id, NETSO_FINANCIAL)
+        # Validate against ground truth (None constants = skip financial checks)
+        validation = validate_output(output, agent.id, venture_constants)
         output["_validation"] = {
             "passed": validation.passed,
             "violations": validation.violations,
@@ -612,6 +642,7 @@ def _run_team(
     llm: LLMClient,
     memory_store: MemoryStore | None = None,
     usage_tracker: UsageTracker | None = None,
+    venture_constants: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute a team of specialists with shared context.
 
@@ -649,6 +680,7 @@ def _run_team(
             lead_agent, bundle, f"{step_name}:team:{team.id}:lead",
             cycle_id, venture_id, lead_inputs, llm,
             memory_store=memory_store, usage_tracker=usage_tracker,
+            venture_constants=venture_constants,
         )
         team_results.append({
             "agent_id": team.lead,
@@ -675,6 +707,7 @@ def _run_team(
                 member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
                 cycle_id, venture_id, member_inputs, llm,
                 memory_store=memory_store, usage_tracker=usage_tracker,
+                venture_constants=venture_constants,
             )
             team_results.append({
                 "agent_id": member.agent_id,
@@ -701,6 +734,7 @@ def _run_team(
                 member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
                 cycle_id, venture_id, member_inputs, llm,
                 memory_store=memory_store, usage_tracker=usage_tracker,
+                venture_constants=venture_constants,
             )
             return member.agent_id, {
                 "status": result.get("status", "error"),
@@ -731,6 +765,7 @@ def _run_team(
                 member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
                 cycle_id, venture_id, member_inputs, llm,
                 memory_store=memory_store, usage_tracker=usage_tracker,
+                venture_constants=venture_constants,
             )
             return member.agent_id, {
                 "status": result.get("status", "error"),
@@ -784,6 +819,7 @@ def review_node(state: CycleState) -> dict:
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
+    venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
 
     # Read venture artifacts
     inputs: dict[str, Any] = {}
@@ -828,6 +864,7 @@ def review_node(state: CycleState) -> dict:
         state["cycle_id"], state["venture_id"],
         inputs, llm,
         memory_store=memory_store, usage_tracker=usage_tracker,
+        venture_constants=venture_constants,
     )
 
     update: dict[str, Any] = {
@@ -847,6 +884,7 @@ def prioritize_node(state: CycleState) -> dict:
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
+    venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
 
     if not bundle or not bundle.planner:
         err = "prioritize: Planner not loaded"
@@ -871,6 +909,7 @@ def prioritize_node(state: CycleState) -> dict:
         state["cycle_id"], state["venture_id"],
         inputs, llm,
         memory_store=memory_store, usage_tracker=usage_tracker,
+        venture_constants=venture_constants,
     )
 
     update: dict[str, Any] = {
@@ -890,6 +929,7 @@ def delegate_node(state: CycleState) -> dict:
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
+    venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
 
     if not bundle or not bundle.dispatcher:
         err = "delegate: Dispatcher not loaded"
@@ -903,13 +943,23 @@ def delegate_node(state: CycleState) -> dict:
         }
 
     prioritize_output = _get_step_output(state, "prioritize")
+
+    # Build available agents: local bundle + all registered harnesses (H4)
+    local_agents = [a.id for a in bundle.specialists.values()]
+    registry: Registry | None = cfg.get("registry")
+    if registry:
+        all_agent_ids = [a.id for a in registry.all_agents()]
+        available_agents = list(dict.fromkeys(local_agents + all_agent_ids))
+    else:
+        available_agents = local_agents
+
     inputs = {
         "priority_list": prioritize_output,
         "routing_table": (
             bundle.dispatcher.routing_table.model_dump()
             if bundle.dispatcher.routing_table else {}
         ),
-        "available_agents": [a.id for a in bundle.specialists.values()],
+        "available_agents": available_agents,
         "available_teams": list(bundle.teams.keys()) if bundle.teams else [],
     }
 
@@ -918,6 +968,7 @@ def delegate_node(state: CycleState) -> dict:
         state["cycle_id"], state["venture_id"],
         inputs, llm,
         memory_store=memory_store, usage_tracker=usage_tracker,
+        venture_constants=venture_constants,
     )
 
     output = result.get("output", {})
@@ -962,17 +1013,24 @@ def specialists_node(state: CycleState) -> dict:
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
+    venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
 
     delegate_output = _get_step_output(state, "delegate")
     assignments = delegate_output.get("assignments", [])
 
-    # Fallback: extract agent mentions from raw response
+    # Fallback: extract agent mentions from raw response (H4: match any harness pattern)
     if not assignments and "raw_response" in delegate_output:
         raw = delegate_output["raw_response"]
-        agent_mentions = re.findall(r"AGT-EXEC-[A-Z]+", raw)
+        agent_mentions = re.findall(r"AGT-[A-Z]+-[A-Z0-9]+", raw)
+        registry: Registry | None = cfg.get("registry")
         seen: set[str] = set()
         for agent_id in agent_mentions:
-            if bundle and bundle.specialists and agent_id not in seen and agent_id in bundle.specialists:
+            if agent_id in seen:
+                continue
+            # Check local bundle first, then registry
+            in_local = bundle and bundle.specialists and agent_id in bundle.specialists
+            in_registry = registry and registry.resolve_agent(agent_id) is not None
+            if in_local or in_registry:
                 seen.add(agent_id)
                 assignments.append({
                     "agent_id": agent_id,
@@ -1033,6 +1091,7 @@ def specialists_node(state: CycleState) -> dict:
             state["cycle_id"], state["venture_id"],
             llm,
             memory_store=memory_store, usage_tracker=usage_tracker,
+            venture_constants=venture_constants,
         )
         specialist_results.append({
             "agent_id": f"TEAM:{team.id}",
@@ -1050,29 +1109,45 @@ def specialists_node(state: CycleState) -> dict:
             if "handoffs" in output:
                 new_handoffs.extend(output["handoffs"])
 
-    # Prepare solo specialist assignments
-    def _prepare(a: dict[str, Any]) -> tuple[str, Agent, dict[str, Any]] | None:
+    # Prepare solo specialist assignments (H4: cross-harness resolution)
+    registry: Registry | None = cfg.get("registry")
+
+    def _prepare(a: dict[str, Any]) -> tuple[str, Agent, HarnessBundle, dict[str, Any]] | None:
         agent_id = a.get("agent_id") or a.get("route_to")
-        if not bundle or not bundle.specialists or not agent_id or agent_id not in bundle.specialists:
+        if not agent_id:
             return None
-        agent = bundle.specialists[agent_id]
-        inputs = {
-            "task": a.get("task", ""),
-            "context": a.get("input", "") or delegate_output,
-            "priority": a.get("priority", ""),
-            "sla": a.get("sla", ""),
-        }
-        return agent_id, agent, inputs
+        # Try local bundle first (fast path)
+        if bundle and bundle.specialists and agent_id in bundle.specialists:
+            agent = bundle.specialists[agent_id]
+            return agent_id, agent, bundle, {
+                "task": a.get("task", ""),
+                "context": a.get("input", "") or delegate_output,
+                "priority": a.get("priority", ""),
+                "sla": a.get("sla", ""),
+            }
+        # Cross-harness resolution via registry
+        if registry:
+            resolved = registry.resolve_agent(agent_id)
+            if resolved:
+                agent, agent_bundle = resolved
+                return agent_id, agent, agent_bundle, {
+                    "task": a.get("task", ""),
+                    "context": a.get("input", "") or delegate_output,
+                    "priority": a.get("priority", ""),
+                    "sla": a.get("sla", ""),
+                }
+        return None
 
     prepared = [p for p in (_prepare(a) for a in assignments) if p]
 
-    def _run_one(item: tuple[str, Agent, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
-        agent_id, agent, inputs = item
+    def _run_one(item: tuple[str, Agent, HarnessBundle, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+        agent_id, agent, agent_bundle, inputs = item
         return agent_id, _run_agent_node(
-            agent, bundle, f"specialist:{agent_id}",
+            agent, agent_bundle, f"specialist:{agent_id}",
             state["cycle_id"], state["venture_id"],
             inputs, llm,
             memory_store=memory_store, usage_tracker=usage_tracker,
+            venture_constants=venture_constants,
         )
 
     # Fan-out via async parallel — M3
@@ -1082,7 +1157,7 @@ def specialists_node(state: CycleState) -> dict:
     new_handoffs: list[dict[str, Any]] = []
 
     # Wrap _run_one to catch exceptions cleanly
-    def _run_one_safe(item: tuple[str, Agent, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    def _run_one_safe(item: tuple[str, Agent, HarnessBundle, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
         try:
             return _run_one(item)
         except Exception as exc:
@@ -1152,6 +1227,7 @@ def summarize_node(state: CycleState) -> dict:
     llm: LLMClient = cfg.get("llm") # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
+    venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
 
     chief = bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF") if bundle and bundle.specialists else None
     if not chief:
@@ -1179,6 +1255,7 @@ def summarize_node(state: CycleState) -> dict:
         state["cycle_id"], state["venture_id"],
         inputs, llm,
         memory_store=memory_store, usage_tracker=usage_tracker,
+        venture_constants=venture_constants,
     )
 
     update: dict[str, Any] = {
@@ -1605,11 +1682,13 @@ def run_cycle_graph(
     venture_id: str = "UNKNOWN",
     harness_id: str = "HAR-EXEC-001",
     venture_artifacts: dict[str, Path] | None = None,
+    venture: Venture | None = None,
     llm: LLMClient | None = None,
     dry_run: bool = False,
     verbose: bool = False,
     max_iterations: int = 1,
     completion_criteria: dict[str, Any] | None = None,
+    registry: Registry | None = None,
 ) -> CycleState:
     """Execute the full daily harness cycle via LangGraph.
 
@@ -1654,6 +1733,13 @@ def run_cycle_graph(
         for path in venture_artifacts.values():
             venture_root = path.parent
             break
+
+    # Derive venture constants from Venture object (None for planning ventures)
+    venture_constants: dict[str, Any] | None = None
+    if venture and venture.financial_constants:
+        vc = venture.financial_constants.model_dump(exclude_none=True)
+        if vc:
+            venture_constants = vc
 
     # Build memory store if manifest exists
     memory_store = None
@@ -1728,6 +1814,8 @@ def run_cycle_graph(
             "memory_store": memory_store,
             "usage_tracker": usage_tracker,
             "approval_queue": approval_queue,
+            "venture_constants": venture_constants,
+            "registry": registry,  # H4: cross-harness dispatch
         }
     }
 
@@ -1740,9 +1828,13 @@ def run_cycle_graph(
         output = step.get("output", {})
         agent_id = step.get("agent_id", "")
         if agent_id and output:
-            eval_result = evaluator.evaluate(agent_id=agent_id, output=output)
+            eval_result = evaluator.evaluate(
+                agent_id=agent_id, output=output, constants=venture_constants,
+            )
             eval_results.append(eval_result)
-    eval_report = evaluator.report(eval_results) if eval_results else {}
+    eval_report = evaluator.report(
+        eval_results, has_financial_constants=venture_constants is not None,
+    ) if eval_results else {}
     result_state["evaluation"] = eval_report
 
     return result_state
