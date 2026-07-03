@@ -23,6 +23,7 @@ import asyncio
 import concurrent.futures
 import copy
 import json
+import logging
 import operator
 import re
 import time
@@ -48,6 +49,17 @@ from tazos.schemas.agent import Agent
 from tazos.schemas.venture import Venture
 from tazos.tools import ToolGateway
 from tazos.usage import UsageTracker
+
+logger = logging.getLogger("tazos.graph")
+
+# ---------------------------------------------------------------------------
+# Constants — extracted from inline magic numbers
+# ---------------------------------------------------------------------------
+
+MAX_CONCURRENCY = 8               # asyncio.Semaphore cap + ThreadPoolExecutor default
+MEMORY_CONTEXT_CHAR_LIMIT = 3000  # char budget for vector memory context
+ARTIFACT_READ_LIMIT_CHARS = 2000  # max chars read from venture artifact files
+CONSENSUS_WEIGHT_THRESHOLD = 0.67 # voting strategy: fraction of weight needed
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +322,7 @@ async def _gather_items(
     fn: Callable[[Any], _T],
 ) -> list[_T]:
     """Gather synchronous callables via asyncio.to_thread."""
-    sem = asyncio.Semaphore(8)  # cap concurrent threads
+    sem = asyncio.Semaphore(MAX_CONCURRENCY)
 
     async def _bounded(item: Any) -> _T:
         async with sem:
@@ -329,7 +341,7 @@ def _fallback_threadpool(
     """Bounded ThreadPoolExecutor fallback for sync contexts."""
     if not items:
         return []
-    workers = max_workers or min(len(items), 8)
+    workers = max_workers or min(len(items), MAX_CONCURRENCY)
     results: list[_T] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(fn, item) for item in items]
@@ -504,7 +516,7 @@ def _run_agent_node(
                         line = f"[{entry.layer}/{entry.domain}] {entry.content[:200]}"
                     else:
                         continue
-                    if total + len(line) < 3000:
+                    if total + len(line) < MEMORY_CONTEXT_CHAR_LIMIT:
                         lines.append(line)
                         total += len(line)
                 memory_context = f"Memory ({len(lines)} entries, {total} chars):\n" + "\n".join(lines) if lines else None
@@ -787,7 +799,7 @@ def _run_team(
             if result.get("status") == "success":
                 agree_weight += weight
 
-        consensus = agree_weight / total_weight >= 0.67 if total_weight > 0 else False
+        consensus = agree_weight / total_weight >= CONSENSUS_WEIGHT_THRESHOLD if total_weight > 0 else False
         team_results.append({
             "agent_id": "TEAM-CONSENSUS",
             "status": "success" if consensus else "failed",
@@ -833,7 +845,7 @@ def review_node(state: CycleState) -> dict:
             )
             if result.ok:
                 content = result.output.get("content", "")
-                inputs[key] = content[:2000] if content else f"(empty: {path_str})"
+                inputs[key] = content[:ARTIFACT_READ_LIMIT_CHARS] if content else f"(empty: {path_str})"
             else:
                 inputs[key] = f"(could not read {path_str}: {result.error})"
     else:
@@ -841,12 +853,11 @@ def review_node(state: CycleState) -> dict:
             try:
                 p = Path(path_str)
                 if p.exists():
-                    inputs[key] = p.read_text()[:2000]
+                    inputs[key] = p.read_text()[:ARTIFACT_READ_LIMIT_CHARS]
                 else:
                     inputs[key] = f"(could not read {path_str})"
             except Exception as exc:
-                import logging
-                logging.getLogger("tazos.graph").warning(
+                logger.warning(
                     "review_node: failed to read artifact %s: %s", path_str, exc
                 )
                 inputs[key] = f"(could not read {path_str}: {exc})"
@@ -1322,11 +1333,16 @@ def approval_gates_node(state: CycleState) -> dict:
         "delivery": "console_queue",
     }
 
+    # Reflect actual gate status: blocked if approvals still pending, clear if empty
+    gate_status = "blocked" if still_pending else "success"
+    if not chief:
+        gate_status = "success"  # no chief configured, no gate to block
+
     update: dict[str, Any] = {
         "step_results": _step_result_to_list({
             "step": "approval_gates",
             "agent_id": chief.id if chief else None,
-            "status": "success",
+            "status": gate_status,
             "output": bundled,
             "duration_ms": 0,
         }),
@@ -1505,8 +1521,7 @@ def log_node(state: CycleState) -> dict:
                 memory_summary["persisted_to"] = persist_result
             except Exception as exc:
                 memory_summary["persist_error"] = str(exc)
-                import logging
-                logging.getLogger("tazos.graph").error(
+                logger.error(
                     "log_node: persist_to_disk failed: %s", exc
                 )
 
