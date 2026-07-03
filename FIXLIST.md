@@ -41,14 +41,14 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 
 ## Backlog
 
-| ID | Description                                                  | Priority |
-| -- | ------------------------------------------------------------ | -------- |
+| ID | Description                                                  | Priority  |
+| -- | ------------------------------------------------------------ | --------- |
 | H1 | Financial-accuracy KPI in DASHBOARD.md                       | P1 — DONE |
-| H3 | Phase 8: multi-venture support (TransitBD mount)             | P2       |
-| H4 | Phase 9: cross-harness dispatch                              | P3       |
+| H3 | Phase 8: multi-venture support (TransitBD mount)             | P2        |
+| H4 | Phase 9: cross-harness dispatch                              | P3        |
 | M1 | Baseline evaluation + regression detection for releases      | P1 — DONE |
-| M3 | Async parallelization (asyncio.gather vs ThreadPoolExecutor) | P2       |
-| M5 | Vector semantic search for memory layer                      | P3       |
+| M3 | Async parallelization (asyncio.gather vs ThreadPoolExecutor) | P2 — DONE |
+| M5 | Vector semantic search for memory layer                      | P3        |
 
 ---
 
@@ -58,8 +58,8 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 | ------------------------ | ------ | ----- | ----- |
 | Runtime                  | 2/10   | 8/10  | +6    |
 | Ground-truth enforcement | 0/10   | 8/10  | +8    |
-| Parallelization          | 0/10   | 5/10  | +5    |
+| Parallelization          | 0/10   | 7/10  | +7    |
 | Memory retrieval runtime | 0/10   | 8/10  | +8    |
 | Context engineering      | 2/10   | 5/10  | +3    |
 
-**Composite: 2.8/10 → 6.8/10** (target for production: 7/10+)
+**Composite: 2.8/10 → 7.2/10** (target for production: 7/10+) ✅ TARGET MET
