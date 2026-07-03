@@ -270,6 +270,7 @@ class MemoryStore:
         update_rules: dict[str, Any] | None = None,
         llm_client: Any | None = None,
         db_path: Path | None = None,
+        embedding_provider: Any | None = None,
     ):
         self.layers: dict[str, dict[str, list[MemoryEntry]]] = {
             "long_term": defaultdict(list),
@@ -286,6 +287,11 @@ class MemoryStore:
         self._episodic_size_threshold = 100  # Consolidate after N entries
         self._last_consolidation: str | None = None
         self.db_path: Path | None = db_path
+
+        # Vector index — lazy-built on first search_vector() call
+        self._embedding_provider = embedding_provider
+        self._vector_index: Any | None = None
+        self._vector_index_dirty = True  # needs rebuild after writes
 
         # Load existing entries from SQLite if db_path is provided
         if self.db_path is not None:
@@ -376,6 +382,81 @@ class MemoryStore:
                     if query_lower in searchable:
                         results.append(entry)
         return results
+
+    # ----- Vector (semantic) search -----
+
+    def _rebuild_vector_index(self, agent_id: str | None = None) -> Any:
+        """Rebuild the vector index from current memory entries.
+
+        Uses lazy initialization — index is rebuilt only when dirty (after writes).
+        """
+        if self._embedding_provider is None:
+            return None
+
+        from tazos.vector_store import VectorIndex, build_vector_index_from_memory
+
+        self._vector_index = build_vector_index_from_memory(
+            store=self,
+            provider=self._embedding_provider,
+            agent_id=agent_id,
+        )
+        self._vector_index_dirty = False
+        return self._vector_index
+
+    def _get_vector_index(self, agent_id: str | None = None) -> Any:
+        """Get the vector index, rebuilding if dirty."""
+        if self._embedding_provider is None:
+            return None
+        if self._vector_index is None or self._vector_index_dirty:
+            return self._rebuild_vector_index(agent_id)
+        return self._vector_index
+
+    def search_vector(
+        self,
+        query: str,
+        agent_id: str,
+        top_k: int = 10,
+        layer: str | None = None,
+        domain: str | None = None,
+    ) -> list[MemoryEntry]:
+        """Semantic search using vector embeddings.
+
+        Returns MemoryEntry objects ranked by cosine similarity.
+        Falls back to keyword search if no embedding provider is configured.
+        Falls back gracefully if the vector index is empty.
+        """
+        if self._embedding_provider is None:
+            return self.search(query, agent_id)
+
+        index = self._get_vector_index(agent_id)
+        if index is None or index.size == 0:
+            return self.search(query, agent_id)
+
+        # Build accessible domains set for permission filtering
+        accessible_domains: set[str] = set()
+        for layer_name in self.layers:
+            for domain_name in self.layers[layer_name]:
+                if self.can_read(agent_id, domain_name):
+                    accessible_domains.add(domain_name)
+
+        from tazos.vector_store import SearchResult
+
+        results = index.search(
+            query=query,
+            top_k=top_k,
+            layer=layer,
+            domain=domain,
+            accessible_domains=accessible_domains,
+        )
+
+        # Map SearchResult back to MemoryEntry objects
+        entry_map: dict[str, MemoryEntry] = {}
+        for layer_name in self.layers:
+            for domain_name, entries in self.layers[layer_name].items():
+                for entry in entries:
+                    entry_map[entry.id] = entry
+
+        return [entry_map[r.entry_id] for r in results if r.entry_id in entry_map]
 
     def search_episodic_by_time(
         self,
@@ -752,6 +833,7 @@ CONTENT: <the fact/pattern/rule>
 
     def _store_entry(self, candidate: MemoryCandidate) -> MemoryEntry:
         """Store a new memory entry."""
+        self._vector_index_dirty = True
         entry = MemoryEntry(
             id=self._next_id("MEM"),
             layer=candidate.layer,
@@ -830,6 +912,7 @@ CONTENT: <the fact/pattern/rule>
 
     def seed_from_dict(self, layer: str, domain: str, data: Any) -> None:
         """Seed memory from YAML manifest data (one-time load)."""
+        self._vector_index_dirty = True
         if isinstance(data, list):
             for item in data:
                 entry = MemoryEntry(

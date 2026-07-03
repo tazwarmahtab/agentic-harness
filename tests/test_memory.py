@@ -488,3 +488,98 @@ class TestBuildFromManifest:
         s = store.summary()
         assert "Memory Store:" in s
         assert "long_term" in s
+
+
+# ---------------------------------------------------------------------------
+# MemoryStore — vector (semantic) search
+# ---------------------------------------------------------------------------
+
+class TestVectorSearch:
+    @pytest.fixture
+    def vector_store(self) -> MemoryStore:
+        from tazos.vector_store import TfidfEmbeddingProvider
+        provider = TfidfEmbeddingProvider(dimensions=64)
+        store = MemoryStore(
+            permissions={
+                "AGT-CEO": {
+                    "read": ["all_long_term", "all_episodic", "all_semantic"],
+                },
+                "AGT-COO": {
+                    "read": ["dashboard", "lessons"],
+                },
+            },
+            embedding_provider=provider,
+        )
+        store.seed_from_dict("long_term", "company_facts", [
+            {"key": "entity", "value": "Netso Energy provides rooftop solar"},
+            {"key": "market", "value": "Bangladesh RMG factories"},
+        ])
+        store.seed_from_dict("semantic", "pricing", [
+            {"key": "ppa_rate", "value": "BDT 10.00 per kilowatt hour"},
+        ])
+        store.seed_from_dict("long_term", "dashboard", [
+            {"key": "status", "value": "on track for Q3 targets"},
+        ])
+        return store
+
+    def test_vector_search_returns_results(self, vector_store: MemoryStore) -> None:
+        results = vector_store.search_vector("solar energy", "AGT-CEO")
+        assert len(results) > 0
+        # Should find the Netso entry
+        values = {r.value for r in results}
+        assert any("solar" in v.lower() for v in values if v)
+
+    def test_vector_search_respects_top_k(self, vector_store: MemoryStore) -> None:
+        results = vector_store.search_vector("energy", "AGT-CEO", top_k=1)
+        assert len(results) <= 1
+
+    def test_vector_search_respects_permissions(self, vector_store: MemoryStore) -> None:
+        # COO can only read dashboard + lessons, not company_facts or pricing
+        results = vector_store.search_vector("solar", "AGT-COO")
+        # Should not return financial/facts entries
+        for r in results:
+            # All returned entries should be from domains COO can read
+            assert vector_store.can_read("AGT-COO", r.domain)
+
+    def test_vector_search_falls_back_to_keyword(self) -> None:
+        """Without embedding_provider, search_vector falls back to keyword."""
+        store = MemoryStore(permissions={
+            "AGT-CEO": {"read": ["all_long_term", "all_episodic", "all_semantic"]},
+        })
+        store.seed_from_dict("long_term", "facts", [
+            {"key": "entity", "value": "Netso Energy"},
+        ])
+        results = store.search_vector("Netso", "AGT-CEO")
+        assert len(results) == 1
+
+    def test_vector_search_layer_filter(self, vector_store: MemoryStore) -> None:
+        results = vector_store.search_vector("energy", "AGT-CEO", layer="semantic")
+        for r in results:
+            assert r.layer == "semantic"
+
+    def test_vector_search_domain_filter(self, vector_store: MemoryStore) -> None:
+        results = vector_store.search_vector("energy", "AGT-CEO", domain="company_facts")
+        for r in results:
+            assert r.domain == "company_facts"
+
+    def test_vector_index_rebuilds_after_write(self, vector_store: MemoryStore) -> None:
+        # Initial search
+        results1 = vector_store.search_vector("hiring", "AGT-CEO")
+        initial_count = len(results1)
+
+        # Add new entry
+        vector_store.seed_from_dict("long_term", "hiring", [
+            {"key": "role", "value": "Sales lead for Chittagong region"},
+        ])
+
+        # Search should find the new entry
+        results2 = vector_store.search_vector("sales hiring", "AGT-CEO")
+        assert len(results2) > initial_count or any(
+            "sales" in (r.value or "").lower() for r in results2
+        )
+
+    def test_vector_search_empty_index(self) -> None:
+        from tazos.vector_store import TfidfEmbeddingProvider
+        store = MemoryStore(embedding_provider=TfidfEmbeddingProvider(dimensions=64))
+        results = store.search_vector("anything", "AGT-CEO")
+        assert results == []
