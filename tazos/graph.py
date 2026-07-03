@@ -19,6 +19,7 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import concurrent.futures
 import copy
 import json
@@ -29,7 +30,7 @@ import warnings
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Annotated, Any, TypedDict
+from typing import Annotated, Any, Callable, TypeVar, TypedDict
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -254,6 +255,85 @@ def _reset_iteration_state(state: CycleState) -> dict[str, Any]:
         # Update context summary
         "loop_context_summary": json.dumps(iteration_summary, indent=2),
     }
+
+
+# ---------------------------------------------------------------------------
+# Async parallel execution — M3
+# ---------------------------------------------------------------------------
+
+_T = TypeVar("_T")
+
+
+def _run_parallel(
+    items: list[Any],
+    fn: Callable[[Any], _T],
+    max_workers: int | None = None,
+) -> list[_T]:
+    """Run fn(item) concurrently for each item.
+
+    Uses asyncio.gather + asyncio.to_thread when a fresh event loop can
+    be created (standalone scripts, CLI). Falls back to a bounded
+    ThreadPoolExecutor when an event loop is already running (e.g.
+    inside LangGraph nodes or Jupyter).
+
+    Returns results in the same order as items.
+    """
+    if not items:
+        return []
+
+    # Single item — no concurrency needed
+    if len(items) == 1:
+        return [fn(items[0])]
+
+    # Check if an event loop is already running — if so, skip asyncio
+    loop_running = False
+    try:
+        asyncio.get_running_loop()
+        loop_running = True
+    except RuntimeError:
+        pass
+
+    if not loop_running:
+        try:
+            return asyncio.run(_gather_items(items, fn))
+        except RuntimeError:
+            pass
+
+    # Fallback: bounded ThreadPoolExecutor
+    return _fallback_threadpool(items, fn, max_workers)
+
+
+async def _gather_items(
+    items: list[Any],
+    fn: Callable[[Any], _T],
+) -> list[_T]:
+    """Gather synchronous callables via asyncio.to_thread."""
+    sem = asyncio.Semaphore(8)  # cap concurrent threads
+
+    async def _bounded(item: Any) -> _T:
+        async with sem:
+            return await asyncio.to_thread(fn, item)
+
+    return list(
+        await asyncio.gather(*[_bounded(item) for item in items])
+    )
+
+
+def _fallback_threadpool(
+    items: list[Any],
+    fn: Callable[[Any], _T],
+    max_workers: int | None = None,
+) -> list[_T]:
+    """Bounded ThreadPoolExecutor fallback for sync contexts."""
+    if not items:
+        return []
+    workers = max_workers or min(len(items), 8)
+    results: list[_T] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(fn, item) for item in items]
+        for future in concurrent.futures.as_completed(futures):
+            results.append(future.result())
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -627,14 +707,14 @@ def _run_team(
                 "output": result.get("output", {}),
             }
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(team.members)) as pool:
-            futures = {pool.submit(_run_member, m): m for m in team.members}
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    agent_id, result = future.result()
-                    team_results.append({"agent_id": agent_id, **result})
-                except Exception as exc:
-                    team_errors.append(f"team:{team.id}:{exc}")
+        # M3: asyncio.gather with asyncio.to_thread for I/O-bound LLM calls
+        try:
+            results = _run_parallel(list(team.members), _run_member)
+        except Exception as exc:
+            team_errors.append(f"team:{team.id}:{exc}")
+            results = []
+        for agent_id, result in results:
+            team_results.append({"agent_id": agent_id, **result})
 
     elif strategy == "voting":
         def _run_voter(member: TeamMember) -> tuple[str, dict[str, Any], float]:
@@ -657,26 +737,27 @@ def _run_team(
                 "output": result.get("output", {}),
             }, member.weight
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(team.members)) as pool:
-            futures = {pool.submit(_run_voter, m): m for m in team.members}
-            total_weight = 0.0
-            agree_weight = 0.0
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    agent_id, result, weight = future.result()
-                    team_results.append({"agent_id": agent_id, **result})
-                    total_weight += weight
-                    if result.get("status") == "success":
-                        agree_weight += weight
-                except Exception as exc:
-                    team_errors.append(f"team:{team.id}:{exc}")
+        # M3: asyncio.gather for voting strategy
+        try:
+            voter_results = _run_parallel(list(team.members), _run_voter)
+        except Exception as exc:
+            team_errors.append(f"team:{team.id}:{exc}")
+            voter_results = []
 
-            consensus = agree_weight / total_weight >= 0.67 if total_weight > 0 else False
-            team_results.append({
-                "agent_id": "TEAM-CONSENSUS",
-                "status": "success" if consensus else "failed",
-                "output": {"consensus": consensus, "agree_weight": agree_weight, "total_weight": total_weight},
-            })
+        total_weight = 0.0
+        agree_weight = 0.0
+        for agent_id, result, weight in voter_results:
+            team_results.append({"agent_id": agent_id, **result})
+            total_weight += weight
+            if result.get("status") == "success":
+                agree_weight += weight
+
+        consensus = agree_weight / total_weight >= 0.67 if total_weight > 0 else False
+        team_results.append({
+            "agent_id": "TEAM-CONSENSUS",
+            "status": "success" if consensus else "failed",
+            "output": {"consensus": consensus, "agree_weight": agree_weight, "total_weight": total_weight},
+        })
 
     return {
         "team_id": team.id,
@@ -994,42 +1075,46 @@ def specialists_node(state: CycleState) -> dict:
             memory_store=memory_store, usage_tracker=usage_tracker,
         )
 
-    # Fan-out via thread pool
+    # Fan-out via async parallel — M3
     specialist_results: list[dict[str, Any]] = []
     new_errors: list[str] = []
     new_approvals: list[dict[str, Any]] = []
     new_handoffs: list[dict[str, Any]] = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-        futures = [pool.submit(_run_one, item) for item in prepared]
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                agent_id, agent_result = future.result()
-            except Exception as exc:
-                agent_id = "unknown"
-                agent_result = {
-                    "step": "run_specialists", "status": "error",
-                    "error": str(exc), "output": {}, "duration_ms": 0,
-                    "_errors": [f"specialist: {exc}"],
-                }
+    # Wrap _run_one to catch exceptions cleanly
+    def _run_one_safe(item: tuple[str, Agent, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+        try:
+            return _run_one(item)
+        except Exception as exc:
+            return "unknown", {
+                "step": "run_specialists", "status": "error",
+                "error": str(exc), "output": {}, "duration_ms": 0,
+                "_errors": [f"specialist: {exc}"],
+            }
 
-            specialist_results.append({
-                "agent_id": agent_id,
-                "status": agent_result.get("status", "error"),
-                "output": agent_result.get("output", {}),
-            })
+    try:
+        raw_results = _run_parallel(prepared, _run_one_safe)
+    except Exception as exc:
+        raw_results = [("unknown", {"step": "run_specialists", "status": "error", "error": str(exc), "output": {}, "duration_ms": 0, "_errors": [f"specialist: {exc}"]})]
 
-            new_errors.extend(_get_errors(agent_result))
+    for agent_id, agent_result in raw_results:
+        specialist_results.append({
+            "agent_id": agent_id,
+            "status": agent_result.get("status", "error"),
+            "output": agent_result.get("output", {}),
+        })
 
-            output = agent_result.get("output", {})
-            # Collect approval requests
-            if "approval_required" in output:
-                new_approvals.append(output["approval_required"])
-            # Collect handoff directives
-            if "handoff" in output:
-                new_handoffs.append(output["handoff"])
-            if "handoffs" in output:
-                new_handoffs.extend(output["handoffs"])
+        new_errors.extend(_get_errors(agent_result))
+
+        output = agent_result.get("output", {})
+        # Collect approval requests
+        if "approval_required" in output:
+            new_approvals.append(output["approval_required"])
+        # Collect handoff directives
+        if "handoff" in output:
+            new_handoffs.append(output["handoff"])
+        if "handoffs" in output:
+            new_handoffs.extend(output["handoffs"])
 
     update: dict[str, Any] = {
         "step_results": _step_result_to_list({

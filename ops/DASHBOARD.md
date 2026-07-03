@@ -1,9 +1,5 @@
 
 
-
-
-
-
 # Netso Energy — Daily Dashboard
 
 **Cycle:** 2026-07-02-executive
@@ -34,7 +30,7 @@ None — core runtime is functional.
 | ------------------------ | ------------------ | ------------------------------------------------------------- |
 | TAZ OS harnesses         | 11                 | ✅ 11/11 loaded                                                |
 | Specialists              | 51                 | ✅ 51/51                                                       |
-| Tests                    | 306                | ✅ 306 passing (0 regressions)                                 |
+| Tests                    | 316                | ✅ 316 passing (0 regressions)                                 |
 | Ground-truth enforcement | hard gate          | ✅ status flips to "error" on violation                        |
 | Evaluator checks         | 6                  | ✅ blended rate, savings %, DSCR, PPA, Scenario B, list values |
 | Memory retrieval runtime | wired              | ✅ retrieve\_for\_agent() at graph.py:394                      |
@@ -63,7 +59,7 @@ None — core runtime is functional.
 | C9-wire | Wire BaselineEvaluator into run\_cycle\_graph        | 2h     | ✅ DONE |
 | H1      | Financial-accuracy KPI visible in dashboard          | 1h     | ✅ DONE |
 | M1      | Baseline evaluation + regression detection           | 2h     | ✅ DONE |
-| M3      | Async parallelization (asyncio.gather vs ThreadPool) | 4h     | TODO   |
+| M3      | Async parallelization (asyncio.gather vs ThreadPool) | 4h     | ✅ DONE |
 
 ## P2 Planning
 
