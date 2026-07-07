@@ -1319,6 +1319,7 @@ def approval_gates_node(state: CycleState) -> dict:
     Only genuinely pending items are surfaced. Approved items are
     added to resolved_approval_ids so should_execute can unblock.
     """
+    start = time.monotonic()
     config = get_config()
     cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
@@ -1372,13 +1373,14 @@ def approval_gates_node(state: CycleState) -> dict:
     if not chief:
         gate_status = "success"  # no chief configured, no gate to block
 
+    elapsed = int((time.monotonic() - start) * 1000)
     update: dict[str, Any] = {
         "step_results": _step_result_to_list({
             "step": "approval_gates",
             "agent_id": chief.id if chief else None,
             "status": gate_status,
             "output": bundled,
-            "duration_ms": 0,
+            "duration_ms": elapsed,
         }),
         "approval_gates_output": bundled,
     }
@@ -1477,6 +1479,7 @@ def execute_node(state: CycleState) -> dict:
     Dispatches each handoff through ``ToolGateway.execute()`` and records
     real results.  Without a gateway, handoffs stay in *queued* state.
     """
+    start = time.monotonic()
     config = get_config()
     cfg = config.get("configurable", {})
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
@@ -1499,10 +1502,11 @@ def execute_node(state: CycleState) -> dict:
             executed.append({"type": "handoff", "status": "queued", **handoff})
 
     output = {"executed": executed, "handoff_count": len(state.get("handoffs", []))}
+    elapsed = int((time.monotonic() - start) * 1000)
     update: dict[str, Any] = {
         "step_results": _step_result_to_list({
             "step": "execute", "agent_id": None,
-            "status": "success", "output": output, "duration_ms": 0,
+            "status": "success", "output": output, "duration_ms": elapsed,
         }),
         "execute_output": output,
     }
@@ -1520,6 +1524,7 @@ def log_node(state: CycleState) -> dict:
     In loop mode: Also checks completion criteria and decides whether
     to continue to next iteration or terminate.
     """
+    start = time.monotonic()
     config = get_config()
     cfg = config.get("configurable", {})
     memory_store: MemoryStore | None = cfg.get("memory_store")
@@ -1560,10 +1565,11 @@ def log_node(state: CycleState) -> dict:
                 )
 
     output = {"decision_log_entry": log_entry, "memory_summary": memory_summary}
+    elapsed = int((time.monotonic() - start) * 1000)
     return {
         "step_results": _step_result_to_list({
             "step": "log", "agent_id": None,
-            "status": "success", "output": output, "duration_ms": 0,
+            "status": "success", "output": output, "duration_ms": elapsed,
         }),
         "log_output": output,
     }
@@ -1580,6 +1586,7 @@ def loop_control_node(state: CycleState) -> dict:
 
     Returns update with loop control decision.
     """
+    start = time.monotonic()
     iteration = state.get("iteration_count", 0)
     max_iterations = state.get("max_iterations", 1)
     criteria = state.get("completion_criteria", {})
@@ -1589,6 +1596,7 @@ def loop_control_node(state: CycleState) -> dict:
 
     # Check max iterations guardrail
     if iteration >= max_iterations - 1:
+        elapsed = int((time.monotonic() - start) * 1000)
         return {
             "step_results": _step_result_to_list({
                 "step": "loop_control",
@@ -1599,12 +1607,13 @@ def loop_control_node(state: CycleState) -> dict:
                     "iteration": iteration,
                     "max_iterations": max_iterations,
                 },
-                "duration_ms": 0,
+                "duration_ms": elapsed,
             }),
         }
 
     # Check task completion
     if is_complete:
+        elapsed = int((time.monotonic() - start) * 1000)
         return {
             "step_results": _step_result_to_list({
                 "step": "loop_control",
@@ -1614,12 +1623,13 @@ def loop_control_node(state: CycleState) -> dict:
                     "reason": reason,
                     "iteration": iteration,
                 },
-                "duration_ms": 0,
+                "duration_ms": elapsed,
             }),
         }
 
     # Continue to next iteration — reset state with fresh context
     reset_update = _reset_iteration_state(state)
+    elapsed = int((time.monotonic() - start) * 1000)
     return {
         "step_results": _step_result_to_list({
             "step": "loop_control",
@@ -1630,7 +1640,7 @@ def loop_control_node(state: CycleState) -> dict:
                 "iteration": iteration,
                 "next_iteration": iteration + 1,
             },
-            "duration_ms": 0,
+            "duration_ms": elapsed,
         }),
         **reset_update,
     }

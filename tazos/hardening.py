@@ -10,11 +10,18 @@ Provides:
 
 from __future__ import annotations
 
+import logging
+import os
+import posixpath
 import re
 import time
 import threading
+import urllib.parse
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -134,10 +141,110 @@ def validate_harness_name(name: str) -> bool:
 
 
 def sanitize_path(path: str) -> str | None:
-    """Reject path traversal attempts. Returns None if suspicious."""
-    if ".." in path:
+    """Reject path traversal attempts. Returns normalized path or None if suspicious.
+
+    Checks for:
+      1. Literal ".." segments
+      2. URL-encoded traversal: %2e%2e, %252e%252e, %c0%ae (overlong UTF-8)
+      3. Null bytes: \\x00
+      4. Backslashes (Windows-style traversal)
+      5. Absolute paths (leading /)
+      6. Tilde expansion (~)
+      7. Path normalization bypasses: /foo/./bar, /foo//bar
+    """
+    if not path:
         return None
-    return path
+
+    # --- Normalize first: collapse double slashes, resolve . segments ---
+    # posixpath handles /foo//bar and /foo/./bar without touching the filesystem
+    normalized = posixpath.normpath(path)
+
+    # --- Decode percent-encoding for inspection, then re-check ---
+    # Unescape once to catch %2e%2e and double-encoded %252e%252e
+    decoded = urllib.parse.unquote(path)
+    decoded_double = urllib.parse.unquote(decoded)
+
+    # Build a combined string to inspect for all encoded variants
+    combined = f"{path} {normalized} {decoded} {decoded_double}"
+
+    # 1. Literal ".." in any form (normalized already collapses these, but check raw)
+    if ".." in normalized:
+        logger.warning("Blocked path traversal (literal '..'): %s", path)
+        return None
+
+    # 2. URL-encoded traversal: %2e%2e, %252e%252e (double-encoded), %c0%ae (overlong UTF-8)
+    encoded_patterns = [
+        r"(?i)%2e",
+        r"(?i)%c0%ae",
+        r"(?i)%c0%af",
+        r"(?i)%e0%80%af",
+    ]
+    for pattern in encoded_patterns:
+        if re.search(pattern, combined):
+            logger.warning("Blocked URL-encoded traversal (pattern %s): %s", pattern, path)
+            return None
+
+    # 3. Null bytes — dangerous in C-backed path operations
+    if "\x00" in path or "\x00" in normalized:
+        logger.warning("Blocked null byte in path: %s", path)
+        return None
+
+    # 4. Backslashes — Windows-style traversal on any OS
+    if "\\" in path:
+        logger.warning("Blocked backslash in path: %s", path)
+        return None
+
+    # 5. Absolute paths (harness paths must be relative)
+    if normalized.startswith("/"):
+        logger.warning("Blocked absolute path: %s", path)
+        return None
+
+    # 6. Tilde expansion
+    if "~" in path:
+        logger.warning("Blocked tilde in path: %s", path)
+        return None
+
+    # 7. Path normalization bypasses — if normpath changed it, the original
+    #    contained ./ or // that could be used to confuse logic
+    if normalized != path and (
+        "/." in path or "//" in path
+    ):
+        logger.warning("Blocked normalization bypass in path: %s", path)
+        return None
+
+    return normalized
+
+
+def validate_path_contents(path: str) -> tuple[bool, str]:
+    """Check that a path exists and resolves to a file (not a symlink escape).
+
+    Args:
+        path: The (already sanitized) filesystem path to validate.
+
+    Returns:
+        (is_valid, reason_string) — is_valid is True only when the path
+        exists as a regular file and its resolved real path does not escape
+        the current working directory.
+    """
+    p = Path(path)
+
+    if not p.exists():
+        return False, "path does not exist"
+
+    # Resolve to real path (follows symlinks)
+    real = p.resolve()
+
+    # Ensure the resolved path stays under the current working directory
+    cwd = Path.cwd().resolve()
+    try:
+        real.relative_to(cwd)
+    except ValueError:
+        return False, f"resolved path {real} escapes working directory {cwd}"
+
+    if not real.is_file():
+        return False, f"resolved path {real} is not a regular file"
+
+    return True, "ok"
 
 
 # ---------------------------------------------------------------------------

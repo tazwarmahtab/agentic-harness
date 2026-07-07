@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import logging
 import os
+import uuid
 from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from tazos.discover import find_venture
+from tazos.hardening import ConnectionLimiter, sanitize_path, validate_harness_name
 from tazos.graph import CycleState, build_graph
 from tazos.llm import LLMClient, create_llm_client
 from tazos.memory import build_memory_from_manifest, MemoryStore
@@ -33,6 +35,9 @@ app = FastAPI(
 
 # Token auth — if TAZOS_API_TOKEN env var is set, WebSocket requires it as ?token=
 TAZOS_API_TOKEN = os.getenv("TAZOS_API_TOKEN", "")
+
+# WebSocket connection limiter — caps concurrent connections per server instance
+_ws_limiter = ConnectionLimiter(max_connections=10)
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +103,18 @@ def _resolve_bundle(
 
     Resolves harness directory and optional venture path following the same
     conventions as the CLI ``run`` command.
+
+    Validates harness_name against traversal attacks before constructing
+    any filesystem paths.
     """
+    # Security: validate harness name before path construction
+    if not validate_harness_name(harness_name):
+        logger.warning("Invalid harness name rejected: %r", harness_name)
+        return None, venture_name or "unknown", harness_name
+    if sanitize_path(harness_name) is None:
+        logger.warning("Path traversal attempt blocked: %r", harness_name)
+        return None, venture_name or "unknown", harness_name
+
     root = _find_project_root()
     harness_dir = root / "tazos" / "harnesses" / harness_name
 
@@ -215,6 +231,16 @@ async def harness_ws(
             await websocket.close(code=4001)
             return
 
+    # Connection limiting — cap concurrent WebSocket sessions
+    conn_id = f"{harness_name}:{uuid.uuid4().hex[:12]}"
+    if not _ws_limiter.try_acquire(conn_id):
+        await websocket.send_json({
+            "event": "error",
+            "message": "Connection limit reached. Try again later.",
+        })
+        await websocket.close(code=4029)
+        return
+
     try:
         # --- Resolve bundle ---
         bundle, venture_id, harness_id = _resolve_bundle(
@@ -312,10 +338,24 @@ async def harness_ws(
         except Exception:
             pass  # Socket already closed
     finally:
+        _ws_limiter.release(conn_id)
         try:
             await websocket.close()
         except Exception:
             pass  # Already closed
+
+
+# ---------------------------------------------------------------------------
+# REST — WebSocket stats
+# ---------------------------------------------------------------------------
+
+@app.get("/api/ws/stats")
+async def ws_stats() -> dict[str, int]:
+    """Return current WebSocket connection stats."""
+    return {
+        "active_connections": _ws_limiter.active_count,
+        "max_connections": _ws_limiter.max_connections,
+    }
 
 
 async def _stream_graph(

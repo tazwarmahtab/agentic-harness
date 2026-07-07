@@ -112,9 +112,10 @@ class TestInputValidation:
 
     def test_sanitize_path(self) -> None:
         from tazos.hardening import sanitize_path
-        result = sanitize_path("/project/tazos/harnesses/executive")
+        result = sanitize_path("project/tazos/harnesses/executive")
+        assert result is not None
         assert ".." not in result
-        assert result == "/project/tazos/harnesses/executive"
+        assert result == "project/tazos/harnesses/executive"
 
     def test_sanitize_path_rejects_traversal(self) -> None:
         from tazos.hardening import sanitize_path
