@@ -10,11 +10,11 @@ Model routing table mirrors CLAUDE.md / 9router config.
 
 Free-tier subagent dispatch:
 - CRITICALITY_TO_MODEL maps low/medium criticality agents to the "fast"
-  tier by default.
+tier by default.
 - When MODE=TAZOS_FREE_TIER is set in the environment, those agents are
-  redirected to the "free" tier which rotates across a pool of verified
-  OpenRouter free models (via 9router) — this avoids rate-limiting on
-  paid Claude endpoints during parallel fan-out.
+redirected to the "free" tier which rotates across a pool of verified
+OpenRouter free models (via 9router) — this avoids rate-limiting on
+paid Claude endpoints during parallel fan-out.
 """
 
 from __future__ import annotations
@@ -30,22 +30,19 @@ from typing import Any, Protocol
 
 # ---------------------------------------------------------------------------
 # Model routing table — mirrors CLAUDE.md / 9router config
-#
-# The "free" tier points to OpenRouter free models via 9router.
-# FREE_MODEL_POOL below provides the round-robin rotation list so that
-# concurrent subagents hit multiple providers instead of one endpoint.
 # ---------------------------------------------------------------------------
 MODEL_TABLE: dict[str, str] = {
-    "default": "cu/claude-4.5-sonnet",             # paid Claude Sonnet
-    "reasoning": "cu/claude-4.5-opus-high-thinking", # paid Claude Opus
-    "fast": "cu/claude-4.5-haiku",                  # paid Claude Haiku
-    "subagent": "cu/claude-4.5-haiku",              # paid Claude Haiku
-    "free": "openrouter/google/gemma-4-31b-it:free", # free pool entry
+    "default": "cu/claude-4.5-sonnet",  # paid Claude Sonnet
+    "reasoning": "cu/claude-4.5-opus-high-thinking",  # paid Claude Opus
+    "fast": "cu/claude-4.5-haiku",  # paid Claude Haiku
+    "subagent": "cu/claude-4.5-haiku",  # paid Claude Haiku
+    "free": "openrouter/google/gemma-4-31b-it:free",  # free pool entry
 }
 
 # Pool of verified free-tier models — round-robin indexed.
 FREE_MODEL_POOL: list[str] = [
     "openrouter/google/gemma-4-31b-it:free",
+    "openrouter/nvidia/stepfun-ai/step-3.7-flash",  # verified working via 9router
     "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
     "openrouter/meta/llama-4-scout-17b-16e-instruct",
@@ -58,28 +55,22 @@ ANTHROPIC_MODEL_TABLE: dict[str, str] = {
     "reasoning": "claude-opus-4-20250514",
     "fast": "claude-haiku-4-5-20251001",
     "subagent": "claude-haiku-4-5-20251001",
-    "free": "claude-sonnet-4-20250514", # best available on direct Anthropic fallback
+    "free": "claude-sonnet-4-20250514",  # best available on direct Anthropic fallback
 }
 
 # Agent criticality → model tier mapping.
-#
-# SANITY: dispatcher and planner remain on "default" (paid Sonnet) because
-# they perform structured routing/planning that benefits from Claude's
-# instruction-following reliability.
-# Subagents (medium/low criticality) default to the "free" tier which
-# rotates across OpenRouter free models to avoid rate-limiting and cost.
 # Core orchestrators (dispatcher, planner) stay on "default" paid Sonnet.
-# Opt out with TAZOS_PAID_TIER=1.
 CRITICALITY_TO_MODEL: dict[str, str] = {
- "critical": "default",   # dispatcher, planner — paid Sonnet
- "high": "default",       # COO, CFO, Chief of Staff — paid Sonnet
- "medium": "free",        # routine specialists — free tier round-robin
- "low": "free",           # lightweight tasks — free tier round-robin
+    "critical": "default",  # dispatcher, planner — paid Sonnet
+    "high": "default",  # COO, CFO, Chief of Staff — paid Sonnet
+    "medium": "free",  # routine specialists — free tier round-robin
+    "low": "free",  # lightweight tasks — free tier round-robin
 }
 
 # Round-robin counter (thread-safe via lock)
 _free_model_lock = threading.Lock()
 _free_model_idx = 0
+
 
 def _next_free_model() -> str:
     """Return the next model from FREE_MODEL_POOL, cycling round-robin."""
@@ -87,7 +78,8 @@ def _next_free_model() -> str:
     with _free_model_lock:
         model = FREE_MODEL_POOL[_free_model_idx % len(FREE_MODEL_POOL)]
         _free_model_idx += 1
-    return model
+        return model
+
 
 # ---------------------------------------------------------------------------
 # Response type
@@ -100,6 +92,7 @@ class LLMResponse:
     model: str
     usage: dict[str, int] = field(default_factory=dict)
     provider: str = "unknown"
+
 
 # ---------------------------------------------------------------------------
 # Protocol
@@ -120,6 +113,7 @@ class LLMClient(Protocol):
         """Send a completion request and return the response."""
         ...
 
+
 # ---------------------------------------------------------------------------
 # Auto-detection helpers
 # ---------------------------------------------------------------------------
@@ -138,12 +132,12 @@ def _detect_9router_key() -> str:
 def _is_9router_usable(base_url: str, timeout: int = 3) -> bool:
     """Check if 9router is running AND has usable provider backends.
 
-    A running 9router with no configured providers (proxy pools, provider
-    nodes) will return model metadata but can't actually route requests.
-    We check: (1) server responds, (2) has >0 proxy pools in db.json.
+    Verifies:
+    (1) server responds with model metadata
+    (2) has >0 proxy pools in db.json with valid auth
     """
+    # Check server is up
     try:
-        # Check server is up
         req = urllib.request.Request(f"{base_url}/v1/models")
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             body = json.loads(resp.read())
@@ -161,7 +155,6 @@ def _is_9router_usable(base_url: str, timeout: int = 3) -> bool:
             pools = db.get("proxyPools", [])
             if not pools:
                 return False
-            # Verify pools have valid auth
             for pool in pools:
                 if pool.get("status") == "disabled":
                     continue
@@ -222,7 +215,6 @@ def _parse_first_json(raw: str) -> dict:
     content_match = re.search(r'"content"\s*:\s*"(.*?)(?:"\s*[,}])', raw, re.DOTALL)
     if content_match:
         content = content_match.group(1)
-        # Unescape JSON string escapes
         content = content.replace("\\n", "\n").replace('\\"', '"').replace("\\\\", "\\")
         return {"choices": [{"message": {"content": content}}]}
 
@@ -248,10 +240,10 @@ def _detect_anthropic_key() -> str:
 class RouterLLMClient:
     """LLM client that talks to 9router / OpenAI-compatible endpoint.
 
-    Reads config from environment variables set by Claude Code / ECC:
+    Reads config from environment variables:
     ANTHROPIC_BASE_URL → base URL (default http://localhost:20128/v1)
     ANTHROPIC_AUTH_TOKEN → Bearer token
-    ANTHROPIC_DEFAULT_SONNET_MODEL / _HAIKU / _OPUS → model overrides
+    TAZOS_LLM_API_KEY → alternative auth token
     """
 
     def __init__(
@@ -260,13 +252,11 @@ class RouterLLMClient:
         api_key: str | None = None,
         timeout: int = 300,
     ):
-        # Prefer ANTHROPIC_BASE_URL (Claude Code convention)
         self.base_url = (
             base_url
             or os.getenv("ANTHROPIC_BASE_URL", "")
             or os.getenv("TAZOS_LLM_BASE_URL", "http://localhost:20128")
         )
-        # Strip trailing /v1 if present — we append /v1/chat/completions
         if self.base_url.endswith("/v1"):
             self.base_url = self.base_url[:-3]
 
@@ -300,22 +290,17 @@ class RouterLLMClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-
         import time as _time
         last_error = None
         models_to_try = [model]
 
         # If the requested model fails, fall back through the routing table
-        # Skip reasoning models for structured output reliability
         for fallback_tier in ["default", "fast", "free"]:
             fallback = MODEL_TABLE.get(fallback_tier, "")
             if fallback and fallback not in models_to_try:
                 models_to_try.append(fallback)
 
         for current_model in models_to_try:
-            # Rebuild payload with current model
             current_payload = {**payload, "model": current_model}
             current_data = json.dumps(current_payload).encode("utf-8")
 
@@ -425,6 +410,71 @@ class AnthropicLLMClient:
 
 
 # ---------------------------------------------------------------------------
+# NVIDIA NIM client (direct to integrate.api.nvidia.com)
+# ---------------------------------------------------------------------------
+
+class NvidiaLLMClient:
+    """Direct NVIDIA NIM API client (OpenAI-compatible endpoint).
+
+    Used for NVIDIA-hosted models (z-ai/glm-*, moonshotai/kimi-k*)
+    when 9router is not configured as a pass-through proxy.
+    Reads NIM key from NVIDIA_NIM_API_KEY env var.
+    """
+
+    API_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+    def __init__(self, api_key: str | None = None, timeout: int = 300):
+        self.api_key = api_key or os.getenv("NVIDIA_NIM_API_KEY", "")
+        if not self.api_key:
+            raise ValueError("No NVIDIA NIM key found. Set NVIDIA_NIM_API_KEY.")
+        self.timeout = timeout
+
+    def complete(
+        self,
+        *,
+        model: str,
+        system: str,
+        messages: list[dict[str, str]],
+        max_tokens: int = 4096,
+        temperature: float = 0.3,
+    ) -> LLMResponse:
+        payload = {
+            "model": model,
+            "messages": [{"role": "system", "content": system}] + messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": False,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            self.API_URL, data=data, headers=headers, method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read().decode("utf-8")
+            body = json.loads(raw)
+
+            if "error" in body:
+                raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
+
+            choice = body["choices"][0]
+            msg = choice.get("message", {})
+            content = msg.get("content", "")
+            return LLMResponse(
+                content=content,
+                model=body.get("model", model),
+                usage=body.get("usage", {}),
+                provider="nvidia-nim",
+            )
+
+
+# ---------------------------------------------------------------------------
 # Dry run client (no API calls)
 # ---------------------------------------------------------------------------
 
@@ -464,7 +514,7 @@ def create_llm_client(
     Priority:
     1. prefer="router" → RouterLLMClient
     2. prefer="anthropic" → AnthropicLLMClient
-    3. Auto-detect: try 9router, fall back to Anthropic, then dry run
+    3. Auto-detect: try 9router (with fallback), then Anthropic, then dry run
     4. dry_run=True → DryRunLLMClient
     """
     if dry_run:
@@ -475,33 +525,35 @@ def create_llm_client(
     if prefer == "anthropic":
         return AnthropicLLMClient()
 
-    # Auto-detect: prefer 9router/OpenAI-compat, then direct Anthropic, then dry run
-    anthropic_base = os.getenv("ANTHROPIC_BASE_URL", "")
+    # Auto-detect: check 9router first (with usability guard), then Anthropic, then dry run
+    router_base = os.getenv("TAZOS_LLM_BASE_URL", "http://localhost:20128")
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
     has_auth_token = bool(os.getenv("ANTHROPIC_AUTH_TOKEN", ""))
 
-    # If ANTHROPIC_BASE_URL points to a local proxy (9router), use router client
-    if anthropic_base and (
-        "127.0.0.1" in anthropic_base
-        or "localhost" in anthropic_base
-        or "20128" in anthropic_base
-    ):
-        if has_auth_token:
-            if verbose:
-                print(f"[llm] Using 9router backend ({anthropic_base})")
-            return RouterLLMClient()
-
-    # Check 9router directly
-    router_base = os.getenv("TAZOS_LLM_BASE_URL", "http://localhost:20128")
-    if _is_9router_usable(router_base):
+    # 9router is usable only if it has configured backend providers
+    if has_auth_token and _is_9router_usable(router_base):
         if verbose:
-            print("[llm] Using 9router backend")
+            print(f"[llm] Using 9router backend ({router_base})")
         return RouterLLMClient()
 
-    # Fall back to direct Anthropic API (needs real api.anthropic.com key)
-    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+    # No working 9router. NVIDIA-NIM models (nvidia/*, z-ai/*) can be
+    # reached directly if NVIDIA_NIM_API_KEY is set.
+    if os.getenv("NVIDIA_NIM_API_KEY"):
+        try:
+            return NvidiaLLMClient()
+        except ValueError:
+            pass  # fall through to Anthropic
+
+    # Fall back to direct Anthropic API
     if anthropic_key:
         if verbose:
             print("[llm] Using Anthropic API directly")
+        return AnthropicLLMClient()
+
+    # Last resort: Anthropic with auth token (for 9router-integrated setups)
+    if has_auth_token:
+        if verbose:
+            print("[llm] Using Anthropic via auth token")
         return AnthropicLLMClient()
 
     if verbose:
