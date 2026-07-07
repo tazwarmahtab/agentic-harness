@@ -863,6 +863,14 @@ def review_node(state: CycleState) -> dict:
                 inputs[key] = f"(could not read {path_str}: {exc})"
 
     coo = bundle.specialists.get("AGT-EXEC-COO") if bundle and bundle.specialists else None
+    # H4: cross-harness fallback via registry
+    if not coo:
+        registry: Registry | None = cfg.get("registry")
+        if registry:
+            resolved = registry.resolve_agent("AGT-EXEC-COO")
+            if resolved:
+                coo, _ = resolved
+                logger.info("review_node: resolved COO via cross-harness registry fallback")
     if not coo:
         err = "review: COO specialist not found"
         return {
@@ -1155,6 +1163,16 @@ def specialists_node(state: CycleState) -> dict:
 
     prepared = [p for p in (_prepare(a) for a in assignments) if p]
 
+    # Warn about agents that couldn't be resolved (silent drop detection)
+    resolved_ids = {p[0] for p in prepared}
+    for a in assignments:
+        aid = a.get("agent_id") or a.get("route_to")
+        if aid and aid not in resolved_ids:
+            logger.warning(
+                "specialists_node: agent %s not found in bundle or registry — skipped",
+                aid,
+            )
+
     def _run_one(item: tuple[str, Agent, HarnessBundle, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
         agent_id, agent, agent_bundle, inputs = item
         return agent_id, _run_agent_node(
@@ -1245,6 +1263,14 @@ def summarize_node(state: CycleState) -> dict:
     venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
 
     chief = bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF") if bundle and bundle.specialists else None
+    # H4: cross-harness fallback via registry
+    if not chief:
+        registry: Registry | None = cfg.get("registry")
+        if registry:
+            resolved = registry.resolve_agent("AGT-EXEC-CHIEFOFSTAFF")
+            if resolved:
+                chief, _ = resolved
+                logger.info("summarize_node: resolved Chief of Staff via cross-harness registry fallback")
     if not chief:
         err = "summarize: Chief of Staff not found"
         return {
@@ -1297,6 +1323,14 @@ def approval_gates_node(state: CycleState) -> dict:
     cfg = config.get("configurable", {})
     bundle: HarnessBundle = cfg.get("bundle") # type: ignore
     chief = bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF") if bundle and bundle.specialists else None
+    # H4: cross-harness fallback via registry
+    if not chief:
+        registry: Registry | None = cfg.get("registry")
+        if registry:
+            resolved = registry.resolve_agent("AGT-EXEC-CHIEFOFSTAFF")
+            if resolved:
+                chief, _ = resolved
+                logger.info("approval_gates_node: resolved Chief of Staff via cross-harness registry fallback")
 
     approval_items = state.get("approval_queue", [])
     resolved_ids = set(state.get("resolved_approval_ids", []))
