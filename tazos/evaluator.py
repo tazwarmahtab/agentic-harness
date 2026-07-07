@@ -11,7 +11,13 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from tazos.constants import NETSO_FINANCIAL, DSCR_ALERT_FLOOR
+from tazos.constants import (
+    NETSO_FINANCIAL,
+    DSCR_ALERT_FLOOR,
+    NEM_EXPORT_RATE,
+    CAPEX_PER_KW_SCENARIO_A,
+    TRUE_VARIABLE_RATE,
+)
 
 
 @dataclass
@@ -77,6 +83,9 @@ def validate_output(
         _check_dscr(output, result)
         _check_ppa_rate(output, result)
         _check_scenario_b(output, flat, result)
+        _check_nem_export_rate(output, result)
+        _check_capex_scenario_a(output, result)
+        _check_true_variable_rate(output, flat, result)
 
     return result
 
@@ -159,6 +168,45 @@ def _check_scenario_b(output: dict, flat: str, result: ValidationResult) -> None
             f"Default to Scenario A (55,000 BDT/kW). "
             f"Hard-fail rule: scenario_b_without_nbr_confirmation"
         )
+
+
+def _check_nem_export_rate(output: dict, result: ValidationResult) -> None:
+    """Check NEM export rate matches ground truth (6.4523 BDT/kWh)."""
+    nem = _find_numeric(output, ["nem_export", "nem_rate", "export_rate"])
+    if nem is not None and abs(nem - NEM_EXPORT_RATE) > 0.1:
+        result.fail(
+            f"NEM export rate {nem} differs from ground truth {NEM_EXPORT_RATE} BDT/kWh. "
+            f"Hard-fail rule: wrong_nem_export_rate"
+        )
+
+
+def _check_capex_scenario_a(output: dict, result: ValidationResult) -> None:
+    """Check CAPEX Scenario A matches ground truth (55,000 BDT/kW)."""
+    capex = _find_numeric(output, ["capex", "capex_per_kw", "capital_expenditure"])
+    if capex is not None:
+        # Only check if it looks like a Scenario A value (within 20% of 55000)
+        if 40000 < capex < 70000 and abs(capex - CAPEX_PER_KW_SCENARIO_A) > 1000:
+            result.fail(
+                f"Scenario A CAPEX {capex} differs from ground truth {CAPEX_PER_KW_SCENARIO_A} BDT/kW. "
+                f"Hard-fail rule: wrong_capex_scenario_a"
+            )
+
+
+def _check_true_variable_rate(output: dict, flat: str, result: ValidationResult) -> None:
+    """Check that true variable rate (12.98) is used, not blended (14.81) for savings."""
+    # If savings are mentioned, verify the rate used is 12.98 not 14.81
+    savings_keywords = ["savings", "saving", "avoided cost", "cost reduction"]
+    if any(kw in flat.lower() for kw in savings_keywords):
+        # Check if blended rate appears near savings context
+        blended_near_savings = re.search(
+            r"(?:savings|saving|avoided).{0,100}14\.81", flat, re.IGNORECASE
+        )
+        if blended_near_savings:
+            result.fail(
+                f"Blended rate (14.81) used near savings context. "
+                f"Must use True Variable Rate (12.98) for savings calculations. "
+                f"Hard-fail rule: blended_rate_near_savings"
+            )
 
 
 def _find_numeric(d: dict[str, Any], keys: list[str]) -> float | None:

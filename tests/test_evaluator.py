@@ -73,6 +73,45 @@ class TestValidateOutput:
         result = validate_output(output, "AGT-EXEC-RSK", NETSO_FINANCIAL)
         assert not result.passed
 
+    def test_wrong_nem_export_rate_detected(self) -> None:
+        output = {"nem_export_rate": 8.0, "savings_pct": 23.0}
+        result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
+        assert not result.passed
+        assert any("nem" in v.lower() for v in result.violations)
+
+    def test_correct_nem_export_rate_passes(self) -> None:
+        output = {"nem_export_rate": 6.4523, "savings_pct": 23.0}
+        result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
+        assert result.passed
+
+    def test_wrong_capex_scenario_a_detected(self) -> None:
+        output = {"capex_per_kw": 50000, "savings_pct": 23.0}
+        result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
+        assert not result.passed
+        assert any("capex" in v.lower() for v in result.violations)
+
+    def test_correct_capex_scenario_a_passes(self) -> None:
+        output = {"capex_per_kw": 55000, "savings_pct": 23.0}
+        result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
+        assert result.passed
+
+    def test_blended_rate_near_savings_detected(self) -> None:
+        output = {
+            "analysis": "Customer savings of 23% based on blended rate 14.81 BDT/kWh",
+            "savings_pct": 23.0,
+        }
+        result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
+        assert not result.passed
+        assert any("blended" in v.lower() and "savings" in v.lower() for v in result.violations)
+
+    def test_true_variable_rate_near_savings_passes(self) -> None:
+        output = {
+            "analysis": "Customer savings of 23% based on true variable rate 12.98 BDT/kWh",
+            "savings_pct": 23.0,
+        }
+        result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
+        assert result.passed
+
 
 class TestValidateOutputPlanningVenture:
     """Financial checks are skipped when constants=None (planning ventures)."""
