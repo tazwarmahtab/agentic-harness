@@ -416,7 +416,7 @@ class AnthropicLLMClient:
 class NvidiaLLMClient:
     """Direct NVIDIA NIM API client (OpenAI-compatible endpoint).
 
-    Used for NVIDIA-hosted models (z-ai/glm-*, moonshotai/kimi-k*)
+    Used for NVIDIA-hosted models (stepfun/step-* and other nvidia/* IDs)
     when 9router is not configured as a pass-through proxy.
     Reads NIM key from NVIDIA_NIM_API_KEY env var.
     """
