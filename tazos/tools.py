@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
+import shlex
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -562,9 +564,24 @@ class ToolGateway:
     # Action executor — used by runtime.step_execute for real execution
     # ------------------------------------------------------------------
 
-    _SHELL_BLOCKED = frozenset([
-        "rm -rf /", "mkfs", "> /dev/", ":(){", "dd if=", "mv / ",
-    ])
+    _logger = logging.getLogger("tazos.tools")
+
+    _BLOCKED_PATTERNS = [
+        (re.compile(r"rm\s+(-[a-zA-Z]*\s+)*(--?\w+\s+)*\/"), "rm on root path"),
+        (re.compile(r"mkfs\b"), "filesystem formatting"),
+        (re.compile(r">\s*\/dev\/"), "write to /dev/"),
+        (re.compile(r":\(\)\s*\{"), "fork bomb"),
+        (re.compile(r"dd\s+if="), "dd disk operations"),
+        (re.compile(r"mv\s+.*\/\s"), "mv to root path"),
+        (re.compile(r"curl\s.*\|\s*(ba)?sh"), "curl pipe to shell"),
+        (re.compile(r"wget\s.*\|\s*(ba)?sh"), "wget pipe to shell"),
+        (re.compile(r"python[23]?\s+-c"), "python -c execution"),
+        (re.compile(r"chmod\s+(-[a-zA-Z]*\s+)*\/"), "chmod on root path"),
+        (re.compile(r"chown\s+(-[a-zA-Z]*\s+)*\/"), "chown on root path"),
+        (re.compile(r">\s*\/etc\/"), "write to /etc/"),
+        (re.compile(r"eval\s*\("), "eval() execution"),
+        (re.compile(r"exec\s*\("), "exec() execution"),
+    ]
 
     def execute(self, action: dict[str, Any]) -> dict[str, Any]:
         """Execute a concrete action dict and return real results.
@@ -593,15 +610,25 @@ class ToolGateway:
             return {"ok": False, "error": str(exc)}
 
     def _exec_shell(self, action: dict[str, Any]) -> dict[str, Any]:
-        """Run a shell command via subprocess with a safety blocklist."""
+        """Run a shell command via subprocess with regex-based safety blocklist."""
         command = action.get("command", "")
         if not command:
             return {"ok": False, "error": "No command provided"}
 
+        # Validate shell syntax is parseable
+        try:
+            shlex.split(command)
+        except ValueError:
+            return {"ok": False, "error": "Command contains unparseable shell syntax"}
+
+        # Check against blocked patterns
         cmd_lower = command.lower().strip()
-        for pattern in self._SHELL_BLOCKED:
-            if pattern in cmd_lower:
-                return {"ok": False, "error": f"Blocked dangerous command: {pattern!r}"}
+        for pattern, desc in self._BLOCKED_PATTERNS:
+            if pattern.search(cmd_lower):
+                self._logger.warning(
+                    "Shell command blocked (%s): %s", desc, command[:80]
+                )
+                return {"ok": False, "error": f"Blocked dangerous command: {desc}"}
 
         timeout = action.get("timeout", 30)
         try:

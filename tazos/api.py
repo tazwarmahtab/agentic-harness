@@ -9,6 +9,7 @@ Exposes:
 from __future__ import annotations
 
 import logging
+import os
 from datetime import date
 from pathlib import Path
 
@@ -29,6 +30,9 @@ app = FastAPI(
     version="0.1.0",
     description="Governance-first agentic operating system engine.",
 )
+
+# Token auth — if TAZOS_API_TOKEN env var is set, WebSocket requires it as ?token=
+TAZOS_API_TOKEN = os.getenv("TAZOS_API_TOKEN", "")
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +132,7 @@ def _build_infra(
     bundle: HarnessBundle,
     venture_root: Path | None = None,
 ) -> tuple[LLMClient, ToolGateway, MemoryStore | None, UsageTracker]:
-    """Construct infrastructure objects for graph execution."""
+    """Construct infrastructure objects for graph execution (live LLM)."""
     llm = create_llm_client(dry_run=False, verbose=False)
 
     # Memory store
@@ -203,6 +207,14 @@ async def harness_ws(
     """
     await websocket.accept()
 
+    # Token auth (if TAZOS_API_TOKEN is set)
+    if TAZOS_API_TOKEN:
+        token = websocket.query_params.get("token", "")
+        if token != TAZOS_API_TOKEN:
+            await websocket.send_json({"event": "error", "message": "Unauthorized"})
+            await websocket.close(code=4001)
+            return
+
     try:
         # --- Resolve bundle ---
         bundle, venture_id, harness_id = _resolve_bundle(
@@ -224,7 +236,7 @@ async def harness_ws(
             "venture": venture_id,
         })
 
-        # --- Build infrastructure (dry-run LLM) ---
+        # --- Build infrastructure (live LLM — gated by harness manifest) ---
         # Derive venture root from first harness artifact if available
         venture_root: Path | None = None
         if bundle.tools and bundle.tools.tools:

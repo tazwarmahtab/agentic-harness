@@ -554,3 +554,87 @@ class TestParseReviewOutput:
 
         assert counts["critical"] == 3
         assert counts["high"] == 2
+
+
+# ── Gate blocking (wait_for_decision) tests ──────────────────────
+
+
+class TestGateBlocking:
+    """Tests for the wait_for_decision mechanism that blocks on pending gates."""
+
+    def test_wait_for_decision_approve(self):
+        """wait_for_decision returns APPROVED when item is decided."""
+        with tempfile.TemporaryDirectory() as tmp:
+            queue_path = Path(tmp) / "queue.jsonl"
+            gm = GateManager(persistence_path=queue_path)
+
+            # Create a pending gate item
+            result = gm.check(Gate.SPEC, "Approve spec", {})
+            assert result.decision == GateDecision.SKIPPED
+            assert result.item_id is not None
+
+            # Approve it via the queue
+            gm._queue.decide(result.item_id, ApprovalDecision.APPROVE)
+
+            # wait_for_decision should immediately resolve
+            resolved = gm.wait_for_decision(result.item_id, Gate.SPEC, timeout_s=5, poll_interval=0.1)
+            assert resolved.decision == GateDecision.APPROVED
+
+    def test_wait_for_decision_reject(self):
+        """wait_for_decision returns REJECTED when item is rejected."""
+        with tempfile.TemporaryDirectory() as tmp:
+            queue_path = Path(tmp) / "queue.jsonl"
+            gm = GateManager(persistence_path=queue_path)
+
+            result = gm.check(Gate.PLAN, "Approve plan", {})
+            gm._queue.decide(result.item_id, ApprovalDecision.REJECT)
+
+            resolved = gm.wait_for_decision(result.item_id, Gate.PLAN, timeout_s=5, poll_interval=0.1)
+            assert resolved.decision == GateDecision.REJECTED
+
+    def test_wait_for_decision_timeout(self):
+        """wait_for_decision returns SKIPPED on timeout if no decision made."""
+        with tempfile.TemporaryDirectory() as tmp:
+            queue_path = Path(tmp) / "queue.jsonl"
+            gm = GateManager(persistence_path=queue_path)
+
+            result = gm.check(Gate.REVIEW, "Approve review", {})
+
+            # Don't decide — let it timeout
+            resolved = gm.wait_for_decision(result.item_id, Gate.REVIEW, timeout_s=0.5, poll_interval=0.1)
+            assert resolved.decision == GateDecision.SKIPPED
+
+    def test_pipeline_stops_on_gate_timeout(self):
+        """Pipeline returns 1 (stop) when a gate times out."""
+        mock_gates = MagicMock()
+        # First call returns SKIPPED (creates pending item)
+        mock_gates.check.return_value = GateResult(
+            gate=Gate.SPEC, decision=GateDecision.SKIPPED, item_id="GATE-001"
+        )
+        # wait_for_decision also times out
+        mock_gates.wait_for_decision.return_value = GateResult(
+            gate=Gate.SPEC, decision=GateDecision.SKIPPED, item_id="GATE-001"
+        )
+
+        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test")
+        pipeline = OrchestratePipeline(ctx, mock_gates)
+
+        rc = pipeline.run()
+        assert rc == 1  # stopped at spec gate timeout
+        mock_gates.wait_for_decision.assert_called_once()
+
+    def test_pipeline_continues_on_gate_approve(self):
+        """Pipeline continues when wait_for_decision returns APPROVED."""
+        mock_gates = MagicMock()
+        mock_gates.check.return_value = GateResult(
+            gate=Gate.SPEC, decision=GateDecision.SKIPPED, item_id="GATE-002"
+        )
+        mock_gates.wait_for_decision.return_value = GateResult(
+            gate=Gate.SPEC, decision=GateDecision.APPROVED, item_id="GATE-002"
+        )
+
+        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test")
+        pipeline = OrchestratePipeline(ctx, mock_gates)
+
+        rc = pipeline.run()
+        assert rc == 0  # continued past spec gate

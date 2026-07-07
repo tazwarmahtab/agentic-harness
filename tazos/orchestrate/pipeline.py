@@ -151,6 +151,14 @@ class OrchestratePipeline:
             if result.decision == GateDecision.REJECTED:
                 print("Spec rejected. Stopping pipeline.")
                 return 1
+            if result.decision == GateDecision.SKIPPED:
+                result = self.gates.wait_for_decision(result.item_id, Gate.SPEC)
+                if result.decision == GateDecision.REJECTED:
+                    print("Spec rejected. Stopping pipeline.")
+                    return 1
+                if result.decision == GateDecision.SKIPPED:
+                    print("Spec gate timed out. Stopping pipeline.")
+                    return 1
 
         # Phase 2: /autoplan
         if not self.ctx.skip_plan:
@@ -169,6 +177,14 @@ class OrchestratePipeline:
             if result.decision == GateDecision.REJECTED:
                 print("Plan rejected. Stopping pipeline.")
                 return 1
+            if result.decision == GateDecision.SKIPPED:
+                result = self.gates.wait_for_decision(result.item_id, Gate.PLAN)
+                if result.decision == GateDecision.REJECTED:
+                    print("Plan rejected. Stopping pipeline.")
+                    return 1
+                if result.decision == GateDecision.SKIPPED:
+                    print("Plan gate timed out. Stopping pipeline.")
+                    return 1
 
         # Phase 3: /implement
         if not self._run_implement():
@@ -191,6 +207,14 @@ class OrchestratePipeline:
             if result.decision == GateDecision.REJECTED:
                 print("Review gate rejected. Stopping pipeline.")
                 return 1
+            if result.decision == GateDecision.SKIPPED:
+                result = self.gates.wait_for_decision(result.item_id, Gate.REVIEW)
+                if result.decision == GateDecision.REJECTED:
+                    print("Review gate rejected. Stopping pipeline.")
+                    return 1
+                if result.decision == GateDecision.SKIPPED:
+                    print("Review gate timed out. Stopping pipeline.")
+                    return 1
 
         # Phase 5: /ship
         if not self._run_ship():
@@ -326,6 +350,7 @@ class OrchestratePipeline:
         # Execute each step via /orchestrate custom
         steps = self._decompose_plan(self.ctx.plan_path)
         all_passed = True
+        steps_passed = 0
         for step in steps:
             print(f"  Step {step['id']}: {step['title']}")
             print(f"    Chain: {step['chain']}")
@@ -350,12 +375,13 @@ class OrchestratePipeline:
                 print(f"    → Continuing with remaining steps...")
             else:
                 print(f"    ✓ Step {step['id']} passed")
+                steps_passed += 1
                 self.ctx.implement_artifacts.extend(step.get("artifacts", []))
 
         result.status = Status.PASSED if all_passed else Status.FAILED
         result.finished_at = datetime.now().isoformat()
         result.duration_s = self._duration(result)
-        result.outputs = {"steps_total": len(steps), "steps_passed": sum(1 for s in steps if True)}
+        result.outputs = {"steps_total": len(steps), "steps_passed": steps_passed}
         self.ctx.record(result)
         print()
         if all_passed:

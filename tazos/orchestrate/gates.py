@@ -9,6 +9,7 @@ Wraps the existing ApprovalQueue to provide phase-level gating:
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -147,6 +148,45 @@ class GateManager:
         """Check if a gate has been rejected."""
         result = self.resolve_pending(gate)
         return result is not None and result.decision == GateDecision.REJECTED
+
+    def wait_for_decision(
+        self,
+        item_id: str,
+        gate: Gate,
+        timeout_s: float = 300,
+        poll_interval: float = 2.0,
+    ) -> GateResult:
+        """Block until the pending gate item is decided or timeout.
+
+        Polls the approval queue for the item to transition from "pending"
+        to "decided". Prints status so the user knows we're waiting.
+
+        Returns GateResult with APPROVED/REJECTED if decided, SKIPPED on timeout.
+        """
+        deadline = time.monotonic() + timeout_s
+        print(f"\n  ⏳ Waiting for founder decision on {gate.value} gate ({item_id})...")
+        print(f"     Run: python -m tazos approvals approve {item_id}")
+        print(f"     Or:  python -m tazos approvals reject {item_id}")
+        print(f"     Timeout: {timeout_s:.0f}s\n")
+
+        while time.monotonic() < deadline:
+            resolved = self._queue.all()
+            for item in resolved:
+                if item.id == item_id and item.status == "decided":
+                    approved = item.decision == ApprovalDecision.APPROVE.value
+                    decision = GateDecision.APPROVED if approved else GateDecision.REJECTED
+                    print(f"  ✓ Gate {gate.value} {decision.value} by founder.")
+                    return GateResult(
+                        gate=gate,
+                        decision=decision,
+                        item_id=item.id,
+                        founder_note=item.founder_note,
+                        decided_at=item.decided_at,
+                    )
+            time.sleep(poll_interval)
+
+        print(f"  ⏰ Gate {gate.value} timed out after {timeout_s:.0f}s. Pipeline stopping.")
+        return GateResult(gate=gate, decision=GateDecision.SKIPPED, item_id=item_id)
 
     def _print_pending(self, item: ApprovalItem) -> None:
         print(f"\n{'='*60}")
