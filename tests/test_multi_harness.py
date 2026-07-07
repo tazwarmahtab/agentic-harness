@@ -1,6 +1,7 @@
 """Tests for TAZ OS multi-harness dispatch — Phase 9."""
 
 from __future__ import annotations
+import sys
 
 from pathlib import Path
 
@@ -124,7 +125,7 @@ class TestCLICrossHarness:
     def test_cli_run_finance_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--harness", "finance", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--harness", "finance", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -136,7 +137,7 @@ class TestCLICrossHarness:
     def test_cli_run_sales_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--harness", "sales", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--harness", "sales", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -147,7 +148,7 @@ class TestCLICrossHarness:
     def test_cli_run_operations_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--harness", "operations", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--harness", "operations", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -158,7 +159,7 @@ class TestCLICrossHarness:
     def test_cli_run_unknown_harness_fails(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--harness", "nonexistent", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--harness", "nonexistent", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

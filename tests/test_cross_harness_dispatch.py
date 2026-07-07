@@ -1,6 +1,7 @@
 """Tests for H4: Cross-harness dispatch — runtime agent resolution across bundles."""
 
 from __future__ import annotations
+import sys
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -173,7 +174,7 @@ class TestCLIMultiHarnessLoading:
     def test_dry_run_loads_multiple_harnesses(self):
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -184,7 +185,7 @@ class TestCLIMultiHarnessLoading:
     def test_dry_run_cross_harness_harness_loaded(self):
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

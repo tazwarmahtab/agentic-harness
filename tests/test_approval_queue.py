@@ -1,6 +1,7 @@
 """Tests for TAZ OS approval queue — interactive approval management."""
 
 from __future__ import annotations
+import sys
 
 import json
 import tempfile
@@ -147,7 +148,7 @@ class TestCLIApprovalCommands:
     def test_cli_has_approvals_command(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "approvals"],
+            [sys.executable, "-m", "tazos", "approvals"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -157,7 +158,7 @@ class TestCLIApprovalCommands:
     def test_cli_approvals_list(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "approvals", "list"],
+            [sys.executable, "-m", "tazos", "approvals", "list"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -167,7 +168,7 @@ class TestCLIApprovalCommands:
     def test_cli_approvals_approve_all(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "approvals", "approve-all", "--note", "batch approve"],
+            [sys.executable, "-m", "tazos", "approvals", "approve-all", "--note", "batch approve"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

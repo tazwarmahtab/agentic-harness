@@ -1,6 +1,7 @@
 """Tests for TAZ OS Legal Harness — Phase 12."""
 
 from __future__ import annotations
+import sys
 
 from pathlib import Path
 
@@ -210,7 +211,7 @@ class TestCLILegalHarness:
     def test_cli_run_legal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--harness", "legal", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--harness", "legal", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -221,7 +222,7 @@ class TestCLILegalHarness:
     def test_cli_validate_legal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "validate", "--harness", "legal"],
+            [sys.executable, "-m", "tazos", "validate", "--harness", "legal"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

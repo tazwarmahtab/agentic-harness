@@ -1,6 +1,7 @@
 """Tests for TAZ OS Personal Harness — Phase 15."""
 
 from __future__ import annotations
+import sys
 
 from pathlib import Path
 
@@ -172,7 +173,7 @@ class TestCLIPersonalHarness:
     def test_cli_run_personal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--harness", "personal", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--harness", "personal", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -183,7 +184,7 @@ class TestCLIPersonalHarness:
     def test_cli_validate_personal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "validate", "--harness", "personal"],
+            [sys.executable, "-m", "tazos", "validate", "--harness", "personal"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

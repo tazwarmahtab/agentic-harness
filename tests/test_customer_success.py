@@ -1,6 +1,7 @@
 """Tests for TAZ OS Customer Success Harness — Phase 13."""
 
 from __future__ import annotations
+import sys
 
 from pathlib import Path
 
@@ -171,7 +172,7 @@ class TestCLICustomerSuccess:
     def test_cli_run_cs_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--harness", "customer_success", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--harness", "customer_success", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -182,7 +183,7 @@ class TestCLICustomerSuccess:
     def test_cli_validate_cs_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "validate", "--harness", "customer_success"],
+            [sys.executable, "-m", "tazos", "validate", "--harness", "customer_success"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

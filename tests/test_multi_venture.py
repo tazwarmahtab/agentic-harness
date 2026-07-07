@@ -1,6 +1,7 @@
 """Tests for TAZ OS multi-venture support."""
 
 from __future__ import annotations
+import sys
 
 import tempfile
 from pathlib import Path
@@ -110,7 +111,7 @@ class TestCLIMultiVenture:
         """CLI should have a 'ventures' subcommand."""
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "ventures"],
+            [sys.executable, "-m", "tazos", "ventures"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -122,7 +123,7 @@ class TestCLIMultiVenture:
         """CLI should accept --venture flag."""
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -133,7 +134,7 @@ class TestCLIMultiVenture:
         """CLI should fail gracefully with unknown venture."""
         import subprocess
         result = subprocess.run(
-            ["python3", "-m", "tazos", "run", "--venture", "nonexistent", "--dry-run"],
+            [sys.executable, "-m", "tazos", "run", "--venture", "nonexistent", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
