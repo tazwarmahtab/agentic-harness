@@ -165,3 +165,83 @@ class TestCLICrossHarness:
         )
         assert result.returncode != 0
         assert "not found" in result.stderr.lower() or "not found" in result.stdout.lower()
+
+
+# ── Cross-bundle resolution tests ─────────────────────────────────────
+
+
+class TestCrossBundleResolution:
+    """Tests for Registry.resolve_agent() and find_bundle_for_agent()."""
+
+    def _build_multi_bundle_registry(self) -> Registry:
+        """Load executive + finance + sales harnesses into one registry."""
+        root = Path("tazos/harnesses")
+        registry = Registry()
+        for name in ("executive", "finance", "sales"):
+            harness_dir = root / name
+            if harness_dir.exists() and (harness_dir / "harness.yml").exists():
+                r = load_registry(harness_dir)
+                for hid, bundle in r.harnesses.items():
+                    registry.harnesses[hid] = bundle
+        return registry
+
+    def test_resolve_agent_local_bundle(self) -> None:
+        """resolve_agent finds agent in the local (executive) bundle."""
+        registry = self._build_multi_bundle_registry()
+        result = registry.resolve_agent("AGT-EXEC-COO")
+        assert result is not None
+        agent, bundle = result
+        assert agent.id == "AGT-EXEC-COO"
+        assert bundle.harness.id == "HAR-EXEC-001"
+
+    def test_resolve_agent_cross_harness(self) -> None:
+        """resolve_agent finds agent from finance bundle when called from multi-bundle registry."""
+        registry = self._build_multi_bundle_registry()
+        result = registry.resolve_agent("AGT-FIN-UNIT")
+        assert result is not None
+        agent, bundle = result
+        assert agent.id == "AGT-FIN-UNIT"
+        assert bundle.harness.id == "HAR-FIN-001"
+
+    def test_resolve_agent_sales_bundle(self) -> None:
+        """resolve_agent finds agent from sales bundle."""
+        registry = self._build_multi_bundle_registry()
+        result = registry.resolve_agent("AGT-SAL-PROP")
+        assert result is not None
+        agent, bundle = result
+        assert agent.id == "AGT-SAL-PROP"
+        assert bundle.harness.id == "HAR-SAL-001"
+
+    def test_resolve_agent_not_found(self) -> None:
+        """resolve_agent returns None for nonexistent agent."""
+        registry = self._build_multi_bundle_registry()
+        result = registry.resolve_agent("AGT-NONEXISTENT")
+        assert result is None
+
+    def test_find_bundle_for_agent_local(self) -> None:
+        """find_bundle_for_agent returns correct bundle for executive agent."""
+        registry = self._build_multi_bundle_registry()
+        bundle = registry.find_bundle_for_agent("AGT-EXEC-COO")
+        assert bundle is not None
+        assert bundle.harness.id == "HAR-EXEC-001"
+
+    def test_find_bundle_for_agent_cross_harness(self) -> None:
+        """find_bundle_for_agent returns finance bundle for finance agent."""
+        registry = self._build_multi_bundle_registry()
+        bundle = registry.find_bundle_for_agent("AGT-FIN-UNIT")
+        assert bundle is not None
+        assert bundle.harness.id == "HAR-FIN-001"
+
+    def test_find_bundle_for_agent_not_found(self) -> None:
+        """find_bundle_for_agent returns None for nonexistent agent."""
+        registry = self._build_multi_bundle_registry()
+        bundle = registry.find_bundle_for_agent("AGT-GHOST")
+        assert bundle is None
+
+    def test_all_agents_includes_cross_harness(self) -> None:
+        """all_agents() returns agents from all loaded bundles."""
+        registry = self._build_multi_bundle_registry()
+        all_agent_ids = [a.id for a in registry.all_agents()]
+        # Should have agents from at least 2 harnesses
+        assert any(aid.startswith("AGT-EXEC-") for aid in all_agent_ids)
+        assert any(aid.startswith("AGT-FIN-") for aid in all_agent_ids)

@@ -45,17 +45,20 @@ class BaselineEvaluator:
         self.memory = memory
         self.tracker = UsageTracker()
 
-    def evaluate(self, agent_id: str, output: dict[str, Any], model: str = "sonnet") -> EvalResult:
+    def evaluate(self, agent_id: str, output: dict[str, Any], model: str = "sonnet", constants: dict | None = None) -> EvalResult:
         start = time.monotonic()
-        validation = validate_output(output, agent_id)
+        validation = validate_output(output, agent_id, constants)
         usage = self.llm.usage() if hasattr(self.llm, "usage") else {}
         elapsed = int((time.monotonic() - start) * 1000)
+
+        # When no constants, financial checks were skipped — mark as not applicable
+        financial_acc = None if constants is None else validation.passed
 
         return EvalResult(
             harness_id="eval",
             cycle_id=f"eval-{agent_id}",
             status="error" if not validation.passed and validation.violations else "pass",
-            financial_accuracy=validation.passed,
+            financial_accuracy=financial_acc,
             financial_violations=validation.violations,
             tokens_prompt=usage.get("prompt_tokens", 0),
             tokens_completion=usage.get("completion_tokens", 0),
@@ -63,19 +66,22 @@ class BaselineEvaluator:
             output_keys=list(output.keys()),
         )
 
-    def report(self, results: list[EvalResult]) -> dict[str, Any]:
+    def report(self, results: list[EvalResult], has_financial_constants: bool = True) -> dict[str, Any]:
         total = len(results)
         acc = [r for r in results if r.financial_accuracy is not None]
         rate = sum(1 for r in acc if r.financial_accuracy) / max(len(acc), 1)
         total_tokens = sum(r.tokens_prompt + r.tokens_completion for r in results)
         by_status: Counter = Counter(r.status for r in results)
-        return {
+        report: dict[str, Any] = {
             "total_runs": total,
-            "financial_accuracy_rate": round(rate, 4),
+            "financial_accuracy_rate": round(rate, 4) if has_financial_constants else None,
             "total_tokens": total_tokens,
             "by_status": dict(by_status),
             "violations": [v for r in results for v in r.financial_violations],
         }
+        if not has_financial_constants:
+            report["financial_note"] = "Skipped: venture has no financial constants"
+        return report
 
 
 def main() -> int:

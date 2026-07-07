@@ -54,7 +54,8 @@ def validate_output(
 ) -> ValidationResult:
     """Validate agent output against ground truth.
 
-    Financial checks only apply to CFO and Risk agents.
+    Financial checks only apply to CFO and Risk agents when constants are provided.
+    Pass constants=NETSO_FINANCIAL for Netso, None to skip financial checks (e.g. planning ventures).
     Structural checks apply to all agents.
     """
     result = ValidationResult()
@@ -69,8 +70,8 @@ def validate_output(
     # Flatten output for pattern matching
     flat = _flatten_for_matching(output)
 
-    # Financial checks — only for financial agents
-    if agent_id in _FINANCIAL_AGENTS:
+    # Financial checks — only for financial agents with constants
+    if agent_id in _FINANCIAL_AGENTS and constants is not None:
         _check_blended_rate(flat, result)
         _check_savings_pct(output, result)
         _check_dscr(output, result)

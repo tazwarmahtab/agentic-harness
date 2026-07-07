@@ -59,6 +59,25 @@ class Registry:
                 return bundle.specialists[agent_id]
         return None
 
+    def resolve_agent(self, agent_id: str) -> tuple[Agent, HarnessBundle] | None:
+        """Resolve an agent ID to its Agent object and the bundle it belongs to.
+
+        Returns (agent, bundle) tuple for cross-harness dispatch, or None if not found.
+        """
+        for bundle in self.harnesses.values():
+            if bundle.planner and bundle.planner.id == agent_id:
+                return bundle.planner, bundle
+            if bundle.dispatcher and bundle.dispatcher.id == agent_id:
+                return bundle.dispatcher, bundle
+            if agent_id in bundle.specialists:
+                return bundle.specialists[agent_id], bundle
+        return None
+
+    def find_bundle_for_agent(self, agent_id: str) -> HarnessBundle | None:
+        """Find which bundle contains a given agent."""
+        result = self.resolve_agent(agent_id)
+        return result[1] if result else None
+
     def all_agents(self) -> list[Agent]:
         agents = []
         for bundle in self.harnesses.values():

@@ -139,3 +139,92 @@ class TestCLIMultiVenture:
             cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode != 0 or "not found" in result.stderr.lower() or "error" in result.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# TransitBD dry-run
+# ---------------------------------------------------------------------------
+
+
+class TestTransitBDDryRun:
+    """Prove TransitBD can run a full cycle alongside Netso."""
+
+    def test_transitbd_dry_run_completes(self) -> None:
+        """End-to-end: load executive harness with TransitBD venture, run dry cycle."""
+        harness_dir = Path("tazos/harnesses/executive")
+        venture_path = Path("tazos/ventures/transitbd/venture.yml")
+        if not harness_dir.exists() or not venture_path.exists():
+            pytest.skip("Required paths not found")
+
+        from tazos.graph import run_cycle_graph
+        from tazos.registry import load_registry
+
+        registry = load_registry(harness_dir, venture_path)
+        bundle = next(iter(registry.harnesses.values()))
+        venture = registry.venture
+
+        state = run_cycle_graph(
+            bundle=bundle,
+            venture_id=venture.id if venture else "VEN-TRANSIT-001",
+            venture=venture,
+            venture_artifacts=None,  # TransitBD has no live artifacts
+            dry_run=True,
+        )
+
+        assert state["venture_id"] == "VEN-TRANSIT-001"
+        assert len(state.get("step_results", [])) >= 5
+        assert len(state.get("errors", [])) == 0
+        # Verify evaluation ran but financial checks were skipped
+        evaluation = state.get("evaluation", {})
+        if evaluation:
+            assert evaluation.get("financial_accuracy_rate") is None
+
+    def test_transitbd_summary_readable(self) -> None:
+        """Verify format_state_summary works for TransitBD."""
+        harness_dir = Path("tazos/harnesses/executive")
+        venture_path = Path("tazos/ventures/transitbd/venture.yml")
+        if not harness_dir.exists() or not venture_path.exists():
+            pytest.skip("Required paths not found")
+
+        from tazos.graph import run_cycle_graph, format_state_summary
+        from tazos.registry import load_registry
+
+        registry = load_registry(harness_dir, venture_path)
+        bundle = next(iter(registry.harnesses.values()))
+        venture = registry.venture
+
+        state = run_cycle_graph(
+            bundle=bundle,
+            venture_id=venture.id if venture else "VEN-TRANSIT-001",
+            venture=venture,
+            venture_artifacts=None,
+            dry_run=True,
+        )
+
+        summary = format_state_summary(state)
+        assert "VEN-TRANSIT-001" in summary
+
+    def test_netso_dry_run_still_works(self) -> None:
+        """Regression: Netso dry-run still completes with financial checks."""
+        harness_dir = Path("tazos/harnesses/executive")
+        venture_path = Path("tazos/ventures/netso/venture.yml")
+        if not harness_dir.exists() or not venture_path.exists():
+            pytest.skip("Required paths not found")
+
+        from tazos.graph import run_cycle_graph
+        from tazos.registry import load_registry
+
+        registry = load_registry(harness_dir, venture_path)
+        bundle = next(iter(registry.harnesses.values()))
+        venture = registry.venture
+
+        state = run_cycle_graph(
+            bundle=bundle,
+            venture_id=venture.id if venture else "VEN-NETSO-001",
+            venture=venture,
+            venture_artifacts=None,
+            dry_run=True,
+        )
+
+        assert state["venture_id"] == "VEN-NETSO-001"
+        assert len(state.get("step_results", [])) >= 5

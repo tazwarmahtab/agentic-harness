@@ -148,11 +148,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         print("ERROR: No harnesses found in registry")
         return 1
 
-    # We cannot reliably rely on 'harness_name' mapping strictly inside the single venture run
-    # due to path resolution in `run_from_path`, so for the test/run context we just pull
-    # the only one that was loaded from `harness_dir`
-    bundle = next(iter(registry.harnesses.values()))
+    # Load sibling harnesses for cross-harness dispatch (H4)
+    harnesses_root = harness_dir.parent
+    if harnesses_root.exists():
+        for sibling in harnesses_root.iterdir():
+            if sibling.is_dir() and sibling != harness_dir and (sibling / "harness.yml").exists():
+                sibling_registry = load_registry(sibling, vp)
+                for hid, bundle in sibling_registry.harnesses.items():
+                    if hid not in registry.harnesses:
+                        registry.harnesses[hid] = bundle
 
+    # Select the primary bundle by name
+    bundle = registry.harnesses.get(
+        next(iter(registry.harnesses.keys()))
+        if harness_name not in registry.harnesses
+        else harness_name
+    )
     if not bundle:
         bundle = next(iter(registry.harnesses.values()))
 
@@ -172,8 +183,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         bundle=bundle,
         venture_id=venture_id,
         venture_artifacts=venture_artifacts or None,
+        venture=registry.venture,
         dry_run=args.dry_run,
         verbose=args.verbose,
+        registry=registry,  # H4: cross-harness dispatch
     )
 
     print(format_state_summary(state))

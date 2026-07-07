@@ -235,7 +235,7 @@ class OrchestratePipeline:
             return True
 
         # Invoke /spec via the skill system
-        rc, _stdout = self._invoke_skill("spec", self.ctx.one_liner)
+        rc, _stdout, _stderr = self._invoke_skill("spec", self.ctx.one_liner)
         if rc != 0:
             result.status = Status.FAILED
             result.error = f"/spec exited with code {rc}"
@@ -277,7 +277,7 @@ class OrchestratePipeline:
             self.ctx.record(result)
             return True
 
-        rc, _stdout = self._invoke_skill("autoplan", str(self.ctx.plan_path))
+        rc, _stdout, _stderr = self._invoke_skill("autoplan", str(self.ctx.plan_path))
         if rc != 0:
             result.status = Status.FAILED
             result.error = f"/autoplan exited with code {rc}"
@@ -335,7 +335,7 @@ class OrchestratePipeline:
             task_str = step["task"]
             cmd = f'/orchestrate custom "{chain_str}" "{task_str}"'
 
-            rc, _stdout = self._invoke_skill("orchestrate", f"custom {cmd}")
+            rc, _stdout, _stderr = self._invoke_skill("orchestrate", f"custom {cmd}")
             if rc != 0:
                 print(f"    ✗ Step {step['id']} failed (exit {rc})")
                 all_passed = False
@@ -390,21 +390,12 @@ class OrchestratePipeline:
             print(f"  --- Iteration {iteration}/{self.ctx.max_review_iterations} ---")
 
             # Run /review and parse findings from stdout
-            rc, stdout = self._invoke_skill("review", "")
+            rc, stdout, _stderr = self._invoke_skill("review", "")
             if rc != 0:
                 print(f"  /review returned exit code {rc}")
 
-            # Parse severity counts from review output
-            iteration_findings = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-            for line in stdout.lower().split("\n"):
-                if "critical" in line:
-                    iteration_findings["critical"] += 1
-                elif "high" in line:
-                    iteration_findings["high"] += 1
-                elif "medium" in line:
-                    iteration_findings["medium"] += 1
-                elif "low" in line or "note" in line:
-                    iteration_findings["low"] += 1
+            # Parse severity counts using structured regex patterns
+            iteration_findings = self._parse_review_output(stdout)
             for severity, count in iteration_findings.items():
                 findings_summary[severity] = findings_summary.get(severity, 0) + count
 
@@ -461,7 +452,7 @@ class OrchestratePipeline:
             self.ctx.record(result)
             return True
 
-        rc, _stdout = self._invoke_skill("ship", "")
+        rc, _stdout, _stderr = self._invoke_skill("ship", "")
         if rc != 0:
             result.status = Status.FAILED
             result.error = f"/ship exited with code {rc}"
@@ -642,13 +633,15 @@ class OrchestratePipeline:
         plan_path = self.ctx.plan_path or Path(".gstack") / "plans" / f"orchestrate-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
         return f"/spec {self.ctx.one_liner} --plan-file {plan_path}"
 
-    def _invoke_skill(self, skill: str, args: str) -> tuple[int, str]:
-        """Invoke a gstack skill via claude CLI. Returns (exit_code, stdout).
+    def _invoke_skill(self, skill: str, args: str) -> tuple[int, str, str]:
+        """Invoke a gstack skill via claude CLI. Returns (exit_code, stdout, stderr).
 
         Uses `claude -p` to invoke slash commands as Claude Code skills.
-        The skill prompt is sent as the full message to the CLI.
+        Retries up to 2 times on timeout or transient errors with
+        exponential backoff (5s, 15s).
         """
         import subprocess
+        import time
 
         skill_map = {
             "spec": "/spec",
@@ -664,28 +657,66 @@ class OrchestratePipeline:
 
         print(f"  → Invoking: claude -p \"{prompt[:80]}...\"")
 
-        try:
-            result = subprocess.run(
-                ["claude", "-p", prompt],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=600,  # 10 minute timeout per skill invocation
-                cwd=str(self.ctx.project_root),
-            )
+        max_retries = 2
+        backoff_seconds = [5, 15]
 
-            if result.returncode != 0:
-                stderr_preview = result.stderr[:200] if result.stderr else ""
-                print(f"  ✗ Skill '{skill}' exited with code {result.returncode}: {stderr_preview}")
+        for attempt in range(1 + max_retries):
+            try:
+                result = subprocess.run(
+                    ["claude", "-p", prompt],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=600,  # 10 minute timeout per skill invocation
+                    cwd=str(self.ctx.project_root),
+                )
 
-            return result.returncode, result.stdout
+                if result.returncode != 0:
+                    stderr_preview = result.stderr[:200] if result.stderr else ""
+                    print(f"  ✗ Skill '{skill}' exited with code {result.returncode}: {stderr_preview}")
 
-        except FileNotFoundError:
-            print(f"  ⚠ 'claude' CLI not found in PATH. Skipping skill '{skill}'.")
-            return 1, ""
-        except subprocess.TimeoutExpired:
-            print(f"  ✗ Skill '{skill}' timed out after 600s.")
-            return 124, ""
+                return result.returncode, result.stdout, result.stderr
+
+            except FileNotFoundError:
+                print(f"  ⚠ 'claude' CLI not found in PATH. Skipping skill '{skill}'.")
+                return 1, "", ""
+            except subprocess.TimeoutExpired:
+                if attempt < max_retries:
+                    wait = backoff_seconds[attempt]
+                    print(f"  ⏳ Skill '{skill}' timed out (attempt {attempt + 1}/{1 + max_retries}). Retrying in {wait}s...")
+                    time.sleep(wait)
+                else:
+                    print(f"  ✗ Skill '{skill}' timed out after {1 + max_retries} attempts.")
+                    return 124, "", ""
+
+        # Unreachable but satisfies type checker
+        return 1, "", ""
+
+    @staticmethod
+    def _parse_review_output(stdout: str) -> dict[str, int]:
+        """Parse review output for severity counts.
+
+        Uses regex to match structured severity markers rather than
+        naive substring matching, reducing false positives.
+        """
+        import re
+
+        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+
+        # Match structured markers: [CRITICAL], severity: high, level: medium, etc.
+        patterns = {
+            "critical": re.compile(r"(?:\[CRITICAL\]|severity:\s*critical|level:\s*critical)", re.IGNORECASE),
+            "high": re.compile(r"(?:\[HIGH\]|severity:\s*high|level:\s*high)", re.IGNORECASE),
+            "medium": re.compile(r"(?:\[MEDIUM\]|severity:\s*medium|level:\s*medium)", re.IGNORECASE),
+            "low": re.compile(r"(?:\[LOW\]|\[NOTE\]|severity:\s*low|level:\s*low)", re.IGNORECASE),
+        }
+
+        for line in stdout.split("\n"):
+            for severity, pattern in patterns.items():
+                if pattern.search(line):
+                    counts[severity] += 1
+
+        return counts
 
     def _prompt_continue_or_abort(self, step_id: int) -> str:
         """Prompt user to continue or abort after step failure."""

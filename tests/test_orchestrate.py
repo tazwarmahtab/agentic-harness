@@ -400,3 +400,157 @@ Add unit tests for the auth flow.
         assert step["task"].startswith("[Plan:")
         assert "step-1" in step["task"]
         assert step["id"] == 1
+
+
+# ── FIX-06: _invoke_skill + _parse_review_output tests ────────────────
+
+
+class TestInvokeSkill:
+    """Tests for _invoke_skill hardened subprocess invocation."""
+
+    def test_invoke_skill_returns_three_tuple(self):
+        """_invoke_skill should return (exit_code, stdout, stderr)."""
+        ctx = PipelineContext(project_root=Path("/tmp"))
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "done"
+        mock_result.stderr = ""
+
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            rc, stdout, stderr = pipeline._invoke_skill("spec", "test input")
+
+            assert rc == 0
+            assert stdout == "done"
+            assert stderr == ""
+            mock_run.assert_called_once()
+            args = mock_run.call_args
+            assert args[0][0] == ["claude", "-p", "/spec test input"]
+
+    def test_invoke_skill_handles_file_not_found(self):
+        """_invoke_skill should handle missing claude CLI gracefully."""
+        ctx = PipelineContext(project_root=Path("/tmp"))
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            rc, stdout, stderr = pipeline._invoke_skill("review", "")
+
+            assert rc == 1
+            assert stdout == ""
+            assert stderr == ""
+
+    def test_invoke_skill_handles_timeout_with_retry(self):
+        """_invoke_skill should retry on timeout then return 124."""
+        import subprocess as sp
+
+        ctx = PipelineContext(project_root=Path("/tmp"))
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        timeout_error = sp.TimeoutExpired(cmd=["claude"], timeout=600)
+
+        with patch("subprocess.run", side_effect=timeout_error) as mock_run, \
+             patch("time.sleep"):
+            rc, stdout, stderr = pipeline._invoke_skill("review", "")
+
+            assert rc == 124
+            assert stdout == ""
+            # 1 initial + 2 retries = 3 calls
+            assert mock_run.call_count == 3
+
+    def test_invoke_skill_retries_on_transient_error(self):
+        """_invoke_skill should retry on timeout then succeed."""
+        import subprocess as sp
+
+        ctx = PipelineContext(project_root=Path("/tmp"))
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        timeout_error = sp.TimeoutExpired(cmd=["claude"], timeout=600)
+        success = MagicMock(returncode=0, stdout="ok", stderr="")
+
+        with patch("subprocess.run", side_effect=[timeout_error, success]) as mock_run, \
+             patch("time.sleep"):
+            rc, stdout, stderr = pipeline._invoke_skill("spec", "hello")
+
+            assert rc == 0
+            assert stdout == "ok"
+            assert mock_run.call_count == 2
+
+    def test_invoke_skill_passes_correct_cwd(self):
+        """_invoke_skill should use project_root as cwd."""
+        ctx = PipelineContext(project_root=Path("/workspace"))
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        mock_result = MagicMock(returncode=0, stdout="", stderr="")
+        with patch("subprocess.run", return_value=mock_result) as mock_run:
+            pipeline._invoke_skill("ship", "")
+
+            cwd = mock_run.call_args.kwargs.get("cwd") or mock_run.call_args[1].get("cwd")
+            assert cwd == "/workspace"
+
+
+class TestParseReviewOutput:
+    """Tests for _parse_review_output structured severity parsing."""
+
+    def test_parse_structured_markers(self):
+        """Should count [CRITICAL], [HIGH], [MEDIUM], [LOW] markers."""
+        stdout = (
+            "Line 1: [CRITICAL] SQL injection vulnerability found\n"
+            "Line 2: [HIGH] Missing input validation\n"
+            "Line 3: [MEDIUM] Inconsistent error handling\n"
+            "Line 4: [LOW] Deprecated API usage\n"
+            "Line 5: [NOTE] Consider adding logging\n"
+        )
+        counts = OrchestratePipeline._parse_review_output(stdout)
+
+        assert counts["critical"] == 1
+        assert counts["high"] == 1
+        assert counts["medium"] == 1
+        assert counts["low"] == 2  # [LOW] + [NOTE]
+
+    def test_parse_severity_colon_format(self):
+        """Should match severity: level and level: level formats."""
+        stdout = (
+            "severity: critical — no auth check\n"
+            "Level: high — XSS vulnerability\n"
+            "severity: medium — verbose errors\n"
+        )
+        counts = OrchestratePipeline._parse_review_output(stdout)
+
+        assert counts["critical"] == 1
+        assert counts["high"] == 1
+        assert counts["medium"] == 1
+        assert counts["low"] == 0
+
+    def test_parse_no_false_positives(self):
+        """Should not match 'critical' in prose context."""
+        stdout = (
+            "This is a critical review of the codebase.\n"
+            "The high-level architecture looks good.\n"
+            "A medium priority item was noted.\n"
+        )
+        counts = OrchestratePipeline._parse_review_output(stdout)
+
+        assert counts["critical"] == 0
+        assert counts["high"] == 0
+        assert counts["medium"] == 0
+        assert counts["low"] == 0
+
+    def test_parse_empty_output(self):
+        """Empty string should return all zeros."""
+        counts = OrchestratePipeline._parse_review_output("")
+        assert counts == {"critical": 0, "high": 0, "medium": 0, "low": 0}
+
+    def test_parse_multiple_findings_per_severity(self):
+        """Should count multiple findings of the same severity."""
+        stdout = (
+            "[CRITICAL] Finding 1\n"
+            "[CRITICAL] Finding 2\n"
+            "[CRITICAL] Finding 3\n"
+            "[HIGH] Finding A\n"
+            "[HIGH] Finding B\n"
+        )
+        counts = OrchestratePipeline._parse_review_output(stdout)
+
+        assert counts["critical"] == 3
+        assert counts["high"] == 2
