@@ -1,0 +1,87 @@
+# TAZ OS LEGAL HARNESS — Shared Memory
+
+id: MEM-LEG-001
+name: Legal Harness Shared Memory
+harness: HAR-LEG-001
+version: 1.0.0
+
+layers:
+  long_term:
+    contract_templates:
+      description: "NDA, LOI, PPA, EPC contract templates"
+      classification: internal
+    regulatory_calendar:
+      description: "SREDA, IDCOL, NBR filing deadlines and requirements"
+      classification: internal
+    compliance_standards:
+      description: "Bangladesh solar regulations, BOO/OPEX legal framework"
+      classification: internal
+    ground_truth_constants:
+      ref: ground_truth_constants
+      description: "PPA rate, escalation terms, financial constants for contracts"
+      classification: confidential
+
+  episodic:
+    contract_reviews:
+      description: "All contracts reviewed with redline history"
+      write_access: [AGT-LEG-REV]
+      classification: confidential
+    nda_log:
+      description: "Active NDAs with parties, expiry dates, scope"
+      write_access: [AGT-LEG-NDA]
+      classification: internal
+    regulatory_filings:
+      description: "SREDA/IDCOL/NBR submission history and status"
+      write_access: [AGT-LEG-COMP]
+      classification: internal
+    ppa_negotiations:
+      description: "PPA negotiation history and terms"
+      write_access: [AGT-LEG-PPA]
+      classification: confidential
+
+  semantic:
+    bangladesh_solar_regulations:
+      description: "REB, SREDA, IDCOL regulatory requirements"
+      classification: internal
+    contract_redline_rules:
+      description: "Standard redline positions and acceptable deviations"
+      classification: internal
+    ppa_standards:
+      description: "Standard PPA terms: BDT 10.00/kWh, 3% triennial escalation"
+      classification: confidential
+    approval_rules:
+      ref: approvals.yml
+      description: "When contracts need founder approval"
+      classification: internal
+
+permissions:
+  AGT-LEG-COMP:
+    read: [regulatory_calendar, compliance_standards, regulatory_filings]
+    write: [regulatory_filings]
+    cannot_read: [founder_personal_notes, raw_financial_models]
+
+  AGT-LEG-REV:
+    read: [contract_templates, ground_truth_constants, contract_reviews]
+    write: [contract_reviews]
+    cannot_read: [founder_personal_notes, cap_table]
+
+  AGT-LEG-LOI:
+    read: [contract_templates, ground_truth_constants, ppa_standards]
+    write: [contract_reviews]
+    cannot_read: [founder_personal_notes, investor_correspondence]
+
+  AGT-LEG-NDA:
+    read: [contract_templates, nda_log]
+    write: [nda_log, contract_reviews]
+    cannot_read: [founder_personal_notes, financial_models]
+
+  AGT-LEG-PPA:
+    read: [contract_templates, ground_truth_constants, ppa_standards, ppa_negotiations]
+    write: [ppa_negotiations, contract_reviews]
+    cannot_read: [founder_personal_notes, cap_table]
+
+update_rules:
+  agents_submit_memory_candidates: true
+  reflection_engine_decides: [store, reject, summarize, merge, version]
+  purpose: "Prevent memory pollution."
+  audit: "every memory write creates immutable audit record"

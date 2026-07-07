@@ -1,0 +1,45 @@
+# SOP-PER-001 — Daily Planning
+# Owner: AGT-PER-TASK
+# Frequency: Daily, triggered at 08:00 BDT
+# Purpose: Start the day with clear priorities and time blocks
+
+id: SOP-PER-001
+name: Daily Planning
+owner: AGT-PER-TASK
+version: 1.0.0
+trigger: daily_08:00_BDT
+
+phase_1_review:
+  owner: AGT-PER-TASK
+  actions:
+    - read: yesterday_task_log for incomplete items
+    - read: calendar_events for today
+    - read: goals for weekly progress context
+    - output: context_summary
+
+phase_2_plan:
+  owner: AGT-PER-TASK
+  actions:
+    - identify: top 3 priorities (max 3 P0s)
+    - block: deep work time (min 4 hours)
+    - schedule: meetings and admin tasks
+    - estimate: time for each task
+    - output: daily_plan
+
+phase_3_protect:
+  owner: AGT-PER-TASK
+  actions:
+    - guard: deep work blocks from interruption
+    - batch: similar tasks together
+    - defer: non-urgent items to tomorrow
+    - output: protected_schedule
+
+brief_format: |
+  Today's focus:
+  1. [Highest-leverage priority]
+  2. [Second priority]
+  3. [Third priority]
+
+  Deep work blocks: [N] hours scheduled
+  Meetings: [list]
+  Admin: [batched items]

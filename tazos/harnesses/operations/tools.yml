@@ -1,0 +1,81 @@
+# TAZ OS OPERATIONS HARNESS — Tools
+
+id: TOL-OPS-001
+name: Operations Harness Tool Registry
+harness: HAR-OPS-001
+version: 1.0.0
+
+tools:
+  - id: TOL-OPS-001
+    name: File Read
+    capability: read_file
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [AGT-OPS-SITE, AGT-OPS-PROC, AGT-OPS-INST]
+    inputs:
+      required: [path]
+    outputs: [content]
+
+  - id: TOL-OPS-002
+    name: File Write
+    capability: write_file
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-OPS-SITE, AGT-OPS-PROC, AGT-OPS-INST]
+    inputs:
+      required: [path, content]
+    outputs: [status]
+
+  - id: TOL-OPS-003
+    name: Procurement Tracker
+    capability: track_procurement
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-OPS-PROC]
+    inputs:
+      required: [po_id, item, supplier, value]
+    outputs: [status, tracking_id]
+
+  - id: TOL-OPS-004
+    name: Approval Request
+    capability: request_approval
+    category: governance
+    version: 1.0.0
+    status: registered
+    permissions:
+      execute: [AGT-OPS-SITE, AGT-OPS-PROC, AGT-OPS-INST]
+    inputs:
+      required: [action, rationale, risk_assessment]
+    outputs: [approval_id, status, queue_position]
+
+  - id: TOL-OPS-005
+    name: Memory Writer
+    capability: write_memory
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [per memory.yml permissions]
+    inputs:
+      required: [memory_key, content, classification]
+    outputs: [status]
+
+compositions:
+  - name: site_to_installation
+    steps:
+      - capability: read_file              # site assessment
+      - capability: write_file             # assessment report
+      - capability: track_procurement      # order materials
+      - capability: request_approval       # PO approval
+    owner: Operations Harness (dispatched to)
+
+providers:
+  file_system:
+    preferred: local
+    fallback: null

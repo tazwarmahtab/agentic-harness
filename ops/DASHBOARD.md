@@ -4,7 +4,7 @@
 
 **Cycle:** 2026-07-02-executive
 **Venture:** VEN-NETSO-001
-**Status:** BETA — memory persistence and evaluator integration complete
+**Status:** PRODUCTION — all 11 harnesses fully componentized (520 tests passing)
 **Last Updated:** 2026-07-02T05:45:00
 
 ---
@@ -28,9 +28,9 @@ None — core runtime is functional.
 
 | Metric                   | Target             | Status                                                        |
 | ------------------------ | ------------------ | ------------------------------------------------------------- |
-| TAZ OS harnesses         | 11                 | ✅ 11/11 loaded                                                |
+| TAZ OS harnesses         | 11                 | ✅ 11/11 fully componentized (memory+tools+approvals+evaluation+sops) |
 | Specialists              | 51                 | ✅ 51/51                                                       |
-| Tests                    | 316                | ✅ 316 passing (0 regressions)                                 |
+| Tests                    | 520                | ✅ 520 passing (0 regressions)                                  |
 | Ground-truth enforcement | hard gate          | ✅ status flips to "error" on violation                        |
 | Evaluator checks         | 6                  | ✅ blended rate, savings %, DSCR, PPA, Scenario B, list values |
 | Memory retrieval runtime | wired              | ✅ retrieve\_for\_agent() at graph.py:394                      |
@@ -40,6 +40,10 @@ None — core runtime is functional.
 | Free-tier routing        | 5 models           | ✅ round-robin pool active                                     |
 | Baseline eval harness    | pass/block metrics | ✅ BaselineEvaluator class                                     |
 | Evaluator wiring         | run\_cycle\_graph  | ✅ wired at graph.py:1598-1609                                 |
+| Multi-venture support    | 2+ ventures       | ✅ TransitBD dry-run completes                                 |
+| Venture-aware evaluator  | planning ventures | ✅ Skips financial checks when constants null                  |
+| Cross-harness dispatch   | H4 runtime        | ✅ Registry.resolve_agent() + CLI multi-harness loading        |
+| Harness component stack  | 11/11             | ✅ All harnesses have memory+tools+approvals+evaluation+sops  |
 
 ### Financial Accuracy
 
@@ -55,7 +59,7 @@ None — core runtime is functional.
 | ID      | Task                                                 | Effort | Status |
 | ------- | ---------------------------------------------------- | ------ | ------ |
 | FIX-03  | CRITICAL: Approval queue → should\_execute gating    | 4h     | ✅ DONE |
-| FIX-06  | HIGH: \_invoke\_skill stub → real subprocess         | 4h     | TODO   |
+| FIX-06  | HIGH: \_invoke\_skill stub → real subprocess         | 4h     | ✅ DONE |
 | C9-wire | Wire BaselineEvaluator into run\_cycle\_graph        | 2h     | ✅ DONE |
 | H1      | Financial-accuracy KPI visible in dashboard          | 1h     | ✅ DONE |
 | M1      | Baseline evaluation + regression detection           | 2h     | ✅ DONE |
@@ -65,8 +69,8 @@ None — core runtime is functional.
 
 | ID | Task                                         | Phase    |
 | -- | -------------------------------------------- | -------- |
-| H3 | Multi-venture support (TransitBD mount)      | Phase 8  |
-| H4 | Cross-harness dispatch (Finance, Sales, Ops) | Phase 9  |
+| H3 | Multi-venture support (TransitBD mount)      | Phase 8 — DONE |
+| H4 | Cross-harness dispatch (Finance, Sales, Ops) | Phase 9 — DONE |
 | M5 | Vector semantic search for memory layer      | Phase 11 |
 
 ## Notes

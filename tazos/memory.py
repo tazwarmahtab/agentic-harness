@@ -678,7 +678,7 @@ CONTENT: <the fact/pattern/rule>
 
         try:
             # Call LLM (pseudo-code, actual implementation depends on llm_client interface)
-            response = self.llm_client.generate(prompt)
+            response = self.llm_client.complete(prompt)
 
             # Parse LLM response and create semantic entries
             new_semantic = []

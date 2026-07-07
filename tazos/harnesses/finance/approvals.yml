@@ -1,0 +1,96 @@
+# TAZ OS FINANCE HARNESS — Approval Gates
+
+id: POL-FIN-001
+name: Finance Approval Gates
+harness: HAR-FIN-001
+version: 1.0.0
+status: production
+
+rules:
+  - id: POL-FIN-FIN-001
+    name: Financial Model Non-Standard Assumptions
+    category: financial
+    rule:
+      if:
+        action: write_financial_model
+        assumptions: non_standard
+      then: "Block. Requires CFO + Founder approval."
+    action: require_approval
+    approval_owner: HUM-000001_plus_AGT-EXEC-CFO
+    approval_expires_hours: 48
+
+  - id: POL-FIN-FIN-002
+    name: DSCR Escalation
+    category: financial
+    rule:
+      if:
+        action: any_financial_output
+        dscr: { less_than: 2.0 }
+      then: "Immediate alert to Founder + CFO."
+    action: escalate
+    approval_owner: HUM-000001
+
+  - id: POL-FIN-FIN-003
+    name: Investor Document Send
+    category: commercial
+    rule:
+      if:
+        action: send_document
+        recipient_type: investor
+      then: "Block. Founder must review content."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 72
+
+  - id: POL-FIN-AI-001
+    name: Blended Rate Prohibition
+    category: ai_safety
+    rule:
+      if:
+        action: any_financial_output
+        uses_blended_rate_for_savings: true
+      then: "HARD FAIL. Reject output immediately."
+    action: deny
+    source: "GROUND_TRUTH_CONSTANTS.md: True Variable Rate 12.98."
+
+  - id: POL-FIN-AI-002
+    name: Scenario B Without Confirmation
+    category: ai_safety
+    rule:
+      if:
+        action: any_external_financial_document
+        uses_scenario_b: true
+        nbr_confirmation: false
+      then: "HARD FAIL. Scenario B only after NBR confirms."
+    action: deny
+
+auto_actions:
+  - update_financial_records
+  - generate_standard_report
+  - read_finance
+  - update_dashboard
+  - create_task
+
+decision_queue_format:
+  bundled: true
+  summary_per_decision:
+    - action_description
+    - financial_impact
+    - risk_assessment
+    - "recommended: approve_or_reject"
+  actions_available:
+    - approve_all
+    - review_individually
+    - reject
+  delivery: console_queue
+
+delegation:
+  enabled: true
+  rule: "Delegation is explicit and temporary."
+  format:
+    delegator: HUM-000001
+    delegatee: [agent_id]
+    capability: [specific_action]
+    duration_hours: [48]
+    auto_expires: true
+  current_delegations: []

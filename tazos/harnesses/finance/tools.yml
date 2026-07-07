@@ -1,0 +1,113 @@
+# TAZ OS FINANCE HARNESS — Tools
+
+id: TOL-FIN-001
+name: Finance Harness Tool Registry
+harness: HAR-FIN-001
+version: 1.0.0
+
+tools:
+  - id: TOL-FIN-001
+    name: Finance Reader
+    capability: read_finance
+    category: finance
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [AGT-FIN-CASH, AGT-FIN-DECK, AGT-FIN-UNIT]
+    inputs:
+      required: []
+      optional: [metric, date_range, project]
+    outputs: [financial_data, status]
+
+  - id: TOL-FIN-002
+    name: Financial Model Tool
+    capability: write_financial_model
+    category: finance
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-FIN-UNIT]
+      execute: gated
+    inputs:
+      required: [scenario, parameters]
+      optional: [custom_assumptions]
+    outputs: [model_path, summary, compliance_check]
+    approval_gate: "Non-standard assumptions require CFO + founder approval"
+    validation:
+      must_use: ground_truth_constants
+      hard_fail_if: "blended_rate_for_savings"
+
+  - id: TOL-FIN-003
+    name: Report Generator
+    capability: generate_report
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-FIN-CASH, AGT-FIN-DECK]
+    inputs:
+      required: [report_type, data_source]
+      optional: [format, period, recipients]
+    outputs: [report_path, summary]
+
+  - id: TOL-FIN-004
+    name: Document Generator
+    capability: generate_document
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-FIN-DECK, AGT-FIN-CASH]
+    inputs:
+      required: [template, content]
+      optional: [format, output_path]
+    outputs: [document_path, status]
+
+  - id: TOL-FIN-005
+    name: Approval Request
+    capability: request_approval
+    category: governance
+    version: 1.0.0
+    status: registered
+    permissions:
+      execute: [AGT-FIN-CASH, AGT-FIN-DECK, AGT-FIN-UNIT]
+    inputs:
+      required: [action, rationale, risk_assessment]
+      optional: [deadline, urgency]
+    outputs: [approval_id, status, queue_position]
+
+  - id: TOL-FIN-006
+    name: Memory Writer
+    capability: write_memory
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [per memory.yml permissions]
+    inputs:
+      required: [memory_key, content, classification]
+    outputs: [status]
+
+compositions:
+  - name: build_financial_model
+    steps:
+      - capability: read_finance
+      - capability: write_financial_model
+      - capability: request_approval
+    owner: AGT-FIN-UNIT
+
+  - name: prepare_investor_update
+    steps:
+      - capability: read_finance
+      - capability: generate_report
+      - capability: generate_document
+      - capability: request_approval
+    owner: AGT-FIN-DECK
+
+providers:
+  finance:
+    preferred: null
+    fallback: [spreadsheet]
+  document_storage:
+    preferred: null
+    fallback: [local]

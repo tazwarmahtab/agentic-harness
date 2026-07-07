@@ -1,0 +1,87 @@
+# TAZ OS INVESTOR RELATIONS HARNESS — Shared Memory
+
+id: MEM-INV-001
+name: Investor Relations Harness Shared Memory
+harness: HAR-INV-001
+version: 1.0.0
+
+layers:
+  long_term:
+    investor_contacts:
+      description: "Investor names, firms, contact details, relationship history"
+      classification: restricted
+    ground_truth_constants:
+      ref: ground_truth_constants
+      description: "Financial constants for projections and models"
+      classification: confidential
+    pitch_materials:
+      description: "Approved pitch deck versions, one-pagers, executive summaries"
+      classification: confidential
+    cap_table:
+      description: "Current equity structure, valuation history"
+      classification: restricted
+
+  episodic:
+    investor_communications:
+      description: "All sent updates, meeting notes, follow-ups"
+      write_access: [AGT-INV-CRM, AGT-INV-DECK]
+      classification: restricted
+    fundraising_pipeline:
+      description: "Active fundraising stages, commitments, timelines"
+      write_access: [AGT-INV-TRACK]
+      classification: restricted
+    due_diligence_log:
+      description: "DD requests, documents shared, Q&A history"
+      write_access: [AGT-INV-DD]
+      classification: restricted
+    financial_projections:
+      description: "Versioned projection models with assumptions"
+      write_access: [AGT-INV-PROJ]
+      classification: confidential
+
+  semantic:
+    fundraising_playbook:
+      description: "Fundraising process, milestones, investor engagement rules"
+      classification: restricted
+    pitch_guidelines:
+      description: "How to present Netso story, metrics, and vision"
+      classification: confidential
+    dd_checklist:
+      description: "Standard due diligence documents and preparation"
+      classification: restricted
+    approval_rules:
+      ref: approvals.yml
+      description: "When investor comms need founder approval"
+      classification: restricted
+
+permissions:
+  AGT-INV-CRM:
+    read: [investor_contacts, fundraising_pipeline, investor_communications]
+    write: [investor_communications]
+    cannot_read: [cap_table, raw_financial_models]
+
+  AGT-INV-DECK:
+    read: [pitch_materials, ground_truth_constants, financial_projections]
+    write: [investor_communications, pitch_materials]
+    cannot_read: [cap_table]
+
+  AGT-INV-DD:
+    read: [investor_contacts, due_diligence_log, ground_truth_constants, cap_table]
+    write: [due_diligence_log]
+    cannot_read: []
+
+  AGT-INV-PROJ:
+    read: [ground_truth_constants, financial_projections, cap_table]
+    write: [financial_projections]
+    cannot_read: [investor_communications]
+
+  AGT-INV-TRACK:
+    read: [fundraising_pipeline, investor_contacts]
+    write: [fundraising_pipeline]
+    cannot_read: [cap_table, raw_financial_models]
+
+update_rules:
+  agents_submit_memory_candidates: true
+  reflection_engine_decides: [store, reject, summarize, merge, version]
+  purpose: "Prevent memory pollution."
+  audit: "every memory write creates immutable audit record"

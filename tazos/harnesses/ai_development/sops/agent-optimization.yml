@@ -1,0 +1,59 @@
+# SOP-AID-001 — Agent Optimization
+# Owner: AGT-AID-PROMPT (prompt) + AGT-AID-BENCH (benchmark) + AGT-AID-FAIL (failure)
+# Frequency: Biweekly or triggered by performance regression
+# Purpose: Systematic improvement of agent quality and cost efficiency
+
+id: SOP-AID-001
+name: Agent Optimization
+owner: AGT-AID-PROMPT
+version: 1.0.0
+trigger: biweekly_monday_09:00_BDT
+
+phase_1_benchmark:
+  owner: AGT-AID-BENCH
+  actions:
+    - run: benchmark suite across all agents
+    - compare: to baseline_scores
+    - identify: agents below threshold
+    - output: benchmark_report
+
+phase_2_analyze:
+  owner: AGT-AID-FAIL
+  actions:
+    - read: benchmark_report
+    - analyze: failure patterns in underperforming agents
+    - identify: root causes (prompt quality, model choice, context)
+    - output: analysis_report
+
+phase_3_optimize:
+  owner: AGT-AID-PROMPT
+  actions:
+    - read: analysis_report
+    - apply: prompt optimization techniques
+    - update: agent prompts or configurations
+    - output: optimization_proposal
+
+phase_4_validate:
+  owner: AGT-AID-EVAL
+  actions:
+    - evaluate: optimization_proposal
+    - check: for regressions in other agents
+    - validate: cost impact
+    - output: evaluation_report
+
+phase_5_deploy:
+  owner: AGT-AID-WORKFLOW
+  actions:
+    - review: evaluation_report
+    - deploy: approved changes
+    - monitor: post-deployment performance
+    - update: prompt_library and optimization_playbook
+    - output: deployed_optimization
+
+escalation:
+  - trigger: agent_quality_drop_>_10_percent
+    notify: AGT-AID-BENCH + HUM-000001
+    urgency: high
+  - trigger: cost_increase_>_50_percent
+    notify: AGT-AID-WORKFLOW + HUM-000001
+    urgency: high

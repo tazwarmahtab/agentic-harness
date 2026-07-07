@@ -1,0 +1,87 @@
+# SOP-SAL-001 — Sales Cycle
+# Owner: AGT-SAL-LEAD (qualification) + AGT-SAL-OUT (outreach) + AGT-SAL-PROP (proposal)
+# Frequency: Realtime, triggered by new lead or cross-harness dispatch
+# Purpose: End-to-end sales process from lead qualification to deal closure
+
+id: SOP-SAL-001
+name: Sales Cycle
+owner: AGT-SAL-LEAD
+version: 1.0.0
+trigger: realtime
+
+# ===========================================================================
+# PHASE 1 — QUALIFY (Lead Qualifier)
+# ===========================================================================
+phase_1_qualify:
+  owner: AGT-SAL-LEAD
+  actions:
+    - read: crm_pipeline for new/incoming leads
+    - apply: ICP matching (Bangladesh RMG, >500kW load, BOO/OPEX fit)
+    - score: lead based on budget, timeline, decision-maker access
+    - decide: qualify (pass to outreach) or disqualify (log reason)
+    - output: qualified_lead with score and notes
+
+# ===========================================================================
+# PHASE 2 — OUTREACH (Outreach Specialist)
+# ===========================================================================
+phase_2_outreach:
+  owner: AGT-SAL-OUT
+  actions:
+    - compose: personalized outreach (email/LinkedIn/WhatsApp)
+    - send: initial contact within 24h of qualification
+    - track: response and engagement
+    - follow_up: according to sequence (day 1, 3, 7, 14)
+    - escalate: no response after 14 days → back to AGT-SAL-LEAD for re-evaluation
+    - output: outreach_log with response status
+
+# ===========================================================================
+# PHASE 3 — PROPOSE (Proposal Writer)
+# ===========================================================================
+phase_3_propose:
+  owner: AGT-SAL-PROP
+  actions:
+    - read: ground_truth_constants (NEVER use blended rate)
+    - calculate: project economics using Scenario A defaults
+    - generate: proposal with PPA rate = BDT 10.00/kWh, 3% escalation
+    - validate: against financial ground truth (evaluator runs)
+    - route: proposal for approval if > BDT 5M
+    - output: proposal_draft with compliance_check
+
+# ===========================================================================
+# PHASE 4 — NEGOTIATE (All specialists)
+# ===========================================================================
+phase_4_negotiate:
+  owner: AGT-SAL-LEAD
+  actions:
+    - handle: customer objections using objection_handlers
+    - adjust: terms within approval thresholds
+    - escalate: pricing exceptions to founder
+    - track: negotiation status in CRM
+    - output: negotiation_log with decision_points
+
+# ===========================================================================
+# PHASE 5 — CLOSE (Lead Qualifier + Legal dispatch)
+# ===========================================================================
+phase_5_close:
+  owner: AGT-SAL-LEAD
+  actions:
+    - confirm: final terms with customer
+    - dispatch: to Legal harness for NDA/LOI/PPA preparation
+    - track: contract status through legal review
+    - update: CRM with closed-won or closed-lost
+    - log: win/loss analysis for lessons
+    - output: closed_deal_record
+
+# ===========================================================================
+# ESCALATION RULES
+# ===========================================================================
+escalation:
+  - trigger: lead_idle_8_days
+    notify: AGT-SAL-LEAD
+    urgency: normal
+  - trigger: proposal_not_sent_5_days_after_qualification
+    notify: AGT-SAL-PROP + AGT-SAL-LEAD
+    urgency: high
+  - trigger: deal_value_change_>_20_percent
+    notify: AGT-SAL-LEAD + HUM-000001
+    urgency: high

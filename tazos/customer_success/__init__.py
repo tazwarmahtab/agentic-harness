@@ -1,6 +1,5 @@
-"""Customer Success Harness implementation for TAZ OS."""
+"""Customer Success Harness for TAZ OS.
 
-from .harness import CustomerSuccessHarness
-from .agents import CustomerSuccessAgent, SupportAgent, UpsellAgent
-
-__all__ = ["CustomerSuccessHarness", "CustomerSuccessAgent", "SupportAgent", "UpsellAgent"]
+Harness is YAML-driven (tazos/harnesses/customer_success/).
+No Python runtime code needed — the graph.py engine loads manifests directly.
+"""

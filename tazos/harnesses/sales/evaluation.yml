@@ -1,0 +1,142 @@
+# TAZ OS SALES HARNESS — Evaluation Metrics + Continuous Improvement
+
+id: EVAL-SAL-001
+name: Sales Harness Evaluation Framework
+harness: HAR-SAL-001
+version: 1.0.0
+
+# ===========================================================================
+# HARNESS-LEVEL KPIs
+# ===========================================================================
+harness_metrics:
+  - name: pipeline_growth
+    target: "upward_trend"
+    frequency: weekly
+    owner: AGT-SAL-LEAD
+    measurement: pipeline_value_change_week_over_week
+
+  - name: proposal_conversion_rate
+    target: ">30%"
+    frequency: monthly
+    owner: AGT-SAL-PROP
+    measurement: proposals_sent_divided_by_proposals_won
+
+  - name: follow_up_timeliness
+    target: "100% within SLA"
+    frequency: daily
+    owner: AGT-SAL-OUT
+    measurement: follow_ups_sent_within_sla_divided_by_total
+
+  - name: deal_closure_rate
+    target: ">20%"
+    frequency: monthly
+    owner: AGT-SAL-LEAD
+    measurement: deals_closed_divided_by_deals_qualified
+
+  - name: average_sales_cycle_days
+    target: "<60 days"
+    frequency: monthly
+    owner: AGT-SAL-LEAD
+    measurement: avg_days_from_lead_to_close
+
+  - name: number_discipline_compliance
+    target: "100%"
+    frequency: realtime
+    owner: AGT-SAL-PROP
+    measurement: zero_proposals_with_blended_rate_or_wrong_ppa
+
+# ===========================================================================
+# PER-SPECIALIST EVALUATION
+# ===========================================================================
+specialist_metrics:
+  AGT-SAL-LEAD:
+    - icp_match_accuracy: { weight: 0.35 }
+    - qualification_completeness: { weight: 0.25 }
+    - pipeline_accuracy: { weight: 0.20 }
+    - response_time: { weight: 0.10 }
+    - handoff_quality: { weight: 0.10 }
+
+  AGT-SAL-OUT:
+    - outreach_response_rate: { weight: 0.30 }
+    - follow_up_timeliness: { weight: 0.25 }
+    - message_personalization: { weight: 0.20 }
+    - sequence_completion_rate: { weight: 0.15 }
+    - crm_update_accuracy: { weight: 0.10 }
+
+  AGT-SAL-PROP:
+    - financial_accuracy: { weight: 0.35, hard_fail_if: "blended_rate_used_in_proposal" }
+    - proposal_quality: { weight: 0.25 }
+    - turnaround_time: { weight: 0.15 }
+    - approval_compliance: { weight: 0.15, hard_fail_if: "proposal_sent_without_approval" }
+    - customer_specificity: { weight: 0.10 }
+
+# ===========================================================================
+# CONTINUOUS IMPROVEMENT LOOP
+# ===========================================================================
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-SAL-LEAD
+      input: deal_outcomes_from_week
+      output: variance_report
+    - step: identify_bottlenecks_and_failures
+      owner: AGT-SAL-LEAD
+      input: variance_report
+      output: bottleneck_list
+    - step: update_artifacts
+      owner: AGT-SAL-LEAD
+      input: bottleneck_list
+      output: updated_playbook_and_routing
+      artifacts_affected: [sales_playbook, dispatcher.yml routing_table, pricing_rules]
+    - step: record_lessons
+      owner: AGT-SAL-LEAD
+      input: bottleneck_list
+      output: new_lessons_entries
+    - step: update_benchmarks
+      owner: AGT-SAL-LEAD
+      input: specialist_metrics
+      output: benchmark_update
+    - step: founder_review
+      owner: HUM-000001
+      input: weekly_review
+      output: approved_or_revised
+      frequency: weekly
+
+  improvement_sources:
+    - weekly_review: "deals log and pipeline analysis"
+    - lessons: "won/loss analysis"
+    - pipeline_variance: "planned vs actual conversion"
+    - specialist_evaluations: evaluation scores above
+    - founder_feedback: direct corrections or approvals
+
+  metrics_tracked:
+    - conversion_rate_per_stage
+    - average_deal_size
+    - sales_cycle_length
+    - outreach_response_rate
+    - proposal_accuracy_rate
+    - hard_fail_count_per_period
+    - false_positive_rate_leads
+
+  review_cadence:
+    daily: [outreach_completed, follow_ups_sent, deals_updated]
+    weekly: [pipeline_review, conversion_analysis, playbook_update]
+    monthly: [forecast_accuracy, win_rate_analysis, pricing_review]
+    quarterly: [market_segment_review, icp_refinement, strategy_assessment]
+
+# ===========================================================================
+# EVALUATION PIPELINE
+# ===========================================================================
+evaluation_pipeline:
+  1. agent_completes_task:
+     output: raw_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. evaluator_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+     - pass: store_artifact + update_memory
+     - fail_hard: reject_output + alert_founder + log_failure
+     - fail_soft: return_to_agent_with_feedback + retry
+     - low_confidence: escalate_to_founder_with_context
