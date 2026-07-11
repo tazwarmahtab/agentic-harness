@@ -13,11 +13,11 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Runtime state (when a runtime lands later)
+# Runtime state
 *.log
 *.pid
-tazos/runtime/state/
-tazos/runtime/cache/
+aos/runtime/state/
+aos/runtime/cache/
 secrets/
 .env
 .env.*

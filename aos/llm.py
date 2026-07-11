@@ -241,7 +241,7 @@ class RouterLLMClient:
     """LLM client that talks to 9router / OpenAI-compatible endpoint.
 
     Reads config from environment variables:
-    ANTHROPIC_BASE_URL → base URL (default http://localhost:20128/v1)
+    ANTHROPIC_BASE_URL → base URL (required for router mode)
     ANTHROPIC_AUTH_TOKEN → Bearer token
     AOS_LLM_API_KEY → alternative auth token
     """
@@ -255,7 +255,7 @@ class RouterLLMClient:
         self.base_url = (
             base_url
             or os.getenv("ANTHROPIC_BASE_URL", "")
-            or os.getenv("AOS_LLM_BASE_URL", "http://localhost:20128")
+            or os.getenv("AOS_LLM_BASE_URL", "")
         )
         if self.base_url.endswith("/v1"):
             self.base_url = self.base_url[:-3]
@@ -526,7 +526,7 @@ def create_llm_client(
         return AnthropicLLMClient()
 
     # Auto-detect: check 9router first (with usability guard), then Anthropic, then dry run
-    router_base = os.getenv("AOS_LLM_BASE_URL", "http://localhost:20128")
+    router_base = os.getenv("AOS_LLM_BASE_URL", "")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
     has_auth_token = bool(os.getenv("ANTHROPIC_AUTH_TOKEN", ""))
 
