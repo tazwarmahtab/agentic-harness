@@ -20,7 +20,6 @@ from datetime import date
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
 
 from aos.discover import find_venture
 from aos.hardening import ConnectionLimiter, sanitize_path, validate_harness_name
@@ -73,22 +72,6 @@ TAZOS_API_TOKEN = AOS_API_TOKEN  # backward-compat alias
 
 # WebSocket connection limiter — caps concurrent connections per server instance
 _ws_limiter = ConnectionLimiter(max_connections=10)
-
-# Static files — serve the dashboard UI
-_static_dir = Path(__file__).parent.parent / "static"
-if _static_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
-
-
-@app.get("/", include_in_schema=False)
-async def dashboard():
-    """Serve the dashboard UI."""
-    from fastapi.responses import FileResponse
-    index = _static_dir / "index.html"
-    if index.exists():
-        return FileResponse(str(index))
-    return {"message": "AOS Engine — no dashboard found. Use /docs for API."}
-
 
 def _check_llm_providers() -> dict[str, str | list[str] | bool]:
     """Check which LLM providers are configured and available."""
