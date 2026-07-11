@@ -1,12 +1,12 @@
 """AOS CLI entry point.
 
 Usage:
- python -m tazos validate [--harness NAME] [--venture NAME] [--verbose]
- python -m tazos status [--harness NAME] [--venture NAME]
- python -m tazos run [--venture NAME] [--dry-run]
- python -m tazos orchestrate [--one-liner TEXT] [plan_path] [--skip-spec] [--skip-plan] [--skip-review] [--gate spec,plan,review] [--dry-run]
- python -m tazos ventures
- python -m tazos approvals [list|approve-all|reject-all|approve ID|reject ID]
+ python -m aos validate [--harness NAME] [--venture NAME] [--verbose]
+ python -m aos status [--harness NAME] [--venture NAME]
+ python -m aos run [--venture NAME] [--dry-run]
+ python -m aos orchestrate [--one-liner TEXT] [plan_path] [--skip-spec] [--skip-plan] [--skip-review] [--gate spec,plan,review] [--dry-run]
+ python -m aos ventures
+ python -m aos approvals [list|approve-all|reject-all|approve ID|reject ID]
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from aos.discover import discover_ventures, find_venture
 
 
 def find_project_root() -> Path:
-    """Find the tazos project root (where tazos/ package lives)."""
+    """Find the aos project root (where aos/ package lives)."""
     return Path(__file__).parent.parent
 
 
@@ -50,7 +50,7 @@ def _resolve_venture(venture_name: str | None) -> tuple[Path | None, str]:
 def cmd_validate(args: argparse.Namespace) -> int:
     """Validate all manifests."""
     root = find_project_root()
-    harness_dir = root / "tazos" / "harnesses" / "executive"
+    harness_dir = root / "aos" / "harnesses" / "executive"
     venture_path, venture_name = _resolve_venture(args.venture)
 
     if not harness_dir.exists():
@@ -58,7 +58,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         return 1
 
     if args.harness:
-        harness_dir = root / "tazos" / "harnesses" / args.harness
+        harness_dir = root / "aos" / "harnesses" / args.harness
         if not harness_dir.exists():
             logger.error(f"Harness not found: {args.harness}")
             return 1
@@ -81,16 +81,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
 def cmd_status(args: argparse.Namespace) -> int:
     """Show system status."""
     root = find_project_root()
-    harness_dir = root / "tazos" / "harnesses" / "executive"
+    harness_dir = root / "aos" / "harnesses" / "executive"
     venture_path, venture_name = _resolve_venture(args.venture)
 
     if args.harness:
-        harness_dir = root / "tazos" / "harnesses" / args.harness
+        harness_dir = root / "aos" / "harnesses" / args.harness
 
     if not harness_dir.exists():
         logger.error(f"Harness not found: {harness_dir}")
         print("Available harnesses:")
-        for d in sorted((root / "tazos" / "harnesses").iterdir()):
+        for d in sorted((root / "aos" / "harnesses").iterdir()):
             if d.is_dir() and (d / "harness.yml").exists():
                 print(f" - {d.name}")
         return 1
@@ -111,21 +111,21 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     root = find_project_root()
     harness_name = args.harness or "executive"
-    harness_dir = root / "tazos" / "harnesses" / harness_name
+    harness_dir = root / "aos" / "harnesses" / harness_name
     venture_path, venture_name = _resolve_venture(args.venture)
 
     # If venture was requested but not found, fail with clear error
     if args.venture and venture_path is None:
         logger.error(f"Venture '{args.venture}' not found.")
         print("Available ventures:")
-        for path, v in discover_ventures(root / "tazos" / "ventures"):
+        for path, v in discover_ventures(root / "aos" / "ventures"):
             print(f" - {v.name} ({v.id})")
         return 1
 
     if not harness_dir.exists():
         logger.error(f"Harness not found: {harness_dir}")
         print("Available harnesses:")
-        for d in sorted((root / "tazos" / "harnesses").iterdir()):
+        for d in sorted((root / "aos" / "harnesses").iterdir()):
             if d.is_dir() and (d / "harness.yml").exists():
                 print(f" - {d.name}")
         return 1
@@ -215,8 +215,8 @@ def cmd_orchestrate(args: argparse.Namespace) -> int:
         for g in args.gate:
             gates.add(g.strip())
 
-    queue_path = root / "tazos" / "approvals.jsonl"
-    log_path = root / "tazos" / "decisions.jsonl"
+    queue_path = root / "aos" / "approvals.jsonl"
+    log_path = root / "aos" / "decisions.jsonl"
     gate_manager = GateManager(
         persistence_path=queue_path,
         decision_log_path=log_path,
@@ -241,7 +241,7 @@ def cmd_orchestrate(args: argparse.Namespace) -> int:
 def cmd_ventures(args: argparse.Namespace) -> int:
     """List all discovered ventures."""
     root = find_project_root()
-    ventures_dir = root / "tazos" / "ventures"
+    ventures_dir = root / "aos" / "ventures"
 
     ventures = discover_ventures(ventures_dir)
 
@@ -264,9 +264,9 @@ def cmd_ventures(args: argparse.Namespace) -> int:
         print()
 
     print("Usage:")
-    print(" python -m tazos run --venture netso # Run cycle for Netso")
-    print(" python -m tazos run --venture transitbd # Run cycle for TransitBD")
-    print(" python -m tazos status --venture netso # Show Netso status")
+    print(" python -m aos run --venture netso # Run cycle for Netso")
+    print(" python -m aos run --venture transitbd # Run cycle for TransitBD")
+    print(" python -m aos status --venture netso # Show Netso status")
     return 0
 
 
@@ -275,8 +275,8 @@ def cmd_approvals(args: argparse.Namespace) -> int:
     from aos.approval_queue import ApprovalQueue, ApprovalDecision
 
     root = find_project_root()
-    queue_path = root / "tazos" / "approvals.jsonl"
-    log_path = root / "tazos" / "decisions.jsonl"
+    queue_path = root / "aos" / "approvals.jsonl"
+    log_path = root / "aos" / "decisions.jsonl"
     queue = ApprovalQueue(persistence_path=queue_path, decision_log_path=log_path)
 
     action = args.approvals_action
@@ -323,13 +323,13 @@ def cmd_approvals(args: argparse.Namespace) -> int:
             return 1
         return 0
 
-    print("Usage: python -m tazos approvals [list|approve-all|reject-all|approve ID|reject ID]")
+    print("Usage: python -m aos approvals [list|approve-all|reject-all|approve ID|reject ID]")
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        prog="tazos",
+        prog="aos",
         description="AOS — Governance-first, multi-venture agentic operating system",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

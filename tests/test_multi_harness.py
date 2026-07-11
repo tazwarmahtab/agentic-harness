@@ -12,7 +12,7 @@ from aos.registry import load_registry, Registry
 
 class TestMultiHarnessLoading:
     def test_load_finance_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/finance")
+        harness_dir = Path("aos/harnesses/finance")
         if not harness_dir.exists():
             pytest.skip("Finance harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestMultiHarnessLoading:
         assert bundle.harness.id == "HAR-FIN-001"
 
     def test_load_sales_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/sales")
+        harness_dir = Path("aos/harnesses/sales")
         if not harness_dir.exists():
             pytest.skip("Sales harness not found")
         registry = load_registry(harness_dir)
@@ -30,7 +30,7 @@ class TestMultiHarnessLoading:
         assert bundle.harness.id == "HAR-SAL-001"
 
     def test_load_operations_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/operations")
+        harness_dir = Path("aos/harnesses/operations")
         if not harness_dir.exists():
             pytest.skip("Operations harness not found")
         registry = load_registry(harness_dir)
@@ -41,7 +41,7 @@ class TestMultiHarnessLoading:
 
 class TestFinanceSpecialists:
     def test_finance_has_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/finance")
+        harness_dir = Path("aos/harnesses/finance")
         if not harness_dir.exists():
             pytest.skip("Finance harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestFinanceSpecialists:
         assert len(bundle.specialists) >= 3  # unit-economics, investor-deck, cash-flow
 
     def test_finance_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/finance")
+        harness_dir = Path("aos/harnesses/finance")
         if not harness_dir.exists():
             pytest.skip("Finance harness not found")
         registry = load_registry(harness_dir)
@@ -58,7 +58,7 @@ class TestFinanceSpecialists:
         assert bundle.planner.id == "AGT-FIN-PLAN"
 
     def test_finance_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/finance")
+        harness_dir = Path("aos/harnesses/finance")
         if not harness_dir.exists():
             pytest.skip("Finance harness not found")
         registry = load_registry(harness_dir)
@@ -67,7 +67,7 @@ class TestFinanceSpecialists:
         assert bundle.dispatcher.id == "AGT-FIN-DISPATCH"
 
     def test_finance_unit_economics_has_financial_rules(self) -> None:
-        harness_dir = Path("tazos/harnesses/finance")
+        harness_dir = Path("aos/harnesses/finance")
         if not harness_dir.exists():
             pytest.skip("Finance harness not found")
         registry = load_registry(harness_dir)
@@ -80,7 +80,7 @@ class TestFinanceSpecialists:
 
 class TestSalesSpecialists:
     def test_sales_has_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/sales")
+        harness_dir = Path("aos/harnesses/sales")
         if not harness_dir.exists():
             pytest.skip("Sales harness not found")
         registry = load_registry(harness_dir)
@@ -88,7 +88,7 @@ class TestSalesSpecialists:
         assert len(bundle.specialists) >= 3  # lead-qualifier, proposal-writer, outreach
 
     def test_proposal_writer_has_financial_rules(self) -> None:
-        harness_dir = Path("tazos/harnesses/sales")
+        harness_dir = Path("aos/harnesses/sales")
         if not harness_dir.exists():
             pytest.skip("Sales harness not found")
         registry = load_registry(harness_dir)
@@ -101,7 +101,7 @@ class TestSalesSpecialists:
 
 class TestOperationsSpecialists:
     def test_operations_has_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/operations")
+        harness_dir = Path("aos/harnesses/operations")
         if not harness_dir.exists():
             pytest.skip("Operations harness not found")
         registry = load_registry(harness_dir)
@@ -109,7 +109,7 @@ class TestOperationsSpecialists:
         assert len(bundle.specialists) >= 3  # site-assessor, procurement, installation-tracker
 
     def test_procurement_has_approval_gates(self) -> None:
-        harness_dir = Path("tazos/harnesses/operations")
+        harness_dir = Path("aos/harnesses/operations")
         if not harness_dir.exists():
             pytest.skip("Operations harness not found")
         registry = load_registry(harness_dir)
@@ -125,7 +125,7 @@ class TestCLICrossHarness:
     def test_cli_run_finance_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "finance", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "finance", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -137,7 +137,7 @@ class TestCLICrossHarness:
     def test_cli_run_sales_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "sales", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "sales", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -148,7 +148,7 @@ class TestCLICrossHarness:
     def test_cli_run_operations_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "operations", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "operations", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -159,7 +159,7 @@ class TestCLICrossHarness:
     def test_cli_run_unknown_harness_fails(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "nonexistent", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "nonexistent", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -176,7 +176,7 @@ class TestCrossBundleResolution:
 
     def _build_multi_bundle_registry(self) -> Registry:
         """Load executive + finance + sales harnesses into one registry."""
-        root = Path("tazos/harnesses")
+        root = Path("aos/harnesses")
         registry = Registry()
         for name in ("executive", "finance", "sales"):
             harness_dir = root / name

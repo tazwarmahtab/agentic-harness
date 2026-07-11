@@ -12,7 +12,7 @@ from aos.registry import load_registry
 
 class TestInvestorRelationsHarnessLoading:
     def test_load_ir_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestInvestorRelationsHarnessLoading:
         assert bundle.harness.id == "HAR-INV-001"
 
     def test_ir_has_5_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -29,7 +29,7 @@ class TestInvestorRelationsHarnessLoading:
         assert len(bundle.specialists) == 5
 
     def test_ir_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -38,7 +38,7 @@ class TestInvestorRelationsHarnessLoading:
         assert bundle.planner.id == "AGT-INV-PLAN"
 
     def test_ir_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestInvestorRelationsHarnessLoading:
 
 class TestInvestorCRM:
     def test_crm_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -60,7 +60,7 @@ class TestInvestorCRM:
         assert crm.criticality.value == "high"
 
     def test_crm_has_approval_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -73,7 +73,7 @@ class TestInvestorCRM:
 
 class TestPitchDeck:
     def test_pitch_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -84,7 +84,7 @@ class TestPitchDeck:
         assert pitch.criticality.value == "high"
 
     def test_pitch_has_financial_rules(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -96,7 +96,7 @@ class TestPitchDeck:
         assert len(pitch.financial_rules["hard_fails"]) >= 2
 
     def test_pitch_financial_constants_match(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -112,7 +112,7 @@ class TestPitchDeck:
 
 class TestDueDiligence:
     def test_dd_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -123,7 +123,7 @@ class TestDueDiligence:
         assert dd.criticality.value == "high"
 
     def test_dd_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -135,7 +135,7 @@ class TestDueDiligence:
 
 class TestFinancialProjections:
     def test_proj_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -146,7 +146,7 @@ class TestFinancialProjections:
         assert proj.criticality.value == "critical"
 
     def test_proj_has_financial_rules(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -158,7 +158,7 @@ class TestFinancialProjections:
         assert len(proj.financial_rules["hard_fails"]) >= 2
 
     def test_proj_has_capacity_factor(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -171,7 +171,7 @@ class TestFinancialProjections:
 
 class TestFundraisingTracker:
     def test_fund_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -182,7 +182,7 @@ class TestFundraisingTracker:
         assert fund.criticality.value == "high"
 
     def test_fund_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/investor_relations")
+        harness_dir = Path("aos/harnesses/investor_relations")
         if not harness_dir.exists():
             pytest.skip("Investor Relations harness not found")
         registry = load_registry(harness_dir)
@@ -196,7 +196,7 @@ class TestCLIInvestorRelations:
     def test_cli_run_ir_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "investor_relations", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "investor_relations", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -207,7 +207,7 @@ class TestCLIInvestorRelations:
     def test_cli_validate_ir_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "validate", "--harness", "investor_relations"],
+            [sys.executable, "-m", "aos", "validate", "--harness", "investor_relations"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

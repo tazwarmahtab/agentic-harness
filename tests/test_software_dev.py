@@ -12,7 +12,7 @@ from aos.registry import load_registry
 
 class TestSoftwareDevHarnessLoading:
     def test_load_dev_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestSoftwareDevHarnessLoading:
         assert bundle.harness.id == "HAR-DEV-001"
 
     def test_dev_has_6_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -29,7 +29,7 @@ class TestSoftwareDevHarnessLoading:
         assert len(bundle.specialists) == 6
 
     def test_dev_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -38,7 +38,7 @@ class TestSoftwareDevHarnessLoading:
         assert bundle.planner.id == "AGT-DEV-PLAN"
 
     def test_dev_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestSoftwareDevHarnessLoading:
 
 class TestProductManager:
     def test_pm_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -60,7 +60,7 @@ class TestProductManager:
         assert pm.criticality.value == "high"
 
     def test_pm_has_prd_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -73,7 +73,7 @@ class TestProductManager:
 
 class TestPRDWriter:
     def test_prd_writer_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -86,7 +86,7 @@ class TestPRDWriter:
 
 class TestUIReviewer:
     def test_ui_reviewer_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -99,7 +99,7 @@ class TestUIReviewer:
 
 class TestTestingSpecialist:
     def test_testing_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -110,7 +110,7 @@ class TestTestingSpecialist:
         assert test.criticality.value == "high"
 
     def test_testing_has_coverage_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -123,7 +123,7 @@ class TestTestingSpecialist:
 
 class TestDocumentationWriter:
     def test_docs_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -136,7 +136,7 @@ class TestDocumentationWriter:
 
 class TestReleaseManager:
     def test_release_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -147,7 +147,7 @@ class TestReleaseManager:
         assert rel.criticality.value == "high"
 
     def test_release_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/software_dev")
+        harness_dir = Path("aos/harnesses/software_dev")
         if not harness_dir.exists():
             pytest.skip("Software Dev harness not found")
         registry = load_registry(harness_dir)
@@ -163,7 +163,7 @@ class TestCLISoftwareDev:
     def test_cli_run_dev_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "software_dev", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "software_dev", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -174,7 +174,7 @@ class TestCLISoftwareDev:
     def test_cli_validate_dev_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "validate", "--harness", "software_dev"],
+            [sys.executable, "-m", "aos", "validate", "--harness", "software_dev"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

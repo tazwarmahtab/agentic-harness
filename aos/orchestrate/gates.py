@@ -112,8 +112,8 @@ class GateManager:
         print(f"  {summary}")
         print(f"  Risk:  {item.risk_assessment}")
         print(f"{'='*60}")
-        print(f"  Run:   python -m tazos approvals approve {item.id}  # or reject")
-        print(f"  Or:    python -m tazos approvals list")
+        print(f"  Run:   python -m aos approvals approve {item.id}  # or reject")
+        print(f"  Or:    python -m aos approvals list")
         print(f"{'='*60}\n")
 
         return GateResult(
@@ -165,8 +165,8 @@ class GateManager:
         """
         deadline = time.monotonic() + timeout_s
         print(f"\n  ⏳ Waiting for founder decision on {gate.value} gate ({item_id})...")
-        print(f"     Run: python -m tazos approvals approve {item_id}")
-        print(f"     Or:  python -m tazos approvals reject {item_id}")
+        print(f"     Run: python -m aos approvals approve {item_id}")
+        print(f"     Or:  python -m aos approvals reject {item_id}")
         print(f"     Timeout: {timeout_s:.0f}s\n")
 
         while time.monotonic() < deadline:

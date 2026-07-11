@@ -11,6 +11,8 @@ Exposes:
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 import logging
 import os
 import uuid
@@ -33,10 +35,35 @@ from aos.event_bus import EventBus, default_bus
 
 logger = logging.getLogger("aos.api")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Startup/shutdown lifecycle — replaces deprecated on_event."""
+    logger.info("Running startup health check...")
+
+    llm_check = _check_llm_providers()
+    if not llm_check["any_available"]:
+        logger.warning("⚠️  No LLM providers configured! System will fail at runtime.")
+        for warning in llm_check["warnings"]:
+            logger.warning(f"   - {warning}")
+    else:
+        available = [k for k, v in llm_check["providers"].items() if v]
+        logger.info(f"✓ LLM providers available: {', '.join(available)}")
+
+    env_check = _check_required_env_vars()
+    if not env_check["all_present"]:
+        logger.warning(f"⚠️  Missing required env vars: {', '.join(env_check['missing'])}")
+    else:
+        logger.info("✓ All required env vars present")
+
+    yield
+
+
 app = FastAPI(
     title="AOS Engine",
     version="0.1.0",
     description="Governance-first agentic operating system engine.",
+    lifespan=lifespan,
 )
 
 # Token auth — if AOS_API_TOKEN env var is set, WebSocket requires it as ?token=
@@ -95,28 +122,6 @@ def _check_required_env_vars() -> dict[str, bool | list[str]]:
     }
 
 
-@app.on_event("startup")
-async def startup_health_check():
-    """Validate system configuration at startup."""
-    logger.info("Running startup health check...")
-    
-    llm_check = _check_llm_providers()
-    if not llm_check["any_available"]:
-        logger.warning("⚠️  No LLM providers configured! System will fail at runtime.")
-        for warning in llm_check["warnings"]:
-            logger.warning(f"   - {warning}")
-    else:
-        available = [k for k, v in llm_check["providers"].items() if v]
-        logger.info(f"✓ LLM providers available: {', '.join(available)}")
-    
-    env_check = _check_required_env_vars()
-    if not env_check["all_present"]:
-        logger.warning("⚠️  Missing required env vars: {', '.join(env_check['missing'])}")
-    else:
-        logger.info("✓ All required env vars present")
-
-
-
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
@@ -142,8 +147,8 @@ async def health_ready() -> dict:
 
 @app.get("/api/harnesses")
 async def list_harnesses() -> list[dict[str, str]]:
-    """Return all available harnesses discovered from tazos/harnesses/*."""
-    harnesses_dir = _find_project_root() / "tazos" / "harnesses"
+    """Return all available harnesses discovered from aos/harnesses/*."""
+    harnesses_dir = Path(__file__).parent / "harnesses"
     result: list[dict[str, str]] = []
     if not harnesses_dir.exists():
         return result
@@ -174,7 +179,7 @@ async def list_harnesses() -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 def _find_project_root() -> Path:
-    """Find the aos-engine project root (where tazos/ package lives).
+    """Find the aos-engine project root.
 
     Same logic as ``__main__.find_project_root``.
     """
@@ -202,7 +207,7 @@ def _resolve_bundle(
         return None, venture_name or "unknown", harness_name
 
     root = _find_project_root()
-    harness_dir = root / "tazos" / "harnesses" / harness_name
+    harness_dir = Path(__file__).parent / "harnesses" / harness_name
 
     if not harness_dir.exists():
         return None, venture_name or "unknown", harness_name
@@ -471,7 +476,7 @@ async def ws_stats() -> dict[str, int]:
 async def dashboard_summary() -> dict[str, object]:
     """Return high-level KPIs for the dashboard frontend."""
     root = _find_project_root()
-    harnesses_dir = root / "tazos" / "harnesses"
+    harnesses_dir = Path(__file__).parent / "harnesses"
 
     # Count harnesses
     harness_count = 0
@@ -489,7 +494,7 @@ async def dashboard_summary() -> dict[str, object]:
 
     # Memory domains
     memory_count = 0
-    memory_dir = root / "tazos" / "memory"
+    memory_dir = Path(__file__).parent / "memory"
     if memory_dir.exists():
         memory_count = sum(1 for _ in memory_dir.glob("*.yml"))
 

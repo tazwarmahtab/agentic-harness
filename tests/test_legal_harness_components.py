@@ -9,7 +9,7 @@ from aos.loader import (
     load_evaluation, load_policy_collection, load_sop,
 )
 
-HARNESS_DIR = Path(__file__).resolve().parent.parent / "tazos" / "harnesses" / "legal"
+HARNESS_DIR = Path(__file__).resolve().parent.parent / "aos" / "harnesses" / "legal"
 
 @pytest.fixture
 def harness_dir():

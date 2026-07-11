@@ -148,7 +148,7 @@ class TestCLIApprovalCommands:
     def test_cli_has_approvals_command(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "approvals"],
+            [sys.executable, "-m", "aos", "approvals"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -158,7 +158,7 @@ class TestCLIApprovalCommands:
     def test_cli_approvals_list(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "approvals", "list"],
+            [sys.executable, "-m", "aos", "approvals", "list"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -168,7 +168,7 @@ class TestCLIApprovalCommands:
     def test_cli_approvals_approve_all(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "approvals", "approve-all", "--note", "batch approve"],
+            [sys.executable, "-m", "aos", "approvals", "approve-all", "--note", "batch approve"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

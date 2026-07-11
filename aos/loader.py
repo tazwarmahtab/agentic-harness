@@ -1,6 +1,6 @@
 """YAML manifest loader with JSON Schema validation.
 
-Loads YAML manifests, validates against tazos/platform/*.schema.json,
+Loads YAML manifests, validates against aos/platform/*.schema.json,
 and returns typed Pydantic objects.
 """
 

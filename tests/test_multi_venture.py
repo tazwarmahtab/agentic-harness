@@ -21,7 +21,7 @@ from aos.schemas.venture import Venture
 
 class TestVentureLoading:
     def test_load_netso_venture(self) -> None:
-        path = Path("tazos/ventures/netso/venture.yml")
+        path = Path("aos/ventures/netso/venture.yml")
         if not path.exists():
             pytest.skip("Netso venture not found")
         venture = load_venture(path)
@@ -30,14 +30,14 @@ class TestVentureLoading:
         assert venture.status == "active"
 
     def test_venture_has_artifacts(self) -> None:
-        path = Path("tazos/ventures/netso/venture.yml")
+        path = Path("aos/ventures/netso/venture.yml")
         if not path.exists():
             pytest.skip("Netso venture not found")
         venture = load_venture(path)
         assert len(venture.artifacts) > 0
 
     def test_venture_has_financial_constants(self) -> None:
-        path = Path("tazos/ventures/netso/venture.yml")
+        path = Path("aos/ventures/netso/venture.yml")
         if not path.exists():
             pytest.skip("Netso venture not found")
         venture = load_venture(path)
@@ -53,7 +53,7 @@ class TestVentureLoading:
 class TestVentureDiscovery:
     def test_discover_ventures(self) -> None:
         """Discover all venture.yml files in ventures/ directory."""
-        ventures_dir = Path("tazos/ventures")
+        ventures_dir = Path("aos/ventures")
         if not ventures_dir.exists():
             pytest.skip("Ventures directory not found")
 
@@ -62,7 +62,7 @@ class TestVentureDiscovery:
 
     def test_load_multiple_ventures(self) -> None:
         """Load all discovered ventures."""
-        ventures_dir = Path("tazos/ventures")
+        ventures_dir = Path("aos/ventures")
         if not ventures_dir.exists():
             pytest.skip("Ventures directory not found")
 
@@ -81,8 +81,8 @@ class TestVentureDiscovery:
 class TestRegistryVentureSelection:
     def test_load_with_specific_venture(self) -> None:
         """Load registry with a specific venture."""
-        harness_dir = Path("tazos/harnesses/executive")
-        venture_path = Path("tazos/ventures/netso/venture.yml")
+        harness_dir = Path("aos/harnesses/executive")
+        venture_path = Path("aos/ventures/netso/venture.yml")
         if not harness_dir.exists() or not venture_path.exists():
             pytest.skip("Required paths not found")
 
@@ -92,7 +92,7 @@ class TestRegistryVentureSelection:
 
     def test_load_without_venture(self) -> None:
         """Load registry without any venture."""
-        harness_dir = Path("tazos/harnesses/executive")
+        harness_dir = Path("aos/harnesses/executive")
         if not harness_dir.exists():
             pytest.skip("Harness directory not found")
 
@@ -111,7 +111,7 @@ class TestCLIMultiVenture:
         """CLI should have a 'ventures' subcommand."""
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "ventures"],
+            [sys.executable, "-m", "aos", "ventures"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -123,7 +123,7 @@ class TestCLIMultiVenture:
         """CLI should accept --venture flag."""
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -134,7 +134,7 @@ class TestCLIMultiVenture:
         """CLI should fail gracefully with unknown venture."""
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--venture", "nonexistent", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--venture", "nonexistent", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -152,8 +152,8 @@ class TestTransitBDDryRun:
 
     def test_transitbd_dry_run_completes(self) -> None:
         """End-to-end: load executive harness with TransitBD venture, run dry cycle."""
-        harness_dir = Path("tazos/harnesses/executive")
-        venture_path = Path("tazos/ventures/transitbd/venture.yml")
+        harness_dir = Path("aos/harnesses/executive")
+        venture_path = Path("aos/ventures/transitbd/venture.yml")
         if not harness_dir.exists() or not venture_path.exists():
             pytest.skip("Required paths not found")
 
@@ -182,8 +182,8 @@ class TestTransitBDDryRun:
 
     def test_transitbd_summary_readable(self) -> None:
         """Verify format_state_summary works for TransitBD."""
-        harness_dir = Path("tazos/harnesses/executive")
-        venture_path = Path("tazos/ventures/transitbd/venture.yml")
+        harness_dir = Path("aos/harnesses/executive")
+        venture_path = Path("aos/ventures/transitbd/venture.yml")
         if not harness_dir.exists() or not venture_path.exists():
             pytest.skip("Required paths not found")
 
@@ -207,8 +207,8 @@ class TestTransitBDDryRun:
 
     def test_netso_dry_run_still_works(self) -> None:
         """Regression: Netso dry-run still completes with financial checks."""
-        harness_dir = Path("tazos/harnesses/executive")
-        venture_path = Path("tazos/ventures/netso/venture.yml")
+        harness_dir = Path("aos/harnesses/executive")
+        venture_path = Path("aos/ventures/netso/venture.yml")
         if not harness_dir.exists() or not venture_path.exists():
             pytest.skip("Required paths not found")
 

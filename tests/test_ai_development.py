@@ -12,7 +12,7 @@ from aos.registry import load_registry
 
 class TestAIDevelopmentHarnessLoading:
     def test_load_ai_dev_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestAIDevelopmentHarnessLoading:
         assert bundle.harness.id == "HAR-AID-001"
 
     def test_ai_dev_has_5_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -29,7 +29,7 @@ class TestAIDevelopmentHarnessLoading:
         assert len(bundle.specialists) == 5
 
     def test_ai_dev_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -38,7 +38,7 @@ class TestAIDevelopmentHarnessLoading:
         assert bundle.planner.id == "AGT-AID-PLAN"
 
     def test_ai_dev_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestAIDevelopmentHarnessLoading:
 
 class TestPromptEngineer:
     def test_prompt_engineer_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -60,7 +60,7 @@ class TestPromptEngineer:
         assert pe.criticality.value == "high"
 
     def test_prompt_engineer_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -74,7 +74,7 @@ class TestPromptEngineer:
 
 class TestWorkflowBuilder:
     def test_workflow_builder_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -85,7 +85,7 @@ class TestWorkflowBuilder:
         assert wb.criticality.value == "high"
 
     def test_workflow_builder_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -97,7 +97,7 @@ class TestWorkflowBuilder:
 
 class TestEvaluationAgent:
     def test_eval_agent_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -108,7 +108,7 @@ class TestEvaluationAgent:
         assert eval_agent.criticality.value == "critical"
 
     def test_eval_agent_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -121,7 +121,7 @@ class TestEvaluationAgent:
 
 class TestBenchmarkRunner:
     def test_benchmark_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -132,7 +132,7 @@ class TestBenchmarkRunner:
         assert bench.criticality.value == "high"
 
     def test_benchmark_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -144,7 +144,7 @@ class TestBenchmarkRunner:
 
 class TestFailureAnalyzer:
     def test_failure_analyzer_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -155,7 +155,7 @@ class TestFailureAnalyzer:
         assert fail.criticality.value == "high"
 
     def test_failure_analyzer_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/ai_development")
+        harness_dir = Path("aos/harnesses/ai_development")
         if not harness_dir.exists():
             pytest.skip("AI Development harness not found")
         registry = load_registry(harness_dir)
@@ -170,7 +170,7 @@ class TestCLIAIDevelopment:
     def test_cli_run_ai_dev_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "ai_development", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "ai_development", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -181,7 +181,7 @@ class TestCLIAIDevelopment:
     def test_cli_validate_ai_dev_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "validate", "--harness", "ai_development"],
+            [sys.executable, "-m", "aos", "validate", "--harness", "ai_development"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

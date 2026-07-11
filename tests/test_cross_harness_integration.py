@@ -26,7 +26,7 @@ def _build_multi_harness_registry() -> Registry:
     Simulates a real production environment where multiple harnesses
     are loaded and agents can dispatch work across harness boundaries.
     """
-    root = Path("tazos/harnesses")
+    root = Path("aos/harnesses")
     registry = Registry()
     
     for harness_name in ("executive", "finance", "sales", "operations"):

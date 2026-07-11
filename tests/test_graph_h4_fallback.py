@@ -20,7 +20,7 @@ from aos.schemas.agent import Agent, AgentStatus, AgentCriticality, AllowedMemor
 
 def _build_registry() -> Registry:
     """Load executive + finance bundles into a registry."""
-    root = Path("tazos/harnesses")
+    root = Path("aos/harnesses")
     registry = Registry()
     for name in ("executive", "finance"):
         harness_dir = root / name

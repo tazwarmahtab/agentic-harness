@@ -12,7 +12,7 @@ from aos.registry import load_registry
 
 class TestPersonalHarnessLoading:
     def test_load_personal_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestPersonalHarnessLoading:
         assert bundle.harness.id == "HAR-PER-001"
 
     def test_personal_has_6_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -29,7 +29,7 @@ class TestPersonalHarnessLoading:
         assert len(bundle.specialists) == 6
 
     def test_personal_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -38,7 +38,7 @@ class TestPersonalHarnessLoading:
         assert bundle.planner.id == "AGT-PER-PLAN"
 
     def test_personal_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestPersonalHarnessLoading:
 
 class TestCalendarManager:
     def test_calendar_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -60,7 +60,7 @@ class TestCalendarManager:
         assert cal.criticality.value == "high"
 
     def test_calendar_has_focus_time_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -73,7 +73,7 @@ class TestCalendarManager:
 
 class TestTaskManager:
     def test_task_manager_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -84,7 +84,7 @@ class TestTaskManager:
         assert task.criticality.value == "high"
 
     def test_task_manager_has_max_3_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -97,7 +97,7 @@ class TestTaskManager:
 
 class TestHealthTracker:
     def test_health_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -108,7 +108,7 @@ class TestHealthTracker:
         assert health.criticality.value == "high"
 
     def test_health_has_exercise_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -121,7 +121,7 @@ class TestHealthTracker:
 
 class TestHabitCoach:
     def test_habit_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -134,7 +134,7 @@ class TestHabitCoach:
 
 class TestReadingManager:
     def test_reading_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -147,7 +147,7 @@ class TestReadingManager:
 
 class TestGoalTracker:
     def test_goal_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -158,7 +158,7 @@ class TestGoalTracker:
         assert goal.criticality.value == "high"
 
     def test_goal_has_quarterly_review_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/personal")
+        harness_dir = Path("aos/harnesses/personal")
         if not harness_dir.exists():
             pytest.skip("Personal harness not found")
         registry = load_registry(harness_dir)
@@ -173,7 +173,7 @@ class TestCLIPersonalHarness:
     def test_cli_run_personal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "personal", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "personal", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -184,7 +184,7 @@ class TestCLIPersonalHarness:
     def test_cli_validate_personal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "validate", "--harness", "personal"],
+            [sys.executable, "-m", "aos", "validate", "--harness", "personal"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

@@ -12,7 +12,7 @@ from aos.registry import load_registry
 
 class TestCustomerSuccessHarnessLoading:
     def test_load_cs_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestCustomerSuccessHarnessLoading:
         assert bundle.harness.id == "HAR-CSU-001"
 
     def test_cs_has_4_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -29,7 +29,7 @@ class TestCustomerSuccessHarnessLoading:
         assert len(bundle.specialists) == 4
 
     def test_cs_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -38,7 +38,7 @@ class TestCustomerSuccessHarnessLoading:
         assert bundle.planner.id == "AGT-CSU-PLAN"
 
     def test_cs_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestCustomerSuccessHarnessLoading:
 
 class TestSystemMonitor:
     def test_monitor_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -60,7 +60,7 @@ class TestSystemMonitor:
         assert mon.criticality.value == "high"
 
     def test_monitor_has_capacity_factor_constraint(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -71,7 +71,7 @@ class TestSystemMonitor:
         assert "capacity_factor" in constraint_text or "16.5" in constraint_text
 
     def test_monitor_has_financial_constants(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -85,7 +85,7 @@ class TestSystemMonitor:
 
 class TestSupportResponder:
     def test_support_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -96,7 +96,7 @@ class TestSupportResponder:
         assert sup.criticality.value == "high"
 
     def test_support_has_sla_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -110,7 +110,7 @@ class TestSupportResponder:
 
 class TestIssueDetector:
     def test_detector_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -121,7 +121,7 @@ class TestIssueDetector:
         assert det.criticality.value == "medium"
 
     def test_detector_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -133,7 +133,7 @@ class TestIssueDetector:
 
 class TestUpsellSpecialist:
     def test_upsell_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -144,7 +144,7 @@ class TestUpsellSpecialist:
         assert upsell.criticality.value == "medium"
 
     def test_upsell_has_financial_rules(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -157,7 +157,7 @@ class TestUpsellSpecialist:
         assert consts["customer_savings_pct"] == 23.0
 
     def test_upsell_has_approval_tool(self) -> None:
-        harness_dir = Path("tazos/harnesses/customer_success")
+        harness_dir = Path("aos/harnesses/customer_success")
         if not harness_dir.exists():
             pytest.skip("Customer Success harness not found")
         registry = load_registry(harness_dir)
@@ -172,7 +172,7 @@ class TestCLICustomerSuccess:
     def test_cli_run_cs_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "customer_success", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "customer_success", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -183,7 +183,7 @@ class TestCLICustomerSuccess:
     def test_cli_validate_cs_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "validate", "--harness", "customer_success"],
+            [sys.executable, "-m", "aos", "validate", "--harness", "customer_success"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

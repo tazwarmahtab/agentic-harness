@@ -1,6 +1,6 @@
 """Pydantic models for TAZ OS manifests.
 
-Each model validates against its corresponding JSON Schema in tazos/platform/.
+Each model validates against its corresponding JSON Schema in aos/platform/.
 """
 
 from aos.schemas.identity import Identity, IdentityType, IdentityStatus, Classification

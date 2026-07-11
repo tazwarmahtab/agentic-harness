@@ -6,7 +6,7 @@ Measures:
   - output_quality_score: pass/fail on required JSON structure
 
 Usage:
-  python -m tazos.evaluator_harness --harness executive --samples 5
+  python -m aos.evaluator_harness --harness executive --samples 5
 """
 from __future__ import annotations
 

@@ -13,7 +13,7 @@ from aos.registry import Registry, HarnessBundle, load_registry
 
 def _build_multi_bundle_registry() -> Registry:
     """Load executive + finance + sales + operations into one registry."""
-    root = Path("tazos/harnesses")
+    root = Path("aos/harnesses")
     registry = Registry()
     for name in ("executive", "finance", "sales", "operations"):
         harness_dir = root / name
@@ -174,7 +174,7 @@ class TestCLIMultiHarnessLoading:
     def test_dry_run_loads_multiple_harnesses(self):
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -185,7 +185,7 @@ class TestCLIMultiHarnessLoading:
     def test_dry_run_cross_harness_harness_loaded(self):
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--venture", "netso", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

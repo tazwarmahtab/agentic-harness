@@ -12,7 +12,7 @@ from aos.registry import load_registry
 
 class TestLegalHarnessLoading:
     def test_load_legal_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestLegalHarnessLoading:
         assert bundle.harness.id == "HAR-LEG-001"
 
     def test_legal_has_5_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -29,7 +29,7 @@ class TestLegalHarnessLoading:
         assert len(bundle.specialists) == 5
 
     def test_legal_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -38,7 +38,7 @@ class TestLegalHarnessLoading:
         assert bundle.planner.id == "AGT-LEG-PLAN"
 
     def test_legal_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestLegalHarnessLoading:
 
 class TestNDASpecialist:
     def test_nda_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -60,7 +60,7 @@ class TestNDASpecialist:
         assert nda.criticality.value == "high"
 
     def test_nda_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -72,7 +72,7 @@ class TestNDASpecialist:
         assert "approval" in constraint_text
 
     def test_nda_has_approval_tool(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -85,7 +85,7 @@ class TestNDASpecialist:
 
 class TestLOISpecialist:
     def test_loi_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -95,7 +95,7 @@ class TestLOISpecialist:
         assert loi.name == "LOI Specialist"
 
     def test_loi_has_financial_rules(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -107,7 +107,7 @@ class TestLOISpecialist:
         assert len(loi.financial_rules["hard_fails"]) >= 2
 
     def test_loi_financial_constants_match_ground_truth(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -123,7 +123,7 @@ class TestLOISpecialist:
 
 class TestPPASpecialist:
     def test_ppa_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -134,7 +134,7 @@ class TestPPASpecialist:
         assert ppa.criticality.value == "critical"
 
     def test_ppa_has_financial_rules(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -146,7 +146,7 @@ class TestPPASpecialist:
         assert len(ppa.financial_rules["hard_fails"]) >= 3
 
     def test_ppa_constants_include_escalation(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -161,7 +161,7 @@ class TestPPASpecialist:
 
 class TestComplianceSpecialist:
     def test_compliance_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -171,7 +171,7 @@ class TestComplianceSpecialist:
         assert comp.name == "Compliance Specialist"
 
     def test_compliance_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -185,7 +185,7 @@ class TestComplianceSpecialist:
 
 class TestContractReviewer:
     def test_reviewer_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -195,7 +195,7 @@ class TestContractReviewer:
         assert rev.name == "Contract Reviewer"
 
     def test_reviewer_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/legal")
+        harness_dir = Path("aos/harnesses/legal")
         if not harness_dir.exists():
             pytest.skip("Legal harness not found")
         registry = load_registry(harness_dir)
@@ -211,7 +211,7 @@ class TestCLILegalHarness:
     def test_cli_run_legal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "legal", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "legal", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -222,7 +222,7 @@ class TestCLILegalHarness:
     def test_cli_validate_legal_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "validate", "--harness", "legal"],
+            [sys.executable, "-m", "aos", "validate", "--harness", "legal"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

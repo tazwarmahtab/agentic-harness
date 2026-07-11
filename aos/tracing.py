@@ -199,12 +199,12 @@ class Tracer(Protocol):
 class JSONTracer:
     """Simple JSON-based tracer that writes events to disk.
 
-    Events are written to ~/.tazos/traces/{cycle_id}.json
+    Events are written to ~/.aos/traces/{cycle_id}.json
     Each trace file contains the full event tree for one cycle.
     """
 
     def __init__(self, output_dir: Path | None = None) -> None:
-        self.output_dir = output_dir or Path.home() / ".tazos" / "traces"
+        self.output_dir = output_dir or Path.home() / ".aos" / "traces"
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self._cycle_id: str | None = None

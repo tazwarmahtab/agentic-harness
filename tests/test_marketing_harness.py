@@ -12,7 +12,7 @@ from aos.registry import load_registry
 
 class TestMarketingHarnessLoading:
     def test_load_marketing_harness(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -21,7 +21,7 @@ class TestMarketingHarnessLoading:
         assert bundle.harness.id == "HAR-MKT-001"
 
     def test_marketing_has_4_specialists(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -29,7 +29,7 @@ class TestMarketingHarnessLoading:
         assert len(bundle.specialists) == 4
 
     def test_marketing_has_planner(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -38,7 +38,7 @@ class TestMarketingHarnessLoading:
         assert bundle.planner.id == "AGT-MKT-PLAN"
 
     def test_marketing_has_dispatcher(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -49,7 +49,7 @@ class TestMarketingHarnessLoading:
 
 class TestContentCreator:
     def test_content_creator_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -60,7 +60,7 @@ class TestContentCreator:
         assert content.criticality.value == "high"
 
     def test_content_creator_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -70,7 +70,7 @@ class TestContentCreator:
         assert len(content.constraints) >= 3
 
     def test_content_creator_has_generate_document_tool(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -83,7 +83,7 @@ class TestContentCreator:
 
 class TestLinkedInStrategist:
     def test_linkedin_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -94,7 +94,7 @@ class TestLinkedInStrategist:
         assert linkedin.criticality.value == "high"
 
     def test_linkedin_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -106,7 +106,7 @@ class TestLinkedInStrategist:
 
 class TestSEOSpecialist:
     def test_seo_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -117,7 +117,7 @@ class TestSEOSpecialist:
         assert seo.criticality.value == "high"
 
     def test_seo_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -129,7 +129,7 @@ class TestSEOSpecialist:
 
 class TestWebsiteManager:
     def test_website_exists(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -140,7 +140,7 @@ class TestWebsiteManager:
         assert web.criticality.value == "high"
 
     def test_website_has_constraints(self) -> None:
-        harness_dir = Path("tazos/harnesses/marketing")
+        harness_dir = Path("aos/harnesses/marketing")
         if not harness_dir.exists():
             pytest.skip("Marketing harness not found")
         registry = load_registry(harness_dir)
@@ -154,7 +154,7 @@ class TestCLIMarketingHarness:
     def test_cli_run_marketing_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "run", "--harness", "marketing", "--dry-run"],
+            [sys.executable, "-m", "aos", "run", "--harness", "marketing", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -165,7 +165,7 @@ class TestCLIMarketingHarness:
     def test_cli_validate_marketing_harness(self) -> None:
         import subprocess
         result = subprocess.run(
-            [sys.executable, "-m", "tazos", "validate", "--harness", "marketing"],
+            [sys.executable, "-m", "aos", "validate", "--harness", "marketing"],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

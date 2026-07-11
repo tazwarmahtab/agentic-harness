@@ -1,4 +1,4 @@
-"""Tests for the hardened sanitize_path function in tazos.hardening.
+"""Tests for the hardened sanitize_path function in aos.hardening.
 
 Covers: path traversal (literal, URL-encoded, double-encoded),
 null bytes, backslashes, absolute paths, tilde, normalization bypasses,
@@ -20,14 +20,14 @@ class TestSanitizePath:
         from aos.hardening import sanitize_path
 
         # Arrange
-        path = "project/tazos/harnesses/executive"
+        path = "project/aos/harnesses/executive"
 
         # Act
         result = sanitize_path(path)
 
         # Assert
         assert result is not None
-        assert result == "project/tazos/harnesses/executive"
+        assert result == "project/aos/harnesses/executive"
 
     def test_rejects_literal_dotdot(self) -> None:
         """Path with literal '..' segments is rejected."""
@@ -228,13 +228,13 @@ class TestSanitizePath:
         from aos.hardening import sanitize_path
 
         # Arrange
-        path = "tazos/harnesses/evaluator/config.json"
+        path = "aos/harnesses/evaluator/config.json"
 
         # Act
         result = sanitize_path(path)
 
         # Assert
-        assert result == "tazos/harnesses/evaluator/config.json"
+        assert result == "aos/harnesses/evaluator/config.json"
 
     def test_rejects_trailing_dotdot(self) -> None:
         """Path ending with '..' segment is rejected by normalization-bypass check.
