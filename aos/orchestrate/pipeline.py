@@ -425,8 +425,21 @@ class OrchestratePipeline:
             for severity, count in iteration_findings.items():
                 findings_summary[severity] = findings_summary.get(severity, 0) + count
 
-            # Auto-fix deterministic issues (stub)
-            # In production: parse review output, apply fixes, re-review
+            # Auto-fix: invoke /implement with review findings as context
+            if iteration_findings["critical"] > 0 or iteration_findings["high"] > 0:
+                findings_text = ", ".join(
+                    f"{k}: {v}" for k, v in iteration_findings.items() if v > 0
+                )
+                fix_prompt = (
+                    f"Fix the following review findings: {findings_text}. "
+                    f"Apply minimal, targeted fixes for each CRITICAL and HIGH issue."
+                )
+                print(f"  → Auto-fixing: {findings_text}")
+                fix_rc, _fix_out, _fix_err = self._invoke_skill("implement", fix_prompt)
+                if fix_rc != 0:
+                    print(f"  ⚠ /implement exited with code {fix_rc} during auto-fix")
+                else:
+                    print(f"  ✓ Auto-fix applied, re-reviewing...")
 
             # Check exit criteria: 0 CRITICAL, 0 HIGH
             if iteration_findings["critical"] == 0 and iteration_findings["high"] == 0:
@@ -757,7 +770,11 @@ class OrchestratePipeline:
         return self.ctx.gates
 
     def _is_auto_approved(self, gate: Gate) -> bool:
-        return False  # Could be wired to plan-tune preferences
+        """Auto-approve gates during dry-run mode."""
+        if self.ctx.dry_run:
+            print(f"  [DRY RUN] Gate '{gate.value}' auto-approved")
+            return True
+        return False
 
     def _skip_phase(self, phase: Phase, reason: str) -> None:
         result = PhaseResult(phase=phase, status=Status.SKIPPED, skipped_reason=reason)

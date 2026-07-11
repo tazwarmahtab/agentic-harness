@@ -204,11 +204,9 @@ class TestOrchestratePipeline:
             gate=Gate.SPEC, decision=GateDecision.REJECTED
         )
         mock_gates._active_gates.return_value = {Gate.SPEC}
-        mock_gates._is_auto_approved.return_value = False
 
-        # Need spec enabled but since skip_spec=True, the gate check
-        # only runs if the phase actually ran. Let's run with skip_spec=False.
-        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test")
+        # Need spec enabled, dry_run off so gates are not auto-approved
+        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False)
         pipeline = OrchestratePipeline(ctx, mock_gates)
 
         rc = pipeline.run()
@@ -616,7 +614,8 @@ class TestGateBlocking:
             gate=Gate.SPEC, decision=GateDecision.SKIPPED, item_id="GATE-001"
         )
 
-        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test")
+        # dry_run=False so gates are not auto-approved
+        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False)
         pipeline = OrchestratePipeline(ctx, mock_gates)
 
         rc = pipeline.run()

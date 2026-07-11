@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AOS — Agentic Operating System</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface-2: #1a1a25;
+      --border: #2a2a3a;
+      --text: #e4e4ef;
+      --text-dim: #8888a0;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.15);
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #eab308;
+      --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+    .header h1 span { color: var(--accent); }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    .status-dot.ok { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-dot.err { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    .status-dot.loading { background: var(--yellow); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      padding: 24px 32px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .card-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .card-value {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    .section {
+      padding: 0 32px 24px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    .harness-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .harness-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .harness-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .harness-name {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+    .harness-id {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: monospace;
+    }
+
+    .log-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .log-entry { color: var(--text-dim); }
+    .log-entry .ts { color: var(--text-dim); opacity: 0.5; }
+    .log-entry .ev { color: var(--accent); }
+    .log-entry .err { color: var(--red); }
+    .log-entry .ok { color: var(--green); }
+
+    .empty { color: var(--text-dim); font-style: italic; }
+
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .run-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .run-bar select, .run-bar input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .run-bar select { min-width: 180px; }
+    .run-bar input { flex: 1; min-width: 200px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>AOS</span> — Agentic Operating System</h1>
+  <div id="server-status">
+    <span class="status-dot loading"></span>
+    <span style="font-size:13px;color:var(--text-dim)">Connecting...</span>
+  </div>
+</div>
+
+<div class="grid" id="kpis">
+  <div class="card">
+    <div class="card-label">Harnesses</div>
+    <div class="card-value" id="kpi-harnesses">—</div>
+    <div class="card-sub">Registered modules</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Test Files</div>
+    <div class="card-value" id="kpi-tests">—</div>
+    <div class="card-sub">test_*.py files</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Events</div>
+    <div class="card-value" id="kpi-events">—</div>
+    <div class="card-sub">Event bus total</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Entities</div>
+    <div class="card-value" id="kpi-entities">—</div>
+    <div class="card-sub">Entity index total</div>
+  </div>
+</div>
+
+<div class="run-bar">
+  <select id="harness-select">
+    <option value="">Loading harnesses...</option>
+  </select>
+  <input id="venture-input" placeholder="Venture (optional)" value="netso">
+  <button class="btn" id="run-btn" onclick="runHarness()">Run Harness</button>
+  <span id="run-status" style="font-size:13px;color:var(--text-dim)"></span>
+</div>
+
+<div class="section">
+  <div class="section-title">Harnesses</div>
+  <div class="harness-grid" id="harness-list">
+    <div class="empty">Loading...</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Live Log</div>
+  <div class="log-panel" id="log-panel">
+    <div class="log-entry empty">No events yet. Run a harness to see live output.</div>
+  </div>
+</div>
+
+<script>
+  const API = window.location.origin;
+  let ws = null;
+
+  // --- Health check ---
+  async function checkHealth() {
+    const el = document.getElementById('server-status');
+    try {
+      const r = await fetch(`${API}/health`);
+      if (r.ok) {
+        el.innerHTML = '<span class="status-dot ok"></span><span style="font-size:13px;color:var(--text-dim)">Connected</span>';
+      } else {
+        el.innerHTML = '<span class="status-dot err"></span><span style="font-size:13px;color:var(--text-dim)">Error</span>';
+      }
+    } catch {
+      el.innerHTML = '<span class="status-dot err"></span><span style="font-size:13px;color:var(--text-dim)">Offline</span>';
+    }
+  }
+
+  // --- KPIs ---
+  async function loadKPIs() {
+    try {
+      const [summary, events, entities] = await Promise.all([
+        fetch(`${API}/api/summary`).then(r => r.json()),
+        fetch(`${API}/api/event-log`).then(r => r.json()),
+        fetch(`${API}/api/entity-index`).then(r => r.json()),
+      ]);
+      document.getElementById('kpi-harnesses').textContent = summary.harnesses ?? '—';
+      document.getElementById('kpi-tests').textContent = summary.tests ?? '—';
+      document.getElementById('kpi-events').textContent = events.total_events ?? 0;
+      document.getElementById('kpi-entities').textContent = entities.total ?? 0;
+    } catch { /* silent */ }
+  }
+
+  // --- Harness list ---
+  async function loadHarnesses() {
+    try {
+      const list = await fetch(`${API}/api/harnesses`).then(r => r.json());
+      const grid = document.getElementById('harness-list');
+      const sel = document.getElementById('harness-select');
+
+      if (!list.length) {
+        grid.innerHTML = '<div class="empty">No harnesses found</div>';
+        return;
+      }
+
+      grid.innerHTML = list.map(h => `
+        <div class="harness-card" onclick="selectHarness('${h.name}')">
+          <div class="harness-name">${h.name}</div>
+          <div class="harness-id">${h.id}</div>
+        </div>
+      `).join('');
+
+      sel.innerHTML = list.map(h =>
+        `<option value="${h.name}">${h.name} (${h.id})</option>`
+      ).join('');
+    } catch { /* silent */ }
+  }
+
+  function selectHarness(name) {
+    document.getElementById('harness-select').value = name;
+  }
+
+  // --- WebSocket run ---
+  function runHarness() {
+    const name = document.getElementById('harness-select').value;
+    const venture = document.getElementById('venture-input').value;
+    if (!name) return;
+
+    const statusEl = document.getElementById('run-status');
+    const btn = document.getElementById('run-btn');
+    btn.disabled = true;
+    statusEl.textContent = 'Connecting...';
+
+    const wsUrl = `ws://${window.location.host}/ws/harness/${name}${venture ? '?venture=' + venture : ''}`;
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => { statusEl.textContent = 'Connected'; };
+    ws.onmessage = (evt) => {
+      try {
+        const msg = JSON.parse(evt.data);
+        appendLog(msg);
+        if (msg.event === 'completed') {
+          statusEl.textContent = 'Completed';
+          btn.disabled = false;
+          loadKPIs();
+        } else if (msg.event === 'error') {
+          statusEl.textContent = 'Error: ' + msg.message;
+          btn.disabled = false;
+        } else {
+          statusEl.textContent = `Running: ${msg.node || msg.event}`;
+        }
+      } catch { /* ignore parse errors */ }
+    };
+    ws.onerror = () => {
+      statusEl.textContent = 'Connection error';
+      btn.disabled = false;
+    };
+    ws.onclose = () => {
+      btn.disabled = false;
+    };
+  }
+
+  function appendLog(msg) {
+    const panel = document.getElementById('log-panel');
+    const empty = panel.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const ts = new Date().toLocaleTimeString();
+    const cls = msg.event === 'error' ? 'err' : msg.event === 'completed' ? 'ok' : 'ev';
+    const detail = msg.node ? ` [${msg.node}]` : msg.message ? ` ${msg.message}` : '';
+    const el = document.createElement('div');
+    el.className = 'log-entry';
+    el.innerHTML = `<span class="ts">${ts}</span> <span class="${cls}">${msg.event}</span>${detail}`;
+    panel.appendChild(el);
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  // --- Init ---
+  checkHealth();
+  loadKPIs();
+  loadHarnesses();
+  setInterval(checkHealth, 15000);
+  setInterval(loadKPIs, 30000);
+</script>
+
+</body>
+</html>
