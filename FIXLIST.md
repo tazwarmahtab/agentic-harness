@@ -1,4 +1,4 @@
-# TAZ OS Expert Review Fixlist
+# AOS Expert Review Fixlist
 
 Tracks remediation of gaps identified in the expert review (runtime 2/10, ground-truth 0/10, zero parallelization, no memory retrieval, context engineering 2/10).
 
@@ -14,12 +14,12 @@ Tracks remediation of gaps identified in the expert review (runtime 2/10, ground
 
 ## Completed
 
-- **C1** — Hard quality gate: `validate_output` violations now block execution (`status: "error"`) instead of logging and continuing. `tazos/graph.py:441`.
-- **C2** — Context builder: `tazos/context.py` assembles full system prompt from agent manifest (identity, mission, capabilities, reasoning, self-check, constraints, memory permissions, financial rules, routing). Wired into `_run_agent_node`.
+- **C1** — Hard quality gate: `validate_output` violations now block execution (`status: "error"`) instead of logging and continuing. `aos/graph.py:441`.
+- **C2** — Context builder: `aos/context.py` assembles full system prompt from agent manifest (identity, mission, capabilities, reasoning, self-check, constraints, memory permissions, financial rules, routing). Wired into `_run_agent_node`.
 - **C3** — Memory retrieval at runtime: `MemoryStore.retrieve_for_agent()` injects scoped memory into agent prompts. Wired at `graph.py:394`.
-- **C4** — Usage tracker: `tazos/usage.py` accumulates per-agent per-model token counts. Wired at `graph.py:426`.
-- **C5** — Evaluator module: `tazos/evaluator.py` with 5 financial checks (blended rate, savings %, DSCR floor, PPA rate, Scenario B).
-- **C6** — Free-tier model pool: 5 OpenRouter free models with round-robin in `tazos/llm.py`.
+- **C4** — Usage tracker: `aos/usage.py` accumulates per-agent per-model token counts. Wired at `graph.py:426`.
+- **C5** — Evaluator module: `aos/evaluator.py` with 5 financial checks (blended rate, savings %, DSCR floor, PPA rate, Scenario B).
+- **C6** — Free-tier model pool: 5 OpenRouter free models with round-robin in `aos/llm.py`.
 - **C7** — ThreadPoolExecutor parallelism: teams execute concurrently (graph.py:622, 652, 995).
 - **C8** — LangGraph StateGraph: entire runtime migrated from linear loop to StateGraph pipeline.
 - **C9** — Baseline evaluation harness: wired into `run_cycle_graph`; runs on every step result and emits `evaluation` in `CycleState`.

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/venture.schema.json",
+  "$id": "https://aos/platform/venture.schema.json",
   "title": "TAZ OS Venture",
   "description": "A business venture mounted into TAZ OS. Defines identities, people, live source-of-truth artifacts, financial constants, and approval thresholds. Each venture is a top-level organizational unit.",
   "type": "object",

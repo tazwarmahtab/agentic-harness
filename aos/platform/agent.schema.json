@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/agent.schema.json",
+  "$id": "https://aos/platform/agent.schema.json",
   "title": "TAZ OS Agent",
   "description": "An autonomous worker that executes a well-defined capability within a harness. Agents execute work only — they do not own workflows, memory, scheduling, policy, or orchestration. See Volume 10.",
   "type": "object",

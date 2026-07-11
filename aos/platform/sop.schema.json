@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/sop.schema.json",
+  "$id": "https://aos/platform/sop.schema.json",
   "title": "TAZ OS Standard Operating Procedure",
   "description": "A declarative SOP that defines a multi-step process, its phases, owners, actions, rules, and output formats. SOPs are the executable playbooks that agents follow. See Volume 11.",
   "type": "object",

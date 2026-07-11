@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/policy.schema.json",
+  "$id": "https://aos/platform/policy.schema.json",
   "title": "TAZ OS Policy",
   "description": "Declarative, versioned rule evaluated by the Policy Engine before any action executes. Covers security, financial, legal, commercial, engineering, privacy, AI-safety, compliance, operations, executive. See Volume 8.",
   "type": "object",

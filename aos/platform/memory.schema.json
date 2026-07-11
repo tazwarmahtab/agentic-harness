@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/memory.schema.json",
+  "$id": "https://aos/platform/memory.schema.json",
   "title": "TAZ OS Memory",
   "description": "Shared memory for a harness. Three layers: Long-term (persistent facts), Episodic (events, time-sequenced), Semantic (rules, patterns, how things work). All permissions are per-specialist, least-privilege. See Volume 8.",
   "type": "object",

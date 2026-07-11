@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/tool.schema.json",
+  "$id": "https://aos/platform/tool.schema.json",
   "title": "TAZ OS Tool Registry",
   "description": "Capability-based tool definitions. Agents request capabilities (e.g. 'send_email'), not vendor APIs. The runtime resolves to actual providers. See Volume 9.",
   "type": "object",

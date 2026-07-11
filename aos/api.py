@@ -179,11 +179,9 @@ async def list_harnesses() -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 def _find_project_root() -> Path:
-    """Find the aos-engine project root.
-
-    Same logic as ``__main__.find_project_root``.
-    """
-    return Path(__file__).parent.parent
+    """Find the aos-engine project root."""
+    from aos.__main__ import find_project_root
+    return find_project_root()
 
 
 def _resolve_bundle(

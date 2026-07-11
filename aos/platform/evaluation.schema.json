@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/evaluation.schema.json",
+  "$id": "https://aos/platform/evaluation.schema.json",
   "title": "TAZ OS Evaluation",
   "description": "Harness-level and per-specialist evaluation metrics, continuous improvement loop, and evaluation pipeline. Every workflow is measured. Every output is scored. See Volume 10.",
   "type": "object",

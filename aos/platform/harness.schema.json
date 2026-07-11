@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://tazos/platform/harness.schema.json",
+  "$id": "https://aos/platform/harness.schema.json",
   "title": "TAZ OS Harness",
   "description": "A self-contained business system. Each harness contains: Mission, Scope, KPIs, Inputs, Outputs, Planner, Dispatcher, Specialists, Shared Memory, Tools, Approval Gates, SOP Library, Evaluation Metrics, Continuous Improvement Loop. See Volume 4 + canonical template.",
   "type": "object",
