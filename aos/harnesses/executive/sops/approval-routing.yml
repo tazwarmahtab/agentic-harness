@@ -1,0 +1,170 @@
+# SOP-003 — Approval Routing & Decision Queue
+# Owner: AGT-EXEC-CHIEFOFSTAFF (bundling) + Runtime (enforcement)
+# Frequency: Realtime — any gated action triggers this SOP
+# Source: approvals.yml + TASK_ROUTER.md escalation rules
+
+id: SOP-EXEC-003
+name: Approval Routing and Decision Queue
+owner: AGT-EXEC-CHIEFOFSTAFF
+version: 1.0.0
+
+# ===========================================================================
+# PRINCIPLE — bundle, never ping
+# ===========================================================================
+principle: >
+  The founder NEVER receives single-item approval pings. All gated actions
+  are accumulated into a bundled decision queue, presented in the daily
+  brief, and acted on in one review session.
+
+# ===========================================================================
+# ROUTING TABLE — which actions need which gate
+# ===========================================================================
+routing:
+
+  # AUTO (no gate) — execute immediately
+  auto:
+    - schedule_meeting
+    - create_task
+    - summarize_document
+    - update_dashboard
+    - update_blockers
+    - write_handoff
+    - generate_draft
+    - update_decision_log
+    - generate_kpi_report
+    - read_any_data
+    - internal_agent_routing
+
+  # GATED — require founder approval
+  gated:
+    - action: send_email_to_investor
+      gate: POL-EXEC-INV-001
+      threshold: any_external_investor_communication
+      owner: HUM-000001
+      expires: 48h
+
+    - action: send_investor_facing_document
+      gate: POL-EXEC-INV-002
+      threshold: confidential_or_restricted_doc
+      owner: HUM-000001
+      expires: 72h
+
+    - action: create_proposal_gt_5m
+      gate: POL-EXEC-FIN-001
+      threshold: BDT_5_000_000
+      owner: HUM-000001
+      expires: 72h
+
+    - action: sign_contract
+      gate: POL-EXEC-LEG-001
+      threshold: any_loi_ppa_epc_nda
+      owner: HUM-000001
+      expires: 72h
+
+    - action: submit_regulatory_filing
+      gate: POL-EXEC-LEG-002
+      threshold: any_sreda_idcol_nbr
+      owner: HUM-000001
+      expires: 72h
+
+    - action: procurement_purchase_order
+      gate: POL-EXEC-FIN-004
+      threshold: any_po
+      owner: HUM-000001
+      expires: 48h
+
+    - action: non_standard_financial_model
+      gate: POL-EXEC-FIN-005
+      threshold: non_standard_assumptions
+      owner: HUM-000001_plus_AGT-EXEC-CFO
+      expires: 48h
+
+    - action: pricing_exception
+      gate: POL-EXEC-GOV-001
+      threshold: any_deviation_from_standard
+      owner: HUM-000001
+      expires: 48h
+
+    - action: supplier_selection_gt_1m
+      gate: POL-EXEC-GOV-002
+      threshold: BDT_1_000_000
+      owner: HUM-000001
+      expires: 48h
+
+    - action: strategic_capital_decision
+      gate: implicit
+      threshold: any
+      owner: HUM-000001
+      expires: 1w
+
+  # ESCALATED — auto-triggered by conditions
+  escalated:
+    - trigger: dscr_below_2.25
+      gate: POL-EXEC-FIN-002
+      notify: AGT-EXEC-CFO + founder
+      urgency: high
+      source: TASK_ROUTER escalation rule 3
+
+    - trigger: dscr_below_2.0
+      gate: POL-EXEC-FIN-003
+      notify: AGT-EXEC-CFO + founder + AGT-EXEC-RSK
+      urgency: immediate
+      source: TASK_ROUTER escalation rule 3
+
+    - trigger: blocked_gt_24h
+      notify: AGT-EXEC-COO
+      urgency: high
+      source: TASK_ROUTER escalation rule 1
+
+    - trigger: blocked_gt_48h
+      notify: founder
+      urgency: high
+      source: TASK_ROUTER escalation rule 2
+
+    - trigger: customer_default_signal
+      notify: AGT-EXEC-CFO + AGT-EXEC-LEG + founder
+      urgency: high
+      source: TASK_ROUTER escalation rule 4
+
+    - trigger: regulatory_deadline_missed
+      notify: AGT-EXEC-LEG + founder
+      urgency: high
+      source: TASK_ROUTER escalation rule 5
+
+# ===========================================================================
+# QUEUE PROCESS
+# ===========================================================================
+queue_process:
+  - step: gated_action_detected
+    actions:
+      - "identify_matching_gate (from approvals.yml)"
+      - "capture: action, rationale, risk_assessment, financial_impact"
+  - step: add_to_queue
+    actions:
+      - "assign: approval_id"
+      - "set: expiration_timer"
+      - "calculate: recommended_action (approve / reject / needs_review)"
+  - step: bundle_for_brief
+    actions:
+      - "chief_of_staff aggregates all pending into daily brief"
+      - "summary: count + high-level descriptions"
+      - "detail: available in approval_queue artifact"
+  - step: founder_reviews
+    actions:
+      - "approve_all: execute all pending"
+      - "review_individually: present each with context"
+      - "reject: log rejection + rationale"
+  - step: post_decision
+    actions:
+      - "execute_approved_actions"
+      - "log_decision (identity, rationale, alternatives, confidence)"
+      - "update_dashboard"
+      - "update_decision_log"
+
+# ===========================================================================
+# EXPIRATION
+# ===========================================================================
+expiration:
+  rule: "Unapproved items expire after their configured hours."
+  action: "Expired items are re-escalated with urgency flag to founder."
+  notification: "Chief of Staff flags expired items in next daily brief."

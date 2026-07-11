@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from tazos.vector_store import (
+from aos.vector_store import (
     EmbeddingProvider,
     NumpyEmbeddingProvider,
     TfidfEmbeddingProvider,
@@ -238,7 +238,7 @@ class TestVectorPersistence:
 
 class TestBuildFromMemory:
     def test_builds_index_from_memory_store(self, tfidf_provider: TfidfEmbeddingProvider) -> None:
-        from tazos.memory import MemoryStore
+        from aos.memory import MemoryStore
 
         store = MemoryStore()
         store.seed_from_dict("long_term", "company_facts", [
@@ -253,7 +253,7 @@ class TestBuildFromMemory:
         assert index.size == 3
 
     def test_excludes_superseded_entries(self, tfidf_provider: TfidfEmbeddingProvider) -> None:
-        from tazos.memory import MemoryStore
+        from aos.memory import MemoryStore
 
         store = MemoryStore()
         store.seed_from_dict("long_term", "facts", [
@@ -267,7 +267,7 @@ class TestBuildFromMemory:
         assert index.size == 0
 
     def test_respects_permissions(self, tfidf_provider: TfidfEmbeddingProvider) -> None:
-        from tazos.memory import MemoryStore
+        from aos.memory import MemoryStore
 
         store = MemoryStore(permissions={
             "AGT-COO": {
@@ -286,7 +286,7 @@ class TestBuildFromMemory:
         assert index.size == 1  # only dashboard
 
     def test_searchable_text_generation(self, tfidf_provider: TfidfEmbeddingProvider) -> None:
-        from tazos.memory import MemoryStore
+        from aos.memory import MemoryStore
 
         store = MemoryStore()
         store.seed_from_dict("long_term", "facts", [

@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tazos.registry import load_registry, Registry
-from tazos.loader import load_venture
-from tazos.schemas.venture import Venture
+from aos.registry import load_registry, Registry
+from aos.loader import load_venture
+from aos.schemas.venture import Venture
 
 
 # ---------------------------------------------------------------------------
@@ -157,8 +157,8 @@ class TestTransitBDDryRun:
         if not harness_dir.exists() or not venture_path.exists():
             pytest.skip("Required paths not found")
 
-        from tazos.graph import run_cycle_graph
-        from tazos.registry import load_registry
+        from aos.graph import run_cycle_graph
+        from aos.registry import load_registry
 
         registry = load_registry(harness_dir, venture_path)
         bundle = next(iter(registry.harnesses.values()))
@@ -187,8 +187,8 @@ class TestTransitBDDryRun:
         if not harness_dir.exists() or not venture_path.exists():
             pytest.skip("Required paths not found")
 
-        from tazos.graph import run_cycle_graph, format_state_summary
-        from tazos.registry import load_registry
+        from aos.graph import run_cycle_graph, format_state_summary
+        from aos.registry import load_registry
 
         registry = load_registry(harness_dir, venture_path)
         bundle = next(iter(registry.harnesses.values()))
@@ -212,8 +212,8 @@ class TestTransitBDDryRun:
         if not harness_dir.exists() or not venture_path.exists():
             pytest.skip("Required paths not found")
 
-        from tazos.graph import run_cycle_graph
-        from tazos.registry import load_registry
+        from aos.graph import run_cycle_graph
+        from aos.registry import load_registry
 
         registry = load_registry(harness_dir, venture_path)
         bundle = next(iter(registry.harnesses.values()))

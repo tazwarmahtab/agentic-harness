@@ -1,0 +1,66 @@
+# SOP-OPS-001 — Installation Lifecycle
+# Owner: AGT-OPS-SITE (assess) + AGT-OPS-PROC (procure) + AGT-OPS-INST (install)
+# Frequency: Realtime, triggered by new project dispatch
+# Purpose: End-to-end project execution from site assessment to commissioning
+
+id: SOP-OPS-001
+name: Installation Lifecycle
+owner: AGT-OPS-INST
+version: 1.0.0
+trigger: realtime
+
+phase_1_assess:
+  owner: AGT-OPS-SITE
+  actions:
+    - evaluate: roof condition (age, material, structural capacity)
+    - assess: shading analysis (obstructions, orientation, tilt)
+    - check: electrical infrastructure (main panel capacity, distance)
+    - decide: go/no-go with rationale
+    - output: site_assessment_report
+
+phase_2_procure:
+  owner: AGT-OPS-PROC
+  actions:
+    - select: suppliers from approved database
+    - generate: purchase orders (ALL require founder approval)
+    - track: delivery schedule
+    - validate: delivered equipment matches specs
+    - output: procurement_status
+
+phase_3_install:
+  owner: AGT-OPS-INST
+  actions:
+    - coordinate: installation team schedule
+    - execute: installation per engineering standards
+    - track: daily progress against milestones
+    - document: any deviations or issues
+    - output: installation_progress
+
+phase_4_qa:
+  owner: AGT-OPS-INST
+  actions:
+    - complete: pre-commissioning checklist
+    - test: electrical connections, grounding, inverter function
+    - verify: SLD matches design
+    - inspect: safety compliance
+    - output: qa_report
+
+phase_5_commission:
+  owner: AGT-OPS-INST
+  actions:
+    - finalize: commissioning checklist
+    - handover: system to customer
+    - update: installation_log with completion
+    - dispatch: to Customer Success harness for monitoring
+    - output: commissioning_certificate
+
+escalation:
+  - trigger: milestone_delayed_3_days
+    notify: AGT-OPS-INST + HUM-000001
+    urgency: high
+  - trigger: quality_issue_detected
+    notify: AGT-OPS-INST + HUM-000001
+    urgency: immediate
+  - trigger: supplier_delivery_delayed
+    notify: AGT-OPS-PROC + AGT-OPS-INST
+    urgency: normal

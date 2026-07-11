@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from tazos.usage import UsageTracker
+from aos.usage import UsageTracker
 
 
 class TestUsageTracker:

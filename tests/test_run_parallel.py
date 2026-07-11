@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 import pytest
-from tazos.graph import _run_parallel, _fallback_threadpool
+from aos.graph import _run_parallel, _fallback_threadpool
 
 
 class TestRunParallel:

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from tazos.memory import (
+from aos.memory import (
     AuditRecord,
     Decision,
     MemoryCandidate,
@@ -497,7 +497,7 @@ class TestBuildFromManifest:
 class TestVectorSearch:
     @pytest.fixture
     def vector_store(self) -> MemoryStore:
-        from tazos.vector_store import TfidfEmbeddingProvider
+        from aos.vector_store import TfidfEmbeddingProvider
         provider = TfidfEmbeddingProvider(dimensions=64)
         store = MemoryStore(
             permissions={
@@ -579,7 +579,7 @@ class TestVectorSearch:
         )
 
     def test_vector_search_empty_index(self) -> None:
-        from tazos.vector_store import TfidfEmbeddingProvider
+        from aos.vector_store import TfidfEmbeddingProvider
         store = MemoryStore(embedding_provider=TfidfEmbeddingProvider(dimensions=64))
         results = store.search_vector("anything", "AGT-CEO")
         assert results == []

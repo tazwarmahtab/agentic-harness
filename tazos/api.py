@@ -3,6 +3,9 @@ TazOS Engine — FastAPI application.
 
 Exposes:
   - GET  /health              — liveness probe
+  - GET  /api/harnesses       — harness catalogue
+  - GET  /api/summary         — dashboard KPIs
+  - GET  /api/ws/stats        — WebSocket connection stats
   - WS   /ws/harness/{name}  — harness execution via WebSocket streaming
 """
 
@@ -40,6 +43,76 @@ TAZOS_API_TOKEN = os.getenv("TAZOS_API_TOKEN", "")
 _ws_limiter = ConnectionLimiter(max_connections=10)
 
 
+def _check_llm_providers() -> dict[str, str | list[str] | bool]:
+    """Check which LLM providers are configured and available."""
+    providers = {
+        "anthropic": False,
+        "local_router": False,
+        "nvidia_nim": False,
+    }
+    warnings = []
+    
+    # Check Anthropic
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
+    anthropic_token = os.getenv("ANTHROPIC_AUTH_TOKEN", "")
+    if anthropic_key or anthropic_token:
+        providers["anthropic"] = True
+    else:
+        warnings.append("ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN not configured")
+    
+    # Check local router
+    router_base = os.getenv("TAZOS_LLM_BASE_URL", "")
+    if router_base:
+        providers["local_router"] = True
+    
+    # Check NVIDIA NIM
+    nvidia_key = os.getenv("NVIDIA_NIM_API_KEY", "")
+    if nvidia_key:
+        providers["nvidia_nim"] = True
+    
+    return {
+        "providers": providers,
+        "warnings": warnings,
+        "any_available": any(providers.values())
+    }
+
+
+def _check_required_env_vars() -> dict[str, bool | list[str]]:
+    """Check if required environment variables are set."""
+    required = {
+        "TAZOS_API_TOKEN": os.getenv("TAZOS_API_TOKEN", ""),
+    }
+    
+    missing = [k for k, v in required.items() if not v]
+    
+    return {
+        "all_present": len(missing) == 0,
+        "missing": missing
+    }
+
+
+@app.on_event("startup")
+async def startup_health_check():
+    """Validate system configuration at startup."""
+    logger.info("Running startup health check...")
+    
+    llm_check = _check_llm_providers()
+    if not llm_check["any_available"]:
+        logger.warning("⚠️  No LLM providers configured! System will fail at runtime.")
+        for warning in llm_check["warnings"]:
+            logger.warning(f"   - {warning}")
+    else:
+        available = [k for k, v in llm_check["providers"].items() if v]
+        logger.info(f"✓ LLM providers available: {', '.join(available)}")
+    
+    env_check = _check_required_env_vars()
+    if not env_check["all_present"]:
+        logger.warning("⚠️  Missing required env vars: {', '.join(env_check['missing'])}")
+    else:
+        logger.info("✓ All required env vars present")
+
+
+
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
@@ -48,6 +121,26 @@ _ws_limiter = ConnectionLimiter(max_connections=10)
 async def health() -> dict[str, str]:
     """Simple liveness check."""
     return {"status": "ok", "service": "tazos-engine"}
+
+
+@app.get("/health/ready")
+async def health_ready() -> dict[str, str | dict[str, bool] | list[str]]:
+    """Readiness check with provider status.
+    
+    Returns status="healthy" if all required config is present,
+    "degraded" if missing config or providers.
+    """
+    llm_check = _check_llm_providers()
+    env_check = _check_required_env_vars()
+    
+    status = "healthy" if llm_check["any_available"] and env_check["all_present"] else "degraded"
+    
+    return {
+        "status": status,
+        "service": "tazos-engine",
+        "llm_providers": llm_check["providers"],
+        "warnings": llm_check["warnings"] if not llm_check["any_available"] else []
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -355,6 +448,44 @@ async def ws_stats() -> dict[str, int]:
     return {
         "active_connections": _ws_limiter.active_count,
         "max_connections": _ws_limiter.max_connections,
+    }
+
+
+# ---------------------------------------------------------------------------
+# REST — Dashboard summary
+# ---------------------------------------------------------------------------
+
+@app.get("/api/summary")
+async def dashboard_summary() -> dict[str, object]:
+    """Return high-level KPIs for the dashboard frontend."""
+    root = _find_project_root()
+    harnesses_dir = root / "tazos" / "harnesses"
+
+    # Count harnesses
+    harness_count = 0
+    if harnesses_dir.exists():
+        harness_count = sum(
+            1 for d in harnesses_dir.iterdir()
+            if d.is_dir() and (d / "harness.yml").exists()
+        )
+
+    # Count test files
+    test_count = 0
+    tests_dir = root / "tests"
+    if tests_dir.exists():
+        test_count = sum(1 for _ in tests_dir.rglob("test_*.py"))
+
+    # Memory domains
+    memory_count = 0
+    memory_dir = root / "tazos" / "memory"
+    if memory_dir.exists():
+        memory_count = sum(1 for _ in memory_dir.glob("*.yml"))
+
+    return {
+        "harnesses": harness_count,
+        "tests": test_count,
+        "memory_domains": memory_count,
+        "financial_accuracy": None,  # populated after first evaluator run
     }
 
 

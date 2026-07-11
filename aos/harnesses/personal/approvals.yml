@@ -1,0 +1,49 @@
+# TAZ OS PERSONAL HARNESS — Approval Gates
+
+id: POL-PER-001
+name: Personal Approval Gates
+harness: HAR-PER-001
+version: 1.0.0
+status: production
+
+rules:
+  - id: POL-PER-PER-001
+    name: Calendar Change
+    category: executive
+    rule:
+      if:
+        action: modify_calendar
+        involves_external: true
+      then: "Notify founder for confirmation."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 12
+
+  - id: POL-PER-PER-002
+    name: Goal Pivot
+    category: executive
+    rule:
+      if:
+        action: modify_goals
+        scope: quarterly_or_annual
+      then: "Requires founder confirmation."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 24
+
+auto_actions:
+  - log_task_completion
+  - log_health_data
+  - update_reading_progress
+  - check_habit_streak
+  - generate_daily_summary
+
+decision_queue_format:
+  bundled: true
+  summary_per_decision: [action_description]
+  actions_available: [approve_all, reject]
+  delivery: console_queue
+
+delegation:
+  enabled: false
+  current_delegations: []

@@ -1,0 +1,104 @@
+# TAZ OS OPERATIONS HARNESS — Evaluation Metrics
+
+id: EVAL-OPS-001
+name: Operations Harness Evaluation Framework
+harness: HAR-OPS-001
+version: 1.0.0
+
+harness_metrics:
+  - name: milestone_hit_rate
+    target: ">90%"
+    frequency: weekly
+    owner: AGT-OPS-INST
+    measurement: milestones_completed_on_time
+
+  - name: quality_incidents
+    target: "0"
+    frequency: weekly
+    owner: AGT-OPS-INST
+    measurement: quality_issues_during_installation
+
+  - name: procurement_approval_compliance
+    target: "100%"
+    frequency: realtime
+    owner: AGT-OPS-PROC
+    measurement: zero_pos_without_approval
+
+specialist_metrics:
+  AGT-OPS-SITE:
+    - assessment_accuracy: { weight: 0.35 }
+    - go_no_go_accuracy: { weight: 0.30 }
+    - report_completeness: { weight: 0.20 }
+    - turnaround_time: { weight: 0.15 }
+
+  AGT-OPS-PROC:
+    - supplier_selection_quality: { weight: 0.30 }
+    - cost_accuracy: { weight: 0.25 }
+    - approval_compliance: { weight: 0.25, hard_fail_if: "po_without_approval" }
+    - delivery_timeliness: { weight: 0.20 }
+
+  AGT-OPS-INST:
+    - milestone_accuracy: { weight: 0.30 }
+    - quality_checklist_completion: { weight: 0.25 }
+    - safety_compliance: { weight: 0.25, hard_fail_if: "safety_violation" }
+    - documentation_quality: { weight: 0.20 }
+
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-OPS-INST
+      input: project_outcomes
+      output: variance_report
+    - step: identify_bottlenecks
+      owner: AGT-OPS-PROC
+      input: variance_report
+      output: bottleneck_list
+    - step: update_artifacts
+      owner: AGT-OPS-INST
+      input: bottleneck_list
+      output: updated_sops_and_checklists
+      artifacts_affected: [installation_playbook, quality_checklists]
+    - step: record_lessons
+      owner: AGT-OPS-INST
+      input: bottleneck_list
+      output: new_lessons
+    - step: update_benchmarks
+      owner: AGT-OPS-INST
+      input: specialist_metrics
+      output: benchmark_update
+    - step: founder_review
+      owner: HUM-000001
+      input: monthly_review
+      output: approved_or_revised
+      frequency: monthly
+
+  improvement_sources:
+    - project_post_mortems: "lessons from completed installations"
+    - quality_incidents: "issues and root causes"
+    - supplier_performance: "delivery and quality metrics"
+
+  metrics_tracked:
+    - installation_cycle_time
+    - procurement_cost_variance
+    - quality_incident_count
+    - hard_fail_count_per_period
+
+  review_cadence:
+    daily: [installation_progress, procurement_status]
+    weekly: [milestone_review, quality_check]
+    monthly: [project_portfolio_review, supplier_assessment]
+    quarterly: [full_operations_audit, process_improvement]
+
+evaluation_pipeline:
+  1. agent_completes_task:
+     output: raw_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. evaluator_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+     - pass: store_artifact + update_memory
+     - fail_hard: reject_output + alert_founder + log_failure
+     - fail_soft: return_to_agent_with_feedback + retry
+     - low_confidence: escalate_to_founder_with_context

@@ -1,0 +1,31 @@
+# TAZ OS AI Development Harness
+# Improves the agent ecosystem itself: prompts, workflows, evaluation.
+
+id: HAR-AID-001
+name: AI Development Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+mission: >
+  Improve the TAZ OS agent ecosystem: optimize prompts, build and test
+  workflows, evaluate agent performance, run benchmarks, analyze failures,
+  optimize costs, and test tools. This harness improves itself.
+
+scope:
+  in_scope: [prompt_engineering, workflow_building, evaluation, benchmarking, cost_optimization]
+  out_of_scope: [company_operations, financial_modeling, customer_facing]
+
+kpis:
+  - { name: prompt_quality_score, target: ">85%" }
+  - { name: evaluation_coverage, target: ">90%" }
+  - { name: benchmark_improvement, target: "upward_trend" }
+  - { name: cost_reduction, target: "downward_trend" }
+
+inputs:
+  - { source: executive, items: [priority_list, handoffs] }
+  - { source: memory, items: [prompt_history, evaluation_results] }
+
+outputs:
+  - { name: optimized_prompts, type: artifact }
+  - { name: evaluation_reports, type: artifact }
+  - { name: benchmark_results, type: artifact }

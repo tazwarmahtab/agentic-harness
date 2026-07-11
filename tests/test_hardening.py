@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from tazos.memory import MemoryStore
-from tazos.registry import HarnessBundle
+from aos.memory import MemoryStore
+from aos.registry import HarnessBundle
 
 
 # ---------------------------------------------------------------------------
@@ -18,20 +18,20 @@ from tazos.registry import HarnessBundle
 
 class TestRateLimiter:
     def test_allows_within_limit(self) -> None:
-        from tazos.hardening import RateLimiter
+        from aos.hardening import RateLimiter
         limiter = RateLimiter(max_requests=10, window_seconds=60)
         for _ in range(10):
             assert limiter.allow("test-key") is True
 
     def test_blocks_over_limit(self) -> None:
-        from tazos.hardening import RateLimiter
+        from aos.hardening import RateLimiter
         limiter = RateLimiter(max_requests=3, window_seconds=60)
         for _ in range(3):
             assert limiter.allow("test-key") is True
         assert limiter.allow("test-key") is False
 
     def test_separate_keys_independent(self) -> None:
-        from tazos.hardening import RateLimiter
+        from aos.hardening import RateLimiter
         limiter = RateLimiter(max_requests=2, window_seconds=60)
         assert limiter.allow("a") is True
         assert limiter.allow("a") is True
@@ -39,7 +39,7 @@ class TestRateLimiter:
         assert limiter.allow("b") is True
 
     def test_window_expiry_resets(self) -> None:
-        from tazos.hardening import RateLimiter
+        from aos.hardening import RateLimiter
         import time
         limiter = RateLimiter(max_requests=2, window_seconds=0)
         # Window of 0 means always expired
@@ -53,8 +53,8 @@ class TestRateLimiter:
 
 class TestHealthCheck:
     def test_health_llm_ok(self) -> None:
-        from tazos.hardening import health_check
-        from tazos.llm import DryRunLLMClient
+        from aos.hardening import health_check
+        from aos.llm import DryRunLLMClient
 
         store = MemoryStore()
         store.seed_from_dict("long_term", "test", [{"key": "a", "value": "b"}])
@@ -64,8 +64,8 @@ class TestHealthCheck:
         assert result["memory"]["status"] == "ok"
 
     def test_health_memory_store(self) -> None:
-        from tazos.hardening import health_check
-        from tazos.llm import DryRunLLMClient
+        from aos.hardening import health_check
+        from aos.llm import DryRunLLMClient
 
         store = MemoryStore()
         store.seed_from_dict("long_term", "test", [{"key": "a", "value": "b"}])
@@ -74,15 +74,15 @@ class TestHealthCheck:
         assert result["memory"]["total_entries"] >= 1
 
     def test_health_degraded_no_memory(self) -> None:
-        from tazos.hardening import health_check
-        from tazos.llm import DryRunLLMClient
+        from aos.hardening import health_check
+        from aos.llm import DryRunLLMClient
 
         result = health_check(llm=DryRunLLMClient(), memory_store=None)
         assert result["memory"]["status"] == "not_configured"
 
     def test_health_llm_degraded(self) -> None:
-        from tazos.hardening import health_check
-        from tazos.llm import DryRunLLMClient
+        from aos.hardening import health_check
+        from aos.llm import DryRunLLMClient
 
         class BrokenLLM:
             def complete(self, **kwargs):
@@ -98,27 +98,27 @@ class TestHealthCheck:
 
 class TestInputValidation:
     def test_validate_harness_name_valid(self) -> None:
-        from tazos.hardening import validate_harness_name
+        from aos.hardening import validate_harness_name
         assert validate_harness_name("executive") is True
         assert validate_harness_name("evaluator") is True
         assert validate_harness_name("my-harness-123") is True
 
     def test_validate_harness_name_invalid(self) -> None:
-        from tazos.hardening import validate_harness_name
+        from aos.hardening import validate_harness_name
         assert validate_harness_name("") is False
         assert validate_harness_name("../../etc/passwd") is False
         assert validate_harness_name("exec; rm -rf /") is False
         assert validate_harness_name("a" * 100) is False
 
     def test_sanitize_path(self) -> None:
-        from tazos.hardening import sanitize_path
+        from aos.hardening import sanitize_path
         result = sanitize_path("project/tazos/harnesses/executive")
         assert result is not None
         assert ".." not in result
         assert result == "project/tazos/harnesses/executive"
 
     def test_sanitize_path_rejects_traversal(self) -> None:
-        from tazos.hardening import sanitize_path
+        from aos.hardening import sanitize_path
         result = sanitize_path("/project/../../etc/passwd")
         assert result is None
 
@@ -129,7 +129,7 @@ class TestInputValidation:
 
 class TestAuditTrailCap:
     def test_audit_trail_capped(self) -> None:
-        from tazos.memory import AuditRecord
+        from aos.memory import AuditRecord
 
         store = MemoryStore()
         # Submit many candidates to build up audit trail
@@ -171,20 +171,20 @@ class TestAuditTrailCap:
 
 class TestConnectionLimiter:
     def test_allows_within_limit(self) -> None:
-        from tazos.hardening import ConnectionLimiter
+        from aos.hardening import ConnectionLimiter
         limiter = ConnectionLimiter(max_connections=5)
         assert limiter.try_acquire("conn-1") is True
         assert limiter.try_acquire("conn-2") is True
 
     def test_blocks_over_limit(self) -> None:
-        from tazos.hardening import ConnectionLimiter
+        from aos.hardening import ConnectionLimiter
         limiter = ConnectionLimiter(max_connections=2)
         assert limiter.try_acquire("a") is True
         assert limiter.try_acquire("b") is True
         assert limiter.try_acquire("c") is False
 
     def test_release_allows_new(self) -> None:
-        from tazos.hardening import ConnectionLimiter
+        from aos.hardening import ConnectionLimiter
         limiter = ConnectionLimiter(max_connections=1)
         assert limiter.try_acquire("a") is True
         assert limiter.try_acquire("b") is False
@@ -192,7 +192,7 @@ class TestConnectionLimiter:
         assert limiter.try_acquire("b") is True
 
     def test_release_unknown_is_safe(self) -> None:
-        from tazos.hardening import ConnectionLimiter
+        from aos.hardening import ConnectionLimiter
         limiter = ConnectionLimiter(max_connections=5)
         limiter.release("nonexistent")  # should not raise
 
@@ -203,14 +203,14 @@ class TestConnectionLimiter:
 
 class TestStructuredErrors:
     def test_error_hierarchy(self) -> None:
-        from tazos.hardening import TazosError, HarnessNotFoundError, RateLimitError, ValidationError
+        from aos.hardening import TazosError, HarnessNotFoundError, RateLimitError, ValidationError
 
         assert issubclass(HarnessNotFoundError, TazosError)
         assert issubclass(RateLimitError, TazosError)
         assert issubclass(ValidationError, TazosError)
 
     def test_error_has_code_and_message(self) -> None:
-        from tazos.hardening import HarnessNotFoundError
+        from aos.hardening import HarnessNotFoundError
 
         err = HarnessNotFoundError("executive")
         assert err.code == "HARNESS_NOT_FOUND"

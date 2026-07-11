@@ -1,0 +1,31 @@
+# TAZ OS Marketing Harness
+# Manages demand generation: content, LinkedIn, SEO, website, brand.
+
+id: HAR-MKT-001
+name: Marketing Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+mission: >
+  Generate demand for Netso Energy through content marketing, LinkedIn
+  thought leadership, SEO optimization, and website management. Build
+  brand authority in the Bangladesh rooftop solar market.
+
+scope:
+  in_scope: [content_creation, linkedin, seo, website, brand_management]
+  out_of_scope: [sales_outreach, financial_modeling, engineering]
+
+kpis:
+  - { name: content_output_per_week, target: "3+ pieces" }
+  - { name: linkedin_engagement_rate, target: ">5%" }
+  - { name: organic_traffic_growth, target: ">10% month-over-month" }
+  - { name: lead_generation_from_content, target: ">5 qualified leads/month" }
+
+inputs:
+  - { source: executive, items: [priority_list, handoffs] }
+  - { source: memory, items: [brand_guidelines, content_calendar] }
+
+outputs:
+  - { name: content_pieces, type: artifact }
+  - { name: linkedin_posts, type: artifact }
+  - { name: seo_reports, type: artifact }

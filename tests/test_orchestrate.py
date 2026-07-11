@@ -10,14 +10,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tazos.orchestrate.gates import (
+from aos.orchestrate.gates import (
     ApprovalDecision,
     Gate,
     GateDecision,
     GateManager,
     GateResult,
 )
-from tazos.orchestrate.pipeline import (
+from aos.orchestrate.pipeline import (
     OrchestratePipeline,
     PhaseResult,
     PipelineContext,

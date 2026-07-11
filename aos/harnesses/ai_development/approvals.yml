@@ -1,0 +1,47 @@
+# TAZ OS AI DEVELOPMENT HARNESS — Approval Gates
+
+id: POL-AID-001
+name: AI Development Approval Gates
+harness: HAR-AID-001
+version: 1.0.0
+status: production
+
+rules:
+  - id: POL-AID-AID-001
+    name: Model Change
+    category: ai_safety
+    rule:
+      if:
+        action: change_model_routing
+      then: "Requires Founder approval."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 24
+
+  - id: POL-AID-AID-002
+    name: Prompt Versioning
+    category: ai_safety
+    rule:
+      if:
+        action: update_production_prompt
+      then: "Requires review and approval."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 12
+
+auto_actions:
+  - run_benchmark
+  - analyze_failure
+  - draft_prompt_optimization
+  - generate_evaluation_report
+  - update_benchmark_results
+
+decision_queue_format:
+  bundled: true
+  summary_per_decision: [action_description, risk_assessment]
+  actions_available: [approve_all, reject]
+  delivery: console_queue
+
+delegation:
+  enabled: false
+  current_delegations: []

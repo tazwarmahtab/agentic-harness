@@ -1,0 +1,31 @@
+# TAZ OS Software Development Harness
+# Manages software development for Netso's internal tools.
+
+id: HAR-DEV-001
+name: Software Development Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+mission: >
+  Manage software development: product management, PRD writing, UI review,
+  backend planning, frontend planning, testing, documentation, GitHub
+  review, and release management for Netso's internal tools.
+
+scope:
+  in_scope: [product_management, prd_writing, ui_review, backend_planning, testing, documentation, github, releases]
+  out_of_scope: [company_operations, financial_modeling, customer_facing]
+
+kpis:
+  - { name: sprint_velocity, target: "on_track" }
+  - { name: bug_count, target: "downward_trend" }
+  - { name: test_coverage, target: ">80%" }
+  - { name: deployment_frequency, target: "weekly" }
+
+inputs:
+  - { source: executive, items: [priority_list, handoffs] }
+  - { source: memory, items: [product_backlog, technical_standards] }
+
+outputs:
+  - { name: prd_documents, type: artifact }
+  - { name: code_reviews, type: artifact }
+  - { name: test_reports, type: artifact }

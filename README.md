@@ -1,8 +1,8 @@
-# TAZ OS — Agentic Operating System
+# AOS — Agentic Operating System
 
 > **One founder. Multiple ventures. One operating system.**
 
-TAZ OS is a governance-first, multi-venture agentic operating system. It orchestrates autonomous business systems (harnesses) for a solo founder running multiple companies — starting with **Netso Energy** (BOO/OPEX rooftop solar, Bangladesh RMG sector).
+AOS is a governance-first, multi-venture agentic operating system. It orchestrates autonomous business systems (harnesses) for a solo founder running multiple companies — starting with **Netso Energy** (BOO/OPEX rooftop solar, Bangladesh RMG sector).
 
 ## Philosophy
 
@@ -18,7 +18,7 @@ Every architectural mistake gets multiplied across every future harness. So we b
 ## Architecture
 
 ```
-tazos/
+aos/
 ├── platform/                    # JSON Schemas (platform contracts)
 │   ├── identity.schema.json    # Every object gets a globally unique ID
 │   ├── harness.schema.json     # Harness canonical template
@@ -74,7 +74,7 @@ tazos/
 
 The existing `Netso_HQ/ai_system/` workforce is re-homed (not replaced):
 
-| Existing | TAZ OS role |
+| Existing | AOS role |
 |---|---|
 | LILTAZ | Planner + Dispatcher core |
 | ATLAS | COO specialist |

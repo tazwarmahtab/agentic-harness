@@ -1,0 +1,83 @@
+# TAZ OS CUSTOMER SUCCESS HARNESS — Tools
+
+id: TOL-CSU-001
+name: Customer Success Harness Tool Registry
+harness: HAR-CSU-001
+version: 1.0.0
+
+tools:
+  - id: TOL-CSU-001
+    name: System Monitor
+    capability: monitor_system
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [AGT-CSU-MONITOR, AGT-CSU-DETECT]
+    inputs:
+      required: [system_id]
+    outputs: [performance_data, alerts]
+
+  - id: TOL-CSU-002
+    name: Support Ticket Manager
+    capability: manage_tickets
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-CSU-SUP]
+    inputs:
+      required: [customer_id, issue_description]
+    outputs: [ticket_id, status]
+
+  - id: TOL-CSU-003
+    name: Document Generator
+    capability: generate_document
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-CSU-SUP, AGT-CSU-UPSELL]
+    inputs:
+      required: [template, content]
+    outputs: [document_path, status]
+
+  - id: TOL-CSU-004
+    name: Approval Request
+    capability: request_approval
+    category: governance
+    version: 1.0.0
+    status: registered
+    permissions:
+      execute: [AGT-CSU-UPSELL, AGT-CSU-SUP]
+    inputs:
+      required: [action, rationale]
+    outputs: [approval_id, status]
+
+  - id: TOL-CSU-005
+    name: Memory Writer
+    capability: write_memory
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [per memory.yml permissions]
+    inputs:
+      required: [memory_key, content, classification]
+    outputs: [status]
+
+compositions:
+  - name: issue_to_resolution
+    steps:
+      - capability: monitor_system
+      - capability: manage_tickets
+      - capability: generate_document
+    owner: Customer Success Harness
+
+providers:
+  monitoring:
+    preferred: null
+    fallback: [manual]
+  ticketing:
+    preferred: null
+    fallback: [spreadsheet]

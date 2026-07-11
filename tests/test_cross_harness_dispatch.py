@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tazos.registry import Registry, HarnessBundle, load_registry
+from aos.registry import Registry, HarnessBundle, load_registry
 
 
 def _build_multi_bundle_registry() -> Registry:
@@ -109,9 +109,9 @@ class TestGraphConfigRegistry:
     """GraphConfig accepts and exposes the registry field."""
 
     def test_graph_config_with_registry(self):
-        from tazos.graph import GraphConfig
-        from tazos.llm import LLMClient
-        from tazos.registry import Registry
+        from aos.graph import GraphConfig
+        from aos.llm import LLMClient
+        from aos.registry import Registry
 
         bundle = MagicMock(spec=HarnessBundle)
         llm = MagicMock(spec=LLMClient)
@@ -121,8 +121,8 @@ class TestGraphConfigRegistry:
         assert config.registry is registry
 
     def test_graph_config_without_registry_defaults_none(self):
-        from tazos.graph import GraphConfig
-        from tazos.llm import LLMClient
+        from aos.graph import GraphConfig
+        from aos.llm import LLMClient
 
         bundle = MagicMock(spec=HarnessBundle)
         llm = MagicMock(spec=LLMClient)
@@ -135,7 +135,7 @@ class TestFallbackRoutingCrossHarness:
     """_fallback_routing matches cross-harness agent IDs."""
 
     def test_matches_finance_agent(self):
-        from tazos.graph import _fallback_routing
+        from aos.graph import _fallback_routing
 
         text = "Route to AGT-FIN-UNIT for unit economics analysis"
         result = _fallback_routing(text, None, ["AGT-FIN-UNIT"])
@@ -143,7 +143,7 @@ class TestFallbackRoutingCrossHarness:
         assert result["assignments"][0]["agent_id"] == "AGT-FIN-UNIT"
 
     def test_matches_sales_agent(self):
-        from tazos.graph import _fallback_routing
+        from aos.graph import _fallback_routing
 
         text = "Assign AGT-SAL-PROP to write the proposal"
         result = _fallback_routing(text, None, ["AGT-SAL-PROP"])
@@ -151,14 +151,14 @@ class TestFallbackRoutingCrossHarness:
         assert result["assignments"][0]["agent_id"] == "AGT-SAL-PROP"
 
     def test_skips_unknown_agents(self):
-        from tazos.graph import _fallback_routing
+        from aos.graph import _fallback_routing
 
         text = "Route to AGT-UNKNOWN-XYZ for something"
         result = _fallback_routing(text, None, ["AGT-FIN-UNIT"])
         assert len(result["assignments"]) == 0
 
     def test_matches_multiple_cross_harness_agents(self):
-        from tazos.graph import _fallback_routing
+        from aos.graph import _fallback_routing
 
         text = "AGT-FIN-UNIT handles finance, AGT-SAL-PROP handles sales"
         available = ["AGT-FIN-UNIT", "AGT-SAL-PROP"]

@@ -1,0 +1,18 @@
+# AI Development Harness — Planner
+id: AGT-AID-PLAN
+name: AI Development Planner
+harness: HAR-AID-001
+version: 1.0.0
+status: production
+criticality: critical
+mission: "Prioritize AI development work based on platform health, failure rates, and improvement opportunities."
+allowed_memory:
+  read: [all_long_term]
+  write: []
+  cannot_read: [founder_personal_notes]
+reasoning_structure:
+  - review_platform_health
+  - identify_improvement_areas
+  - prioritize_by_impact
+  - assign_to_specialists
+  - output_priority_list

@@ -1,0 +1,210 @@
+# TAZ OS EXECUTIVE HARNESS — Evaluation Metrics + Continuous Improvement Loop
+# Every workflow is measured. Every specialist has evaluation rules.
+# After every execution: compare planned vs actual, capture feedback,
+# log failures, propose improvements, update benchmarks.
+# See Volume 10 (Agent Framework, evaluation section) + canonical template.
+
+id: EVAL-EXEC-001
+name: Executive Harness Evaluation Framework
+harness: HAR-EXEC-001
+version: 1.0.0
+
+# ===========================================================================
+# HARNESS-LEVEL KPIs — measured at the harness, not per-agent
+# ===========================================================================
+harness_metrics:
+  - name: daily_brief_delivered
+    target: 100%
+    frequency: daily
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    measurement: brief_exists_and_timestamp_before_09:00
+
+  - name: inbox_triaged
+    target: 100%
+    frequency: daily
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    measurement: unread_email_count_at_end_of_day
+
+  - name: high_priority_tasks_surfaced
+    target: "<10 per day"
+    frequency: daily
+    owner: AGT-EXEC-COO
+    measurement: count_of_p0_plus_p1_items_daily
+
+  - name: pending_approvals_identified
+    target: 100%
+    frequency: realtime
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    measurement: approval_queue_matches_approval_rules
+
+  - name: missed_deadlines
+    target: "0"
+    frequency: weekly
+    owner: AGT-EXEC-COO
+    measurement: count_of_items_past_deadline
+
+  - name: weekly_kpi_report_generated
+    target: "Every Monday 09:00"
+    frequency: weekly
+    owner: AGT-EXEC-PERF
+    measurement: report_exists_and_timestamp
+
+  - name: decision_latency
+    target: "<24 hours"
+    frequency: realtime
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    measurement: avg_hours_from_queue_to_founder_decision
+
+  - name: duplicate_work_detected
+    target: downward_trend
+    frequency: weekly
+    owner: AGT-EXEC-PERF
+    measurement: count_of_overlapping_dispatches
+
+  - name: founder_time_saved
+    target: ">2 hours/day"
+    frequency: daily
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    measurement: estimated_minutes_saved (automated_triage + bundled_approvals + brief_composition)
+
+  - name: gated_actions_captured
+    target: 100%
+    frequency: realtime
+    owner: AGT-EXEC-RSK
+    measurement: zero_gated_actions_auto_executed
+
+  - name: blockers_holders_named
+    target: 100%
+    frequency: realtime
+    owner: AGT-EXEC-COO
+    measurement: every_blocker_has_a_named_holder
+
+# ===========================================================================
+# PER-SPECIALIST EVALUATION — defined inline in each specialist manifest
+# Listed here for aggregate dashboard visibility.
+# ===========================================================================
+specialist_metrics:
+  AGT-EXEC-CEO:
+    - strategic_accuracy: { weight: 0.35 }
+    - assumption_documentation: { weight: 0.20 }
+    - alternative_consideration: { weight: 0.20 }
+    - decision_latency: { weight: 0.15 }
+    - founder_approval_rate: { weight: 0.10 }
+
+  AGT-EXEC-COO:
+    - dashboard_currency: { weight: 0.30, hard_fail_if: "dashboard_not_updated_after_action" }
+    - deadline_hit_rate: { weight: 0.25 }
+    - blocker_resolution_speed: { weight: 0.20 }
+    - p0_completion_rate: { weight: 0.25, hard_fail_if: "zero_p0_done_in_week" }
+
+  AGT-EXEC-CFO:
+    - number_discipline_compliance: { weight: 0.40, hard_fail_if: "blended_rate_used_for_savings" }
+    - forecast_accuracy: { weight: 0.25 }
+    - investor_update_timeliness: { weight: 0.15 }
+    - dscr_monitoring_currency: { weight: 0.20, hard_fail_if: "dscr_below_floor_not_flagged" }
+
+  AGT-EXEC-CHIEFOFSTAFF:
+    - brief_completeness: { weight: 0.25 }
+    - follow_up_coverage: { weight: 0.25 }
+    - approval_bundling_efficiency: { weight: 0.20 }
+    - decision_log_currency: { weight: 0.15 }
+    - founder_workload_estimate_accuracy: { weight: 0.15 }
+
+  AGT-EXEC-LEG:
+    - contract_review_accuracy: { weight: 0.30 }
+    - regulatory_deadline_hit_rate: { weight: 0.25 }
+    - compliance_gap_detection: { weight: 0.25 }
+    - approval_routing_compliance: { weight: 0.20, hard_fail_if: "contract_sent_without_approval" }
+
+  AGT-EXEC-RSK:
+    - risk_detection_coverage: { weight: 0.25 }
+    - escalation_timeliness: { weight: 0.25 }
+    - dscr_monitoring_currency: { weight: 0.20, hard_fail_if: "dscr_breach_unflagged" }
+    - false_positive_rate: { weight: 0.15 }
+    - escalation_routing_accuracy: { weight: 0.15 }
+
+  AGT-EXEC-PERF:
+    - kpi_report_timeliness: { weight: 0.25 }
+    - drift_detection_accuracy: { weight: 0.25 }
+    - forecast_accuracy: { weight: 0.25 }
+    - report_clarity: { weight: 0.15 }
+    - number_discipline: { weight: 0.10 }
+
+# ===========================================================================
+# CONTINUOUS IMPROVEMENT LOOP
+# After every significant workflow:
+# 1. Compare planned vs actual outcome
+# 2. Identify bottlenecks or failure modes
+# 3. Update prompts, SOPs, or routing rules
+# 4. Record lessons in shared knowledge (LESSONS.md)
+# 5. Track metrics: execution_time, approval_latency, error_rates
+# ===========================================================================
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-EXEC-PERF
+      input: task_outcomes_from_week
+      output: variance_report
+    - step: identify_bottlenecks_and_failures
+      owner: AGT-EXEC-COO
+      input: variance_report
+      output: bottleneck_list
+    - step: update_artifacts
+      owner: AGT-EXEC-COO
+      input: bottleneck_list
+      output: updated_sops_and_routing
+      artifacts_affected: [sops/, dispatcher.yml routing_table, planner.yml heuristics]
+    - step: record_lessons
+      owner: AGT-EXEC-COO
+      input: bottleneck_list
+      output: new_lessons_entries
+      artifact: lessons  # ai_system/System/ACT/LESSONS.md
+    - step: update_benchmarks
+      owner: AGT-EXEC-PERF
+      input: specialist_metrics
+      output: benchmark_update
+    - step: founder_review
+      owner: HUM-000001
+      input: weekly_review
+      output: approved_or_revised
+      frequency: weekly
+
+  improvement_sources:
+    - weekly_review: "ai_system/System/CHECK/REVIEW.md"
+    - lessons: "ai_system/System/ACT/LESSONS.md"
+    - dashboard_variance: "planned vs actual in DASHBOARD.md"
+    - specialist_evaluations: evaluation scores above
+    - founder_feedback: direct corrections or approvals
+
+  metrics_tracked:
+    - execution_time_per_task_type
+    - approval_latency_avg_hours
+    - error_rate_per_specialist
+    - retry_rate_per_specialist
+    - hard_fail_count_per_period
+    - false_positive_rate_risk
+    - forecast_accuracy_pct
+    - deadline_miss_count
+
+  review_cadence:
+    daily: [brief_delivered, inbox_triaged, decisions_processed]
+    weekly: [kpi_report, check_review, lessons_update, benchmark_update]
+    monthly: [board_report, harness_architecture_review, specialist_replacement_assessment]
+    quarterly: [full_harness_audit, policy_review, scope_revision]
+
+# ===========================================================================
+# EVALUATION PIPELINE — how agent outputs are scored
+# ===========================================================================
+evaluation_pipeline:
+  1. agent_completes_task:
+     output: raw_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. evaluator_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+     - pass: store_artifact + update_memory
+     - fail_hard: reject_output + alert_founder + log_failure
+     - fail_soft: return_to_agent_with_feedback + retry
+     - low_confidence: escalate_to_founder_with_context

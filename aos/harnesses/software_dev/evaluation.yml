@@ -1,0 +1,124 @@
+# TAZ OS SOFTWARE DEV HARNESS — Evaluation Metrics
+
+id: EVAL-DEV-001
+name: Software Dev Harness Evaluation Framework
+harness: HAR-DEV-001
+version: 1.0.0
+
+harness_metrics:
+  - name: sprint_velocity
+    target: "upward_trend"
+    frequency: weekly
+    owner: AGT-DEV-PM
+    measurement: story_points_completed_per_sprint
+
+  - name: test_coverage
+    target: ">80%"
+    frequency: weekly
+    owner: AGT-DEV-TEST
+    measurement: lines_covered_divided_by_total
+
+  - name: documentation_freshness
+    target: "<7 days stale"
+    frequency: weekly
+    owner: AGT-DEV-DOC
+    measurement: docs_updated_within_7_days_of_code_change
+
+  - name: release_reliability
+    target: "0 rollbacks"
+    frequency: monthly
+    owner: AGT-DEV-REL
+    measurement: releases_without_incidents
+
+specialist_metrics:
+  AGT-DEV-PM:
+    - roadmap_accuracy: { weight: 0.30 }
+    - prioritization_quality: { weight: 0.25 }
+    - stakeholder_alignment: { weight: 0.25 }
+    - sprint_planning_accuracy: { weight: 0.20 }
+
+  AGT-DEV-PRD:
+    - specification_completeness: { weight: 0.35 }
+    - clarity: { weight: 0.25 }
+    - acceptance_criteria_quality: { weight: 0.25 }
+    - turnaround_time: { weight: 0.15 }
+
+  AGT-DEV-UI:
+    - design_quality: { weight: 0.30 }
+    - usability: { weight: 0.25 }
+    - accessibility: { weight: 0.25 }
+    - consistency: { weight: 0.20 }
+
+  AGT-DEV-TEST:
+    - coverage_achievement: { weight: 0.30 }
+    - bug_detection_rate: { weight: 0.25 }
+    - test_reliability: { weight: 0.25 }
+    - false_positive_rate: { weight: 0.20 }
+
+  AGT-DEV-DOC:
+    - documentation_completeness: { weight: 0.30 }
+    - accuracy: { weight: 0.30 }
+    - freshness: { weight: 0.20 }
+    - readability: { weight: 0.20 }
+
+  AGT-DEV-REL:
+    - release_reliability: { weight: 0.35 }
+    - rollback_rate: { weight: 0.25, hard_fail_if: "rollback_in_last_release" }
+    - process_compliance: { weight: 0.20 }
+    - documentation_completeness: { weight: 0.20 }
+
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-DEV-PM
+      input: sprint_outcomes
+      output: variance_report
+    - step: identify_bottlenecks
+      owner: AGT-DEV-PM
+      input: variance_report
+      output: bottleneck_list
+    - step: update_artifacts
+      owner: AGT-DEV-PM
+      input: bottleneck_list
+      output: updated_standards
+      artifacts_affected: [coding_standards, deployment_playbook, testing_strategy]
+    - step: record_lessons
+      owner: AGT-DEV-PM
+      input: bottleneck_list
+      output: new_lessons
+    - step: founder_review
+      owner: HUM-000001
+      input: sprint_review
+      output: approved_or_revised
+      frequency: biweekly
+
+  improvement_sources:
+    - sprint_retrospectives: "what went well, what to improve"
+    - bug_reports: "defect patterns and root causes"
+    - test_results: "coverage gaps and flaky tests"
+
+  metrics_tracked:
+    - sprint_velocity_trend
+    - test_coverage_trend
+    - bug_count_per_release
+    - documentation_freshness
+
+  review_cadence:
+    daily: [sprint_board_check, build_status]
+    weekly: [sprint_review, test_coverage, documentation_check]
+    biweekly: [sprint_retrospective, velocity_review]
+    quarterly: [architecture_review, tech_debt_assessment]
+
+evaluation_pipeline:
+  1. agent_completes_task:
+     output: raw_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. evaluator_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+     - pass: store_artifact + update_memory
+     - fail_hard: reject_output + alert_founder + log_failure
+     - fail_soft: return_to_agent_with_feedback + retry
+     - low_confidence: escalate_to_founder_with_context

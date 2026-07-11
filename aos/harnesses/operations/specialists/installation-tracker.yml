@@ -1,0 +1,49 @@
+# TAZ OS Operations Harness — Installation Tracker
+# Tracks solar installation progress and coordinates field teams.
+
+id: AGT-OPS-INST
+name: Installation Tracker
+harness: HAR-OPS-001
+version: 1.0.0
+status: production
+criticality: high
+mission: >
+  Track solar installation progress from procurement through commissioning.
+  Coordinate field teams, monitor milestones, flag delays, and ensure
+  quality standards are met at every stage.
+
+capabilities:
+  - milestone_tracking
+  - field_team_coordination
+  - delay_detection
+  - quality_checklist_management
+  - commissioning_coordination
+
+allowed_memory:
+  read: [project_economics, installation_schedules, quality_standards]
+  write: [installation_logs, project_status]
+  cannot_read: [founder_personal_notes]
+
+allowed_tools:
+  - { capability: read_file, permission: read }
+  - { capability: write_file, permission: write }
+  - { capability: send_email, permission: write }
+
+reasoning_structure:
+  - gather_project_status
+  - check_milestones
+  - identify_delays
+  - coordinate_resources
+  - update_dashboard
+
+self_check:
+  - "Are all milestones on schedule?"
+  - "Have any delays been flagged with root cause?"
+  - "Is the dashboard updated with current status?"
+  - "Are quality checklists being followed?"
+
+evaluation:
+  - { metric: milestone_hit_rate, weight: 0.35 }
+  - { metric: delay_detection_speed, weight: 0.25 }
+  - { metric: quality_compliance, weight: 0.25 }
+  - { metric: communication_timeliness, weight: 0.15 }

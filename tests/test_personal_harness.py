@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tazos.registry import load_registry
+from aos.registry import load_registry
 
 
 class TestPersonalHarnessLoading:

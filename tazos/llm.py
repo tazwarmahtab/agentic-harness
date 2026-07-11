@@ -533,7 +533,7 @@ def create_llm_client(
     # 9router is usable only if it has configured backend providers
     if has_auth_token and _is_9router_usable(router_base):
         if verbose:
-            print(f"[llm] Using 9router backend ({router_base})")
+            logger.info(f"Using local router backend: {router_base}")
         return RouterLLMClient()
 
     # No working 9router. NVIDIA-NIM models (nvidia/*, z-ai/*) can be
@@ -547,17 +547,17 @@ def create_llm_client(
     # Fall back to direct Anthropic API
     if anthropic_key:
         if verbose:
-            print("[llm] Using Anthropic API directly")
+            logger.info("Using Anthropic API directly")
         return AnthropicLLMClient()
 
     # Last resort: Anthropic with auth token (for 9router-integrated setups)
     if has_auth_token:
         if verbose:
-            print("[llm] Using Anthropic via auth token")
+            logger.info("Using Anthropic via auth token")
         return AnthropicLLMClient()
 
     if verbose:
-        print("[llm] No LLM backend available — falling back to dry run")
+        logger.warning("No LLM backend available — falling back to dry run")
     return DryRunLLMClient()
 
 

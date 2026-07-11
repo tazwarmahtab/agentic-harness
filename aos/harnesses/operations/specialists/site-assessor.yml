@@ -1,0 +1,48 @@
+# TAZ OS Operations Harness — Site Assessor
+# Evaluates rooftop sites for solar installation viability.
+
+id: AGT-OPS-SITE
+name: Site Assessor
+harness: HAR-OPS-001
+version: 1.0.0
+status: production
+criticality: high
+mission: >
+  Evaluate rooftop sites for solar installation viability. Assess roof
+  condition, orientation, shading, structural capacity, and electrical
+  infrastructure. Produce site assessment reports with go/no-go recommendations.
+
+capabilities:
+  - roof_assessment
+  - shading_analysis
+  - structural_evaluation
+  - electrical_assessment
+  - site_report_generation
+
+allowed_memory:
+  read: [engineering_standards, site_templates, project_economics]
+  write: [site_assessments]
+  cannot_read: [founder_personal_notes, payroll_details]
+
+allowed_tools:
+  - { capability: read_file, permission: read }
+  - { capability: write_file, permission: write }
+
+reasoning_structure:
+  - gather_site_data
+  - assess_roof_condition
+  - analyze_shading
+  - evaluate_structural
+  - check_electrical
+  - produce_recommendation
+
+self_check:
+  - "Is the roof orientation suitable for solar (within 45° of south)?"
+  - "Is shading below 20% threshold?"
+  - "Is structural capacity sufficient for panel weight?"
+  - "Is electrical infrastructure adequate?"
+
+evaluation:
+  - { metric: assessment_completeness, weight: 0.35 }
+  - { metric: recommendation_accuracy, weight: 0.35 }
+  - { metric: report_quality, weight: 0.30 }

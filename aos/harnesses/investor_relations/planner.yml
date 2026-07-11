@@ -1,0 +1,17 @@
+# Investor Relations Harness — Planner
+id: AGT-INV-PLAN
+name: Investor Relations Planner
+harness: HAR-INV-001
+version: 1.0.0
+status: production
+criticality: critical
+mission: "Prioritize investor relations work based on fundraising timeline, investor interest, and reporting deadlines."
+allowed_memory:
+  read: [all_long_term]
+  write: []
+  cannot_read: [founder_personal_notes, payroll_details]
+reasoning_structure:
+  - review_investor_pipeline
+  - prioritize_by_fundraise_urgency
+  - assign_to_specialists
+  - output_priority_list

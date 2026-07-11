@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from tazos.regression import (
+from aos.regression import (
     BaselineSnapshot,
     Regression,
     RegressionDetector,
@@ -228,7 +228,7 @@ class TestRegressionDetector:
 class TestCollectBaseline:
     def test_collect_baseline_with_mocked_output(self) -> None:
         mock_output = "42 passed, 3 failed in 1.23s"
-        with patch("tazos.regression.subprocess.run") as mock_run:
+        with patch("aos.regression.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = mock_output
             mock_run.return_value.stderr = ""
@@ -241,7 +241,7 @@ class TestCollectBaseline:
 
     def test_collect_baseline_all_passing(self) -> None:
         mock_output = "10 passed in 0.50s"
-        with patch("tazos.regression.subprocess.run") as mock_run:
+        with patch("aos.regression.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = mock_output
             mock_run.return_value.stderr = ""
@@ -252,7 +252,7 @@ class TestCollectBaseline:
         assert snap.composite_score == 100.0
 
     def test_collect_baseline_subprocess_failure(self) -> None:
-        with patch("tazos.regression.subprocess.run") as mock_run:
+        with patch("aos.regression.subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("not found")
             snap = collect_baseline(git_commit="nope")
         assert snap.test_count == 0
@@ -262,7 +262,7 @@ class TestCollectBaseline:
 
     def test_collect_baseline_git_commit_auto(self) -> None:
         mock_output = "5 passed in 0.10s"
-        with patch("tazos.regression.subprocess.run") as mock_run:
+        with patch("aos.regression.subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
             mock_run.return_value.stdout = mock_output
             mock_run.return_value.stderr = ""

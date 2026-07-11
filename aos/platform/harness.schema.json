@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/harness.schema.json",
+  "title": "TAZ OS Harness",
+  "description": "A self-contained business system. Each harness contains: Mission, Scope, KPIs, Inputs, Outputs, Planner, Dispatcher, Specialists, Shared Memory, Tools, Approval Gates, SOP Library, Evaluation Metrics, Continuous Improvement Loop. See Volume 4 + canonical template.",
+  "type": "object",
+  "required": ["id", "name", "venture", "version", "status", "mission", "scope", "kpis", "inputs", "outputs"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^HAR-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "venture": { "type": "string", "description": "Venture instance ID, e.g. VEN-NETSO-001" },
+    "version": { "type": "string", "default": "1.0.0" },
+    "status": { "type": "string", "enum": ["draft", "production", "deprecated", "retired"] },
+    "criticality": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+    "mission": { "type": "string", "description": "Exactly one sentence." },
+    "scope": {
+      "type": "object",
+      "required": ["in_scope", "out_of_scope"],
+      "properties": {
+        "in_scope": { "type": "array", "items": { "type": "string" } },
+        "out_of_scope": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "kpis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "target"],
+        "properties": {
+          "name": { "type": "string" },
+          "target": { "type": "string" },
+          "frequency": { "type": "string", "enum": ["realtime", "daily", "weekly", "monthly", "quarterly"] },
+          "owner": { "type": "string", "description": "Specialist agent ID or human ID" }
+        }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "description": "Structured input sources the harness consumes. Each entry is a data source with items, or a venture artifact reference.",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["source", "items"],
+            "description": "Named data source with specific items consumed.",
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": ["calendar", "email", "crm", "finance", "projects", "comms", "knowledge", "founder_context"]
+              },
+              "items": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["source", "ref"],
+            "description": "Venture artifact reference resolved via venture.yml artifact map.",
+            "properties": {
+              "source": { "type": "string", "const": "venture_artifact" },
+              "ref": { "type": "string", "description": "Artifact key from venture.yml" }
+            }
+          }
+        ]
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "description": "Structured outputs this harness produces — decisions, actions, artifacts. Never raw data.",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["artifact", "event", "memory_write"],
+            "description": "artifact = persistent file, event = triggered action, memory_write = writes to shared memory"
+          },
+          "artifact_type": {
+            "type": "string",
+            "enum": ["daily_brief", "weekly_report", "board_report", "decision_queue", "handoff", "escalation", "decision_log", "meeting_prep", "risk_report", "kpi_dashboard", "weekly_report_section", "risk_state"],
+            "description": "Sub-type for runtime routing and storage."
+          },
+          "frequency": { "type": "string", "enum": ["realtime", "daily", "weekly", "monthly", "quarterly"] },
+          "owner": { "type": "string", "description": "Agent or human ID that produces this output" },
+          "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "description": "Paths to component manifests within this harness dir.",
+      "properties": {
+        "planner": { "type": "string" },
+        "dispatcher": { "type": "string" },
+        "specialists_dir": { "type": "string" },
+        "memory": { "type": "string" },
+        "tools": { "type": "string" },
+        "approvals": { "type": "string" },
+        "evaluation": { "type": "string" },
+        "sops_dir": { "type": "string" }
+      }
+    },
+    "execution_cycle": {
+      "type": "object",
+      "description": "The recurring execution loop this harness runs (e.g., daily morning cycle).",
+      "properties": {
+        "name": { "type": "string" },
+        "trigger": { "type": "string", "description": "When this cycle fires, e.g. daily_09:00_BDT, weekly_friday_17:00" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "description": "Step with a review/action and target",
+                "additionalProperties": true
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

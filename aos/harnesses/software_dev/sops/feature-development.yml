@@ -1,0 +1,67 @@
+# SOP-DEV-001 — Feature Development
+# Owner: AGT-DEV-PM (plan) + AGT-DEV-PRD (spec) + AGT-DEV-TEST (test) + AGT-DEV-REL (release)
+# Frequency: Realtime, triggered by cross-harness dispatch or roadmap priority
+# Purpose: End-to-end feature delivery from idea to production
+
+id: SOP-DEV-001
+name: Feature Development
+owner: AGT-DEV-PM
+version: 1.0.0
+trigger: realtime
+
+phase_1_specify:
+  owner: AGT-DEV-PRD
+  actions:
+    - read: product_roadmap for priority
+    - write: PRD using prd_template
+    - include: user stories, acceptance criteria, out of scope
+    - route: for founder approval
+    - output: approved_prd
+
+phase_2_design:
+  owner: AGT-DEV-UI
+  actions:
+    - review: approved_prd
+    - design: UI/UX if user-facing
+    - output: design_spec
+
+phase_3_implement:
+  owner: dispatched to specialist
+  actions:
+    - read: approved_prd + design_spec
+    - implement: per coding_standards
+    - write: tests per testing_strategy
+    - output: implementation
+
+phase_4_review:
+  owner: AGT-DEV-TEST
+  actions:
+    - run: test suite
+    - verify: coverage > 80%
+    - check: against acceptance criteria
+    - output: review_report
+
+phase_5_release:
+  owner: AGT-DEV-REL
+  actions:
+    - prepare: release notes
+    - route: for founder approval
+    - deploy: per deployment_playbook
+    - update: release_log
+    - output: released_feature
+
+phase_6_document:
+  owner: AGT-DEV-DOC
+  actions:
+    - update: relevant documentation
+    - add: API docs if applicable
+    - update: runbooks if needed
+    - output: updated_docs
+
+escalation:
+  - trigger: sprint_blocked_2_days
+    notify: AGT-DEV-PM + HUM-000001
+    urgency: high
+  - trigger: test_coverage_below_80
+    notify: AGT-DEV-TEST + AGT-DEV-PM
+    urgency: normal

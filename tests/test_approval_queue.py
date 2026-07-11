@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tazos.approval_queue import ApprovalQueue, ApprovalItem, ApprovalDecision
+from aos.approval_queue import ApprovalQueue, ApprovalItem, ApprovalDecision
 
 
 class TestApprovalItem:

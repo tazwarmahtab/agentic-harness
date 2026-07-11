@@ -1,0 +1,17 @@
+# AI Development Harness — Dispatcher
+id: AGT-AID-DISPATCH
+name: AI Development Dispatcher
+harness: HAR-AID-001
+version: 1.0.0
+status: production
+criticality: critical
+mission: "Route AI development tasks to the correct specialist."
+allowed_memory:
+  read: [all_long_term]
+  write: []
+  cannot_read: [founder_personal_notes]
+reasoning_structure:
+  - read_priority_list
+  - match_task_to_agent
+  - create_assignments
+  - output_assignments

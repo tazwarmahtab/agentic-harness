@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tazos.tools import ToolGateway
+from aos.tools import ToolGateway
 
 
 @pytest.fixture

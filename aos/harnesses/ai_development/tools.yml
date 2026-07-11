@@ -1,0 +1,82 @@
+# TAZ OS AI DEVELOPMENT HARNESS — Tools
+
+id: TOL-AID-001
+name: AI Development Harness Tool Registry
+harness: HAR-AID-001
+version: 1.0.0
+
+tools:
+  - id: TOL-AID-001
+    name: File Read
+    capability: read_file
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [AGT-AID-PROMPT, AGT-AID-EVAL, AGT-AID-WORKFLOW, AGT-AID-BENCH, AGT-AID-FAIL]
+    inputs:
+      required: [path]
+    outputs: [content]
+
+  - id: TOL-AID-002
+    name: File Write
+    capability: write_file
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-AID-PROMPT, AGT-AID-WORKFLOW]
+    inputs:
+      required: [path, content]
+    outputs: [status]
+
+  - id: TOL-AID-003
+    name: Benchmark Runner
+    capability: run_benchmark
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      execute: [AGT-AID-BENCH, AGT-AID-EVAL]
+    inputs:
+      required: [agent_id, test_cases]
+      optional: [model_override]
+    outputs: [results, scores]
+
+  - id: TOL-AID-004
+    name: Document Generator
+    capability: generate_document
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-AID-PROMPT, AGT-AID-WORKFLOW, AGT-AID-FAIL]
+    inputs:
+      required: [template, content]
+    outputs: [document_path, status]
+
+  - id: TOL-AID-005
+    name: Memory Writer
+    capability: write_memory
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [per memory.yml permissions]
+    inputs:
+      required: [memory_key, content, classification]
+    outputs: [status]
+
+compositions:
+  - name: optimize_agent
+    steps:
+      - capability: read_file           # read current prompt/config
+      - capability: run_benchmark       # baseline measurement
+      - capability: write_file          # apply optimization
+      - capability: run_benchmark       # measure improvement
+    owner: AI Development Harness
+
+providers:
+  llm_providers:
+    preferred: null
+    fallback: [dry_run]

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tazos.llm import MODEL_TABLE, RouterLLMClient, _parse_first_json
+from aos.llm import MODEL_TABLE, RouterLLMClient, _parse_first_json
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ class TestRetryOnError:
         url_error = urllib.error.URLError("connection refused")
         side_effects = [url_error, _make_response(_OK_BODY)]
 
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.side_effect = side_effects
             result = client.complete(**call_kwargs)
 
@@ -84,7 +84,7 @@ class TestRetryOnError:
         """First call raises ConnectionError, second succeeds -> retry happens."""
         side_effects = [ConnectionError("timeout"), _make_response(_OK_BODY)]
 
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.side_effect = side_effects
             result = client.complete(**call_kwargs)
 
@@ -108,7 +108,7 @@ class TestRetryOnError:
             _make_response({**_OK_BODY, "model": fallback_model}),
         ]
 
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.side_effect = side_effects
             result = client.complete(**call_kwargs)
 
@@ -126,7 +126,7 @@ class TestRetryOnError:
         Non-404 errors are re-raised on the 3rd attempt rather than falling back
         to the next model (only 404 triggers model fallback).
         """
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.side_effect = ConnectionError("network down")
             with pytest.raises(ConnectionError, match="network down"):
                 client.complete(**call_kwargs)
@@ -140,7 +140,7 @@ class TestRetryOnError:
 
     def test_success_no_retry(self, client: RouterLLMClient, call_kwargs: dict) -> None:
         """First call succeeds -> only 1 HTTP call made, no retries."""
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.return_value = _make_response(_OK_BODY)
             result = client.complete(**call_kwargs)
 
@@ -161,7 +161,7 @@ class TestRetryOnError:
             _make_response(_OK_BODY),
         ]
 
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open, \
+        with patch("aos.llm.urllib.request.urlopen") as mock_open, \
              patch("time.sleep") as mock_sleep:
             mock_open.side_effect = side_effects
             client.complete(**call_kwargs)
@@ -240,7 +240,7 @@ class TestCompleteEdgeCases:
     def test_error_in_body_raises_connection_error(self, client: RouterLLMClient, call_kwargs: dict) -> None:
         """Response body contains 'error' key -> raises ConnectionError."""
         error_body = {"error": "rate limit exceeded"}
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.return_value = _make_response(error_body)
             with pytest.raises(ConnectionError, match="rate limit exceeded"):
                 client.complete(**call_kwargs)
@@ -252,7 +252,7 @@ class TestCompleteEdgeCases:
             "choices": [{"message": {"content": "", "reasoning": "chain of thought"}}],
             "usage": {},
         }
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.return_value = _make_response(body)
             result = client.complete(**call_kwargs)
 
@@ -261,7 +261,7 @@ class TestCompleteEdgeCases:
     def test_api_key_sent_in_header(self, call_kwargs: dict) -> None:
         """When api_key is set, Authorization header is included."""
         client = _make_client(api_key="test-key-123")
-        with patch("tazos.llm.urllib.request.urlopen") as mock_open:
+        with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.return_value = _make_response(_OK_BODY)
             client.complete(**call_kwargs)
 

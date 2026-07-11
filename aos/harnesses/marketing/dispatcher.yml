@@ -1,0 +1,17 @@
+# Marketing Harness — Dispatcher
+id: AGT-MKT-DISPATCH
+name: Marketing Dispatcher
+harness: HAR-MKT-001
+version: 1.0.0
+status: production
+criticality: critical
+mission: "Route marketing tasks to the correct specialist."
+allowed_memory:
+  read: [all_long_term]
+  write: []
+  cannot_read: [founder_personal_notes]
+reasoning_structure:
+  - read_priority_list
+  - match_task_to_agent
+  - create_assignments
+  - output_assignments

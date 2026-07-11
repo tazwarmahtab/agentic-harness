@@ -1,0 +1,216 @@
+# TAZ OS HARNESS — Executive
+# Canonical template: Mission, Scope, KPIs, Inputs, Outputs.
+# Reference implementation. All future harnesses inherit this structure.
+# Validates against: tazos/platform/harness.schema.json
+
+id: HAR-EXEC-001
+name: Executive Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+criticality: critical
+
+# ===========================================================================
+# MISSION — exactly one sentence
+# ===========================================================================
+mission: >
+  Operate Netso Energy as an autonomous executive team that continuously
+  monitors the company, identifies priorities, coordinates specialist
+  harnesses, and presents only high-leverage decisions requiring founder
+  approval.
+
+# ===========================================================================
+# SCOPE — what this harness does and does not own
+# ===========================================================================
+scope:
+  in_scope:
+    - Daily executive briefing generation
+    - Inbox + comms triage and prioritization
+    - Cross-harness task dispatch and routing
+    - Approval gate management (bundled decision queue)
+    - Risk monitoring and escalation (financial, legal, operational, regulatory)
+    - KPI tracking and weekly/monthly reporting
+    - Decision logging and continuous improvement
+    - Founder-facing summarization (brief, weekly, board)
+
+  out_of_scope:
+    - Specialist domain work (proposal writing, financial modeling, contract drafting)
+      — dispatched TO other harnesses
+    - Direct customer/investor/supplier communication — gated and routed
+    - Code/website/marketing execution — owned by other harnesses
+    - Memory storage mechanics — owned by platform memory layer
+    - Policy enforcement mechanics — owned by platform Policy Engine
+    - Tool API calls — owned by platform Tool Gateway
+
+# ===========================================================================
+# KPIs — measurable targets
+# ===========================================================================
+kpis:
+  - name: Daily executive briefing delivered
+    target: "100%"
+    frequency: daily
+    owner: AGT-EXEC-CHIEFOFSTAFF
+  - name: Inbox triaged
+    target: "100%"
+    frequency: daily
+    owner: AGT-EXEC-CHIEFOFSTAFF
+  - name: High-priority tasks surfaced
+    target: "<10 per day"
+    frequency: daily
+    owner: AGT-EXEC-COO
+  - name: Pending approvals identified
+    target: "100%"
+    frequency: realtime
+    owner: AGT-EXEC-CHIEFOFSTAFF
+  - name: Missed deadlines
+    target: "0"
+    frequency: weekly
+    owner: AGT-EXEC-COO
+  - name: Weekly KPI report generated
+    target: "Every Monday 09:00"
+    frequency: weekly
+    owner: AGT-EXEC-PERF
+  - name: Decision latency
+    target: "<24 hours"
+    frequency: realtime
+    owner: AGT-EXEC-CHIEFOFSTAFF
+  - name: Duplicate work detected
+    target: "Minimized (downward trend)"
+    frequency: weekly
+    owner: AGT-EXEC-PERF
+  - name: Founder time saved
+    target: ">2 hours/day"
+    frequency: daily
+    owner: AGT-EXEC-CHIEFOFSTAFF
+  - name: Gated actions correctly captured
+    target: "100% (no gated action auto-executed)"
+    frequency: realtime
+    owner: AGT-EXEC-RSK
+  - name: BLOCKERS.md holders named
+    target: "100% of blockers name a holder"
+    frequency: realtime
+    owner: AGT-EXEC-COO
+
+# ===========================================================================
+# INPUTS — what this harness consumes
+# ===========================================================================
+inputs:
+  # Calendar
+  - { source: calendar, items: [meetings, deadlines, travel, reminders, availability] }
+  # Email
+  - { source: email, items: [inbound, sent, unread, important_threads, attachments] }
+  # CRM / pipeline
+  - { source: crm, items: [pipeline, lead_stages, follow_ups, revenue_forecasts, lois] }
+  # Finance
+  - { source: finance, items: [cash_balance, receivables, payables, payroll, runway, investor_updates] }
+  # Projects
+  - { source: projects, items: [project_stages, engineering_status, procurement, construction_progress, risks] }
+  # Communications
+  - { source: comms, items: [whatsapp, linkedin, meeting_notes, phone_summaries] }
+  # Company knowledge
+  - { source: knowledge, items: [contracts, sops, meeting_transcripts, pitch_deck, financial_models, policies, past_decisions] }
+  # Founder context
+  - { source: founder_context, items: [goals, personal_tasks, strategic_priorities, risk_tolerance, current_focus] }
+  # Live Netso memory files (canonical paths in venture.yml)
+  - { source: venture_artifact, ref: dashboard }
+  - { source: venture_artifact, ref: weekly_plan }
+  - { source: venture_artifact, ref: backlog }
+  - { source: venture_artifact, ref: blockers }
+  - { source: venture_artifact, ref: lessons }
+  - { source: venture_artifact, ref: latest_session }
+
+# ===========================================================================
+# OUTPUTS — what this harness produces (never raw data; decisions + actions)
+# ===========================================================================
+outputs:
+  - name: Daily Executive Brief
+    type: artifact
+    artifact_type: daily_brief
+    frequency: daily
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    classification: founder_only
+    description: >
+      Morning brief: today's priorities, recommended actions, estimated
+      founder workload in minutes. No raw data dumps.
+
+  - name: Weekly Report
+    type: artifact
+    artifact_type: weekly_report
+    frequency: weekly
+    owner: AGT-EXEC-PERF
+    classification: internal
+    description: >
+      Revenue, pipeline, cash, projects, risks, KPIs, team bottlenecks,
+      upcoming deadlines. Written to CHECK/REVIEW.md on Fridays.
+
+  - name: Monthly Board Report
+    type: artifact
+    artifact_type: board_report
+    frequency: monthly
+    owner: AGT-EXEC-CFO
+    classification: confidential
+    description: Auto-generated monthly board pack.
+
+  - name: Decision Queue
+    type: artifact
+    artifact_type: decision_queue
+    frequency: realtime
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    classification: founder_only
+    description: >
+      Bundled approvals. Never single-item approval pings. Supports
+      "Approve All", "Review Individually", "Reject".
+
+  - name: Dispatch Handoffs
+    type: event
+    artifact_type: handoff
+    frequency: realtime
+    owner: AGT-EXEC-DISPATCH
+    description: >
+      Cross-harness task routing. Written to Nexus/logs/handoffs/.
+      The dispatcher never solves problems itself.
+
+  - name: Escalation Alerts
+    type: event
+    artifact_type: escalation
+    frequency: realtime
+    owner: AGT-EXEC-RSK
+    description: >
+      Risk-triggered alerts (DSCR breach, regulatory deadline, default risk).
+      Routes per TASK_ROUTER.md escalation rules.
+
+  - name: Decision Log Entry
+    type: memory_write
+    artifact_type: decision_log
+    frequency: realtime
+    owner: AGT-EXEC-CHIEFOFSTAFF
+    description: Every decision recorded immutably with identity + rationale.
+
+# ===========================================================================
+# COMPONENTS — paths to sibling manifests
+# ===========================================================================
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+  sops_dir: sops/
+
+# ===========================================================================
+# EXECUTION CYCLE — the morning "Jarvis" loop
+# ===========================================================================
+execution_cycle:
+  name: Daily Executive Loop
+  trigger: daily_09:00_BDT
+  steps:
+    - review: [calendar, email, crm, finance, projects, comms, dashboard, blockers]
+    - prioritize: planner
+    - delegate: dispatcher
+    - run_agents: specialists
+    - summarize: chief_of_staff
+    - request_approvals: approval_gates
+    - execute: runtime
+    - log: decision_log + latest_session

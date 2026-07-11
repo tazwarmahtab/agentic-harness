@@ -1,0 +1,41 @@
+# SOP-INV-001 — Investor Update Cycle
+# Owner: AGT-INV-DECK (compose) + AGT-INV-TRACK (pipeline)
+# Frequency: Monthly, triggered by schedule
+# Purpose: Regular investor communication with financial accuracy
+
+id: SOP-INV-001
+name: Investor Update Cycle
+owner: AGT-INV-DECK
+version: 1.0.0
+trigger: monthly_first_monday_09:00_BDT
+
+phase_1_gather:
+  owner: AGT-INV-TRACK
+  actions:
+    - collect: pipeline updates, milestone progress
+    - read: ground_truth_constants for financial metrics
+    - compile: key metrics (revenue, pipeline, cash, DSCR)
+    - output: raw_metrics
+
+phase_2_compose:
+  owner: AGT-INV-DECK
+  actions:
+    - write: investor update using approved template
+    - validate: all numbers against ground truth constants
+    - include: wins, challenges, ask
+    - output: draft_update
+
+phase_3_approve:
+  owner: HUM-000001
+  actions:
+    - review: draft_update
+    - approve: or request changes
+    - output: approved_update
+
+phase_4_send:
+  owner: AGT-INV-DECK
+  actions:
+    - send: approved_update to investor list
+    - log: communication in investor_communications
+    - track: responses and follow-ups
+    - output: sent_confirmation

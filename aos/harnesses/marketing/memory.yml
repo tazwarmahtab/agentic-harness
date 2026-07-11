@@ -1,0 +1,80 @@
+# TAZ OS MARKETING HARNESS — Shared Memory
+
+id: MEM-MKT-001
+name: Marketing Harness Shared Memory
+harness: HAR-MKT-001
+version: 1.0.0
+
+layers:
+  long_term:
+    brand_guidelines:
+      description: "Netso brand voice, visual identity, messaging pillars"
+      classification: internal
+    content_calendar:
+      description: "Planned content themes, publish schedule, campaign timelines"
+      classification: internal
+    competitor_analysis:
+      description: "Market positioning, competitor content strategy, gaps"
+      classification: internal
+    target_audience:
+      description: "Bangladesh RMG factory owners, decision-makers, engineering teams"
+      classification: internal
+
+  episodic:
+    content_performance:
+      description: "Views, engagement, shares, leads per content piece"
+      write_access: [AGT-MKT-CONTENT, AGT-MKT-LINKEDIN]
+      classification: internal
+    linkedin_analytics:
+      description: "Follower growth, post impressions, engagement rate"
+      write_access: [AGT-MKT-LINKEDIN]
+      classification: internal
+    seo_reports:
+      description: "Keyword rankings, organic traffic, backlink profile"
+      write_access: [AGT-MKT-SEO]
+      classification: internal
+    website_metrics:
+      description: "Traffic, conversion rate, bounce rate, lead capture"
+      write_access: [AGT-MKT-WEB]
+      classification: internal
+
+  semantic:
+    seo_playbook:
+      description: "Keyword strategy, on-page optimization, technical SEO rules"
+      classification: internal
+    content_style_guide:
+      description: "Writing tone, formatting rules, brand voice guidelines"
+      classification: internal
+    linkedin_algorithm_rules:
+      description: "Best posting times, engagement tactics, content formats"
+      classification: internal
+    lead_generation_playbook:
+      description: "Content-to-lead conversion funnels, CTA strategies"
+      classification: internal
+
+permissions:
+  AGT-MKT-CONTENT:
+    read: [brand_guidelines, content_calendar, target_audience, content_style_guide]
+    write: [content_performance]
+    cannot_read: [founder_personal_notes, financial_models]
+
+  AGT-MKT-LINKEDIN:
+    read: [brand_guidelines, linkedin_algorithm_rules, content_calendar]
+    write: [linkedin_analytics, content_performance]
+    cannot_read: [founder_personal_notes, financial_models]
+
+  AGT-MKT-SEO:
+    read: [seo_playbook, competitor_analysis, target_audience]
+    write: [seo_reports]
+    cannot_read: [founder_personal_notes, financial_models]
+
+  AGT-MKT-WEB:
+    read: [brand_guidelines, target_audience, lead_generation_playbook]
+    write: [website_metrics]
+    cannot_read: [founder_personal_notes, financial_models]
+
+update_rules:
+  agents_submit_memory_candidates: true
+  reflection_engine_decides: [store, reject, summarize, merge, version]
+  purpose: "Prevent memory pollution."
+  audit: "every memory write creates immutable audit record"

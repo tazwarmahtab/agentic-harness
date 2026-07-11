@@ -1,0 +1,85 @@
+# TAZ OS SOFTWARE DEV HARNESS — Tools
+
+id: TOL-DEV-001
+name: Software Dev Harness Tool Registry
+harness: HAR-DEV-001
+version: 1.0.0
+
+tools:
+  - id: TOL-DEV-001
+    name: File Read
+    capability: read_file
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [AGT-DEV-PM, AGT-DEV-PRD, AGT-DEV-UI, AGT-DEV-TEST, AGT-DEV-DOC, AGT-DEV-REL]
+    inputs:
+      required: [path]
+    outputs: [content]
+
+  - id: TOL-DEV-002
+    name: File Write
+    capability: write_file
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-DEV-PRD, AGT-DEV-DOC]
+    inputs:
+      required: [path, content]
+    outputs: [status]
+
+  - id: TOL-DEV-003
+    name: Document Generator
+    capability: generate_document
+    category: productivity
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-DEV-PRD, AGT-DEV-DOC, AGT-DEV-REL]
+    inputs:
+      required: [template, content]
+    outputs: [document_path, status]
+
+  - id: TOL-DEV-004
+    name: Approval Request
+    capability: request_approval
+    category: governance
+    version: 1.0.0
+    status: registered
+    permissions:
+      execute: [AGT-DEV-PM, AGT-DEV-REL]
+    inputs:
+      required: [action, rationale]
+    outputs: [approval_id, status]
+
+  - id: TOL-DEV-005
+    name: Memory Writer
+    capability: write_memory
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [per memory.yml permissions]
+    inputs:
+      required: [memory_key, content, classification]
+    outputs: [status]
+
+compositions:
+  - name: feature_development
+    steps:
+      - capability: read_file           # review requirements
+      - capability: generate_document   # PRD
+      - capability: request_approval    # PRD approval
+      - capability: write_file          # implementation
+      - capability: generate_document   # release notes
+    owner: Software Dev Harness
+
+providers:
+  version_control:
+    preferred: null
+    fallback: [manual]
+  ci_cd:
+    preferred: null
+    fallback: [manual]

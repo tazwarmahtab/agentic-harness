@@ -1,0 +1,122 @@
+# TAZ OS PERSONAL HARNESS — Evaluation Metrics
+
+id: EVAL-PER-001
+name: Personal Harness Evaluation Framework
+harness: HAR-PER-001
+version: 1.0.0
+
+harness_metrics:
+  - name: daily_planning_completion
+    target: "100%"
+    frequency: daily
+    owner: AGT-PER-TASK
+    measurement: daily_plan_generated_before_09:00
+
+  - name: goal_progress_on_track
+    target: ">80%"
+    frequency: weekly
+    owner: AGT-PER-GOAL
+    measurement: goals_on_track_divided_by_total
+
+  - name: habit_consistency_rate
+    target: ">90%"
+    frequency: weekly
+    owner: AGT-PER-HABIT
+    measurement: habits_completed_divided_by_tracked
+
+  - name: deep_work_hours_per_week
+    target: ">20 hours"
+    frequency: weekly
+    owner: AGT-PER-TASK
+    measurement: focused_work_hours_logged
+
+specialist_metrics:
+  AGT-PER-CAL:
+    - scheduling_accuracy: { weight: 0.35 }
+    - conflict_resolution: { weight: 0.25 }
+    - time_optimization: { weight: 0.25 }
+    - reminder_reliability: { weight: 0.15 }
+
+  AGT-PER-GOAL:
+    - goal_clarity: { weight: 0.30 }
+    - progress_tracking_accuracy: { weight: 0.30 }
+    - alignment_with_vision: { weight: 0.20 }
+    - review_timeliness: { weight: 0.20 }
+
+  AGT-PER-HABIT:
+    - streak_accuracy: { weight: 0.30 }
+    - encouragement_quality: { weight: 0.25 }
+    - pattern_detection: { weight: 0.25 }
+    - consistency_improvement: { weight: 0.20 }
+
+  AGT-PER-HEALTH:
+    - data_accuracy: { weight: 0.30 }
+    - trend_analysis: { weight: 0.25 }
+    - goal_alignment: { weight: 0.25 }
+    - actionable_insights: { weight: 0.20 }
+
+  AGT-PER-READ:
+    - reading_pace_tracking: { weight: 0.25 }
+    - knowledge_extraction: { weight: 0.30 }
+    - recommendation_relevance: { weight: 0.25 }
+    - summary_quality: { weight: 0.20 }
+
+  AGT-PER-TASK:
+    - prioritization_accuracy: { weight: 0.30 }
+    - completion_rate: { weight: 0.25 }
+    - time_estimation_accuracy: { weight: 0.25 }
+    - focus_protection: { weight: 0.20 }
+
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-PER-TASK
+      input: weekly_task_outcomes
+      output: variance_report
+    - step: identify_bottlenecks
+      owner: AGT-PER-TASK
+      input: variance_report
+      output: bottleneck_list
+    - step: update_artifacts
+      owner: AGT-PER-TASK
+      input: bottleneck_list
+      output: updated_routines
+      artifacts_affected: [productivity_rules, health_protocols]
+    - step: record_lessons
+      owner: AGT-PER-TASK
+      input: bottleneck_list
+      output: new_lessons
+    - step: founder_review
+      owner: HUM-000001
+      input: weekly_review
+      output: approved_or_revised
+      frequency: weekly
+
+  improvement_sources:
+    - daily_logs: "task completion patterns"
+    - health_data: "exercise and sleep trends"
+    - reading_notes: "knowledge application"
+
+  metrics_tracked:
+    - task_completion_rate
+    - habit_streak_length
+    - deep_work_hours
+    - health_metric_trends
+
+  review_cadence:
+    daily: [task_review, habit_check, health_log]
+    weekly: [goal_progress, reading_summary, habit_streaks]
+    monthly: [goal_adjustment, health_trend, reading_list_update]
+    quarterly: [full_life_review, goal_reset, habit_audit]
+
+evaluation_pipeline:
+  1. agent_completes_task:
+     output: raw_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. evaluator_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+     - pass: update_memory + log
+     - fail_soft: retry with adjusted approach

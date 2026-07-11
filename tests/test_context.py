@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from tazos.context import build_prompt
-from tazos.schemas.agent import (
+from aos.context import build_prompt
+from aos.schemas.agent import (
     Agent,
     AgentCriticality,
     AgentStatus,
@@ -145,25 +145,25 @@ class TestMemoryPermissions:
 
 class TestFinancialRules:
     def test_cfo_gets_financial_constants(self, cfo_agent: Agent) -> None:
-        from tazos.constants import NETSO_FINANCIAL
+        from aos.constants import NETSO_FINANCIAL
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "12.98" in prompt  # true_variable_rate
         assert "14.81" in prompt  # blended_rate
         assert "ppa_rate" in prompt  # ppa_rate key present (value may render as 10.0)
 
     def test_cfo_gets_hard_fail_rules(self, cfo_agent: Agent) -> None:
-        from tazos.constants import NETSO_FINANCIAL
+        from aos.constants import NETSO_FINANCIAL
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "HARD FAIL" in prompt
         assert "blended" in prompt.lower()
 
     def test_coo_does_not_get_financial_constants(self, minimal_agent: Agent) -> None:
-        from tazos.constants import NETSO_FINANCIAL
+        from aos.constants import NETSO_FINANCIAL
         prompt = build_prompt(minimal_agent, netso_financial=NETSO_FINANCIAL)
         assert "HARD FAIL" not in prompt
 
     def test_cfo_gets_scenario_b_rules(self, cfo_agent: Agent) -> None:
-        from tazos.constants import NETSO_FINANCIAL
+        from aos.constants import NETSO_FINANCIAL
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "scenario" in prompt.lower() or "SCENARIO" in prompt
 
@@ -179,7 +179,7 @@ class TestOutputFormat:
         assert "JSON" in prompt or "json" in prompt
 
     def test_dispatcher_gets_routing_table(self) -> None:
-        from tazos.schemas.agent import RoutingEntry, RoutingTable
+        from aos.schemas.agent import RoutingEntry, RoutingTable
         dispatcher = Agent(
             id="AGT-EXEC-DISPATCH",
             name="Dispatcher",

@@ -1,0 +1,37 @@
+# TAZ OS Operations Harness
+id: HAR-OPS-001
+name: Operations Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+mission: >
+  Execute projects end-to-end: site assessment, procurement, installation
+  tracking, quality assurance, and maintenance scheduling. Ensure all
+  installations meet engineering standards and safety requirements.
+
+scope:
+  in_scope: [procurement, installation, qa, maintenance, site_assessment]
+  out_of_scope: [financial_modeling, customer_outreach, investor_relations]
+
+kpis:
+  - { name: milestone_hit_rate, target: ">90%" }
+  - { name: quality_incidents, target: "0" }
+  - { name: procurement_approval_compliance, target: "100%" }
+
+inputs:
+  - { source: executive, items: [priority_list, handoffs] }
+  - { source: memory, items: [engineering_standards, supplier_history] }
+
+outputs:
+  - { name: site_assessments, type: artifact }
+  - { name: installation_reports, type: artifact }
+  - { name: procurement_logs, type: artifact }
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml

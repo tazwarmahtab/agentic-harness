@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import pytest
-from tazos.loader import (
+from aos.loader import (
     load_harness, load_agent, load_memory, load_tool_registry,
     load_evaluation, load_policy_collection, load_sop,
 )

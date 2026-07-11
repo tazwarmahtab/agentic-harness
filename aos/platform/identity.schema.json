@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/identity.schema.json",
+  "title": "TAZ OS Identity",
+  "description": "Globally unique identity for every object in TAZ OS. Format: TYPE-CONTEXT-NUMBER or TYPE-NUMBER. See Volume 8.",
+  "type": "object",
+  "required": ["id", "type", "name", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Globally unique. Two formats: TYPE-CONTEXT-NUMBER (e.g. AGT-EXEC-001) or TYPE-NUMBER (e.g. HUM-000001).",
+      "pattern": "^(HUM|VEN|HAR|AGT|TOL|POL|ART|WRK|MEM|DOC|PRJ|CUS|SUP|INV|MTG|TSK|EVAL|SOP)-[A-Z]+-[0-9]{3,}$|^(HUM)-[0-9]{6}$"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["human", "venture", "harness", "agent", "tool", "policy", "artifact", "workflow", "memory", "document", "project", "customer", "supplier", "investor", "meeting", "task", "evaluation", "sop"]
+    },
+    "name": { "type": "string" },
+    "owner": {
+      "description": "ID of the owning identity (harness, human, or org). May be null for root.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "idle", "deployed", "blocked", "retired", "draft", "production"]
+    },
+    "classification": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted", "founder_only"],
+      "default": "internal"
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "version": { "type": "string", "default": "1.0.0" }
+  }
+}

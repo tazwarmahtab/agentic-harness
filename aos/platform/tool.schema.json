@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/tool.schema.json",
+  "title": "TAZ OS Tool Registry",
+  "description": "Capability-based tool definitions. Agents request capabilities (e.g. 'send_email'), not vendor APIs. The runtime resolves to actual providers. See Volume 9.",
+  "type": "object",
+  "required": ["id", "name", "harness", "version", "tools"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^TOL-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "harness": { "type": "string", "description": "Owning harness ID" },
+    "version": { "type": "string", "default": "1.0.0" },
+
+    "tools": {
+      "type": "array",
+      "description": "Tool definitions following the canonical contract.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "capability", "category", "status", "permissions"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^TOL-[A-Z]+-[0-9]{3}$" },
+          "name": { "type": "string" },
+          "capability": { "type": "string", "description": "Capability name agents request (e.g. 'send_email', 'read_finance')" },
+          "category": { "type": "string", "enum": ["communication", "productivity", "finance", "crm", "internal", "knowledge", "governance"] },
+          "version": { "type": "string", "default": "1.0.0" },
+          "status": { "type": "string", "enum": ["registered", "wired", "deprecated"] },
+          "permissions": {
+            "type": "object",
+            "description": "Per-agent permission lists. Keys are permission types, values are agent IDs or special values.",
+            "properties": {
+              "read": { "type": "array", "items": { "type": "string" } },
+              "write": { "type": "array", "items": { "type": "string" } },
+              "execute": {
+                "oneOf": [
+                  { "type": "array", "items": { "type": "string" } },
+                  { "type": "string", "enum": ["gated"] }
+                ]
+              }
+            }
+          },
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "required": { "type": "array", "items": { "type": "string" } },
+              "optional": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "outputs": { "type": "array", "items": { "type": "string" } },
+          "rate_limits": {
+            "type": "object",
+            "properties": {
+              "max_per_hour": { "type": "integer" },
+              "max_per_day": { "type": "integer" }
+            }
+          },
+          "retry_policy": {
+            "type": "object",
+            "properties": {
+              "max_attempts": { "type": "integer" },
+              "backoff": { "type": "string", "enum": ["linear", "exponential"] }
+            }
+          },
+          "cost_model": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "approval_gate": { "type": "string", "description": "Human-readable gate condition." },
+          "fallback": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } },
+              { "type": "null" }
+            ]
+          },
+          "validation": {
+            "type": "object",
+            "description": "Runtime validation rules for this tool's output.",
+            "properties": {
+              "must_use": { "type": "string" },
+              "hard_fail_if": { "type": "string" }
+            }
+          },
+          "note": { "type": "string" },
+          "format": { "type": "string", "description": "Output naming convention or format string." }
+        }
+      }
+    },
+
+    "compositions": {
+      "type": "array",
+      "description": "Complex multi-step actions composed from simple capabilities.",
+      "items": {
+        "type": "object",
+        "required": ["name", "steps", "owner"],
+        "properties": {
+          "name": { "type": "string" },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["capability"],
+              "properties": {
+                "capability": { "type": "string" },
+                "gate": { "type": "string", "description": "Approval gate required for this step." }
+              }
+            }
+          },
+          "owner": { "type": "string", "description": "Agent or harness that owns this composition." }
+        }
+      }
+    },
+
+    "providers": {
+      "type": "object",
+      "description": "Provider resolution map. All null until wired.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "preferred": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "null" }
+            ]
+          },
+          "fallback": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

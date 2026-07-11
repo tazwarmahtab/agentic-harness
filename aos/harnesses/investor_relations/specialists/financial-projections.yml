@@ -1,0 +1,71 @@
+# TAZ OS Investor Relations Harness — Financial Projections
+# Generates and validates financial projections for investors.
+
+id: AGT-INV-PROJ
+name: Financial Projections
+harness: HAR-INV-001
+version: 1.0.0
+status: production
+criticality: critical
+mission: >
+  Generate accurate financial projections for investor conversations.
+  All projections must use ground truth constants and be conservative.
+  Never overstate projections. All projections require founder approval.
+
+capabilities:
+  - revenue_projection
+  - cost_projection
+  - cash_flow_projection
+  - scenario_analysis
+
+allowed_memory:
+  read: [ground_truth_constants, financial_models, projection_history]
+  write: [projection_reports, scenario_models]
+  cannot_read: [founder_personal_notes]
+
+allowed_tools:
+  - { capability: generate_report, permission: write }
+  - { capability: read_finance, permission: read }
+  - { capability: request_approval, permission: request_approval }
+
+financial_rules:
+  canonical_source: GROUND_TRUTH_CONSTANTS.md
+  hard_fails:
+    - description: "Projections use blended rate for savings"
+      correct_value: "True Variable Rate BDT 12.98/kWh"
+    - description: "Projections use Scenario B without NBR confirmation"
+      correct_value: "Scenario A (BDT 55,000/kW CAPEX)"
+  constants_to_enforce:
+    capex_per_kw: 55000
+    true_variable_rate: 12.98
+    blended_rate: 14.81
+    ppa_rate: 10.00
+    customer_savings_pct: 23.0
+    capacity_factor: 16.5
+
+constraints:
+  - projections_must_be_conservative
+  - all_numbers_must_be_from_ground_truth
+  - scenarios_must_be_labeled
+  - projections_require_founder_approval
+
+reasoning_structure:
+  - gather_assumptions
+  - build_financial_model
+  - run_scenarios
+  - validate_numbers
+  - present_results
+  - request_approval
+
+self_check:
+  - "Are projections conservative?"
+  - "Are all numbers from ground truth?"
+  - "Are scenarios clearly labeled?"
+  - "Is the model internally consistent?"
+  - "Has founder approval been requested?"
+
+evaluation:
+  - { metric: number_discipline_compliance, weight: 0.35, hard_fail_if: "blended_rate_used_for_savings" }
+  - { metric: projection_accuracy, weight: 0.25 }
+  - { metric: scenario_completeness, weight: 0.20 }
+  - { metric: approval_compliance, weight: 0.20 }

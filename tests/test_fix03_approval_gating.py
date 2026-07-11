@@ -10,8 +10,8 @@ should_execute() only blocks on genuinely pending items.
 from __future__ import annotations
 
 import pytest
-from tazos.graph import should_execute, approval_gates_node
-from tazos.approval_queue import ApprovalQueue, ApprovalDecision
+from aos.graph import should_execute, approval_gates_node
+from aos.approval_queue import ApprovalQueue, ApprovalDecision
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ class TestApprovalGatesNode:
         state = self._make_state()
         cfg = self._make_config()
         with pytest.MonkeyPatch.context() as m:
-            m.setattr("tazos.graph.get_config", lambda: cfg)
+            m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         assert result["approval_gates_output"]["total_pending"] == 0
 
@@ -165,7 +165,7 @@ class TestApprovalGatesNode:
         )
         cfg = self._make_config()
         with pytest.MonkeyPatch.context() as m:
-            m.setattr("tazos.graph.get_config", lambda: cfg)
+            m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         output = result["approval_gates_output"]
         assert output["total_pending"] == 1
@@ -181,7 +181,7 @@ class TestApprovalGatesNode:
         )
         cfg = self._make_config()
         with pytest.MonkeyPatch.context() as m:
-            m.setattr("tazos.graph.get_config", lambda: cfg)
+            m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         assert result["approval_gates_output"]["total_pending"] == 0
 
@@ -201,7 +201,7 @@ class TestApprovalGatesNode:
         )
         cfg = self._make_config(approval_queue=queue)
         with pytest.MonkeyPatch.context() as m:
-            m.setattr("tazos.graph.get_config", lambda: cfg)
+            m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         # Should emit the resolved ID
         assert item.id in result.get("resolved_approval_ids", [])
@@ -217,7 +217,7 @@ class TestApprovalGatesNode:
         )
         cfg = self._make_config()  # no approval_queue in config
         with pytest.MonkeyPatch.context() as m:
-            m.setattr("tazos.graph.get_config", lambda: cfg)
+            m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         output = result["approval_gates_output"]
         assert output["total_pending"] == 1

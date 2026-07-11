@@ -54,13 +54,13 @@ def cmd_validate(args: argparse.Namespace) -> int:
     venture_path, venture_name = _resolve_venture(args.venture)
 
     if not harness_dir.exists():
-        print(f"ERROR: Harness directory not found: {harness_dir}")
+        logger.error(f"Harness directory not found: {harness_dir}")
         return 1
 
     if args.harness:
         harness_dir = root / "tazos" / "harnesses" / args.harness
         if not harness_dir.exists():
-            print(f"ERROR: Harness not found: {args.harness}")
+            logger.error(f"Harness not found: {args.harness}")
             return 1
 
     print(f"Validating manifests in: {harness_dir}")
@@ -88,7 +88,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         harness_dir = root / "tazos" / "harnesses" / args.harness
 
     if not harness_dir.exists():
-        print(f"ERROR: Harness not found: {harness_dir}")
+        logger.error(f"Harness not found: {harness_dir}")
         print("Available harnesses:")
         for d in sorted((root / "tazos" / "harnesses").iterdir()):
             if d.is_dir() and (d / "harness.yml").exists():
@@ -116,14 +116,14 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     # If venture was requested but not found, fail with clear error
     if args.venture and venture_path is None:
-        print(f"ERROR: Venture '{args.venture}' not found.")
+        logger.error(f"Venture '{args.venture}' not found.")
         print("Available ventures:")
         for path, v in discover_ventures(root / "tazos" / "ventures"):
             print(f" - {v.name} ({v.id})")
         return 1
 
     if not harness_dir.exists():
-        print(f"ERROR: Harness not found: {harness_dir}")
+        logger.error(f"Harness not found: {harness_dir}")
         print("Available harnesses:")
         for d in sorted((root / "tazos" / "harnesses").iterdir()):
             if d.is_dir() and (d / "harness.yml").exists():
@@ -145,7 +145,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     registry = load_registry(harness_dir, vp)
 
     if not registry.harnesses:
-        print("ERROR: No harnesses found in registry")
+        logger.error("No harnesses found in registry")
         return 1
 
     # Load sibling harnesses for cross-harness dispatch (H4)
@@ -206,7 +206,7 @@ def cmd_orchestrate(args: argparse.Namespace) -> int:
         # /spec will create the plan
         plan_path = root / ".gstack" / "plans" / f"orch-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
     elif not args.skip_spec:
-        print("ERROR: Provide --one-liner or --plan-path (or use --skip-spec with existing plan).")
+        logger.error("Provide --one-liner or --plan-path (or use --skip-spec with existing plan).")
         return 1
 
     # Parse gates

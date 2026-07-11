@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/policy-collection.schema.json",
+  "title": "TAZ OS Policy Collection",
+  "description": "A harness-level container holding an array of approval/governance policies, plus auto-actions, decision queue format, and delegation rules. Each element in rules[] validates against policy.schema.json individually.",
+  "type": "object",
+  "required": ["id", "name", "harness", "version", "status", "rules"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^POL-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "harness": { "type": "string", "description": "Owning harness ID" },
+    "version": { "type": "string", "default": "1.0.0" },
+    "status": { "type": "string", "enum": ["active", "draft", "deprecated", "test", "production"] },
+    "rules": {
+      "type": "array",
+      "description": "Array of individual policy rules. Each element has id, name, category, rule, action matching policy.schema.json.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "category", "rule", "action"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^POL-[A-Z]+-[A-Z]+-[0-9]{3}$" },
+          "name": { "type": "string" },
+          "category": { "type": "string", "enum": ["security", "financial", "legal", "commercial", "engineering", "privacy", "ai_safety", "compliance", "operations", "executive"] },
+          "rule": {
+            "type": "object",
+            "required": ["if"],
+            "properties": {
+              "if": { "type": "object" },
+              "then": { "type": "string" },
+              "else": { "type": "string" }
+            }
+          },
+          "action": { "type": "string", "enum": ["allow", "deny", "require_approval", "escalate", "delay", "log_only"] },
+          "approval_owner": { "type": "string" },
+          "approval_expires_hours": { "type": "integer", "minimum": 1 },
+          "source": { "type": "string" }
+        }
+      }
+    },
+    "auto_actions": {
+      "type": "array",
+      "description": "Actions that pass through without any gate.",
+      "items": { "type": "string" }
+    },
+    "decision_queue_format": {
+      "type": "object",
+      "description": "How gated actions are bundled for the founder.",
+      "properties": {
+        "bundled": { "type": "boolean" },
+        "summary_per_decision": { "type": "array", "items": { "type": "string" } },
+        "actions_available": { "type": "array", "items": { "type": "string" } },
+        "delivery": { "type": "string" }
+      }
+    },
+    "delegation": {
+      "type": "object",
+      "description": "Explicit, temporary, auto-expiring delegation rules.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "rule": { "type": "string" },
+        "format": {
+          "type": "object",
+          "properties": {
+            "delegator": { "type": "string" },
+            "delegatee": { "type": "array", "items": { "type": "string" } },
+            "capability": { "type": "array", "items": { "type": "string" } },
+            "duration_hours": { "type": "array", "items": { "type": "integer" } },
+            "auto_expires": { "type": "boolean" }
+          }
+        },
+        "current_delegations": { "type": "array" }
+      }
+    }
+  }
+}

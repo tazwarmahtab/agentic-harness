@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tazos/platform/venture.schema.json",
+  "title": "TAZ OS Venture",
+  "description": "A business venture mounted into TAZ OS. Defines identities, people, live source-of-truth artifacts, financial constants, and approval thresholds. Each venture is a top-level organizational unit.",
+  "type": "object",
+  "required": ["id", "name", "type", "status", "version", "identities", "artifacts", "financial_constants"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^VEN-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "type": { "type": "string", "const": "venture" },
+    "status": { "type": "string", "enum": ["active", "paused", "archived", "draft"] },
+    "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] },
+    "version": { "type": "string", "default": "1.0.0" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "description": { "type": "string" },
+
+    "identities": {
+      "type": "object",
+      "required": ["humans"],
+      "description": "All identities (human and AI) that have seats in this venture.",
+      "properties": {
+        "humans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "role", "status"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^HUM-[0-9]{6}$" },
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "status": { "type": "string", "enum": ["active", "inactive"] },
+              "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] },
+              "approval_authority": { "type": "boolean", "description": "If true, sole approver for gated actions." }
+            }
+          }
+        },
+        "ai_personas_rehomed": {
+          "type": "array",
+          "description": "Existing AI personas mapped to new TAZ OS specialist seats.",
+          "items": {
+            "type": "object",
+            "required": ["persona", "becomes", "persona_source"],
+            "properties": {
+              "persona": { "type": "string" },
+              "becomes": { "type": "string" },
+              "persona_source": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "dispatch_only_specialists": {
+      "type": "array",
+      "description": "Tier-2 specialists that stay in their domain harnesses (not Executive). Executive dispatches TO these.",
+      "items": {
+        "type": "object",
+        "required": ["persona", "domain", "role"],
+        "properties": {
+          "persona": { "type": "string" },
+          "domain": { "type": "string" },
+          "role": { "type": "string" }
+        }
+      }
+    },
+
+    "artifacts": {
+      "type": "object",
+      "description": "Live source-of-truth artifacts. Keys are referenced by harness memory.yml and inputs. Each entry has a path relative to the venture's root directory.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "description": "Relative path within the venture's root directory (e.g. Netso_HQ/)" },
+          "role": { "type": "string" },
+          "generator": { "type": "string", "description": "Script or process that generates this artifact." },
+          "classification": { "type": "string", "enum": ["public", "internal", "confidential", "restricted", "founder_only"] },
+          "rule": { "type": "string", "description": "Invariant or constraint attached to this artifact." }
+        }
+      }
+    },
+
+    "financial_constants": {
+      "type": "object",
+      "description": "Machine-readable financial constants for runtime validation. Must mirror the venture's GROUND_TRUTH_CONSTANTS.md. Never edit manually.",
+      "properties": {
+        "capex_per_kw_scenario_a": { "type": "number" },
+        "capex_per_kw_scenario_b": { "type": "number" },
+        "capex_default_scenario": { "type": "string", "enum": ["A", "B"] },
+        "true_variable_rate": { "type": "number" },
+        "blended_rate": { "type": "number" },
+        "ppa_rate": { "type": "number" },
+        "customer_savings_pct": { "type": "number" },
+        "nem_export_rate": { "type": "number" },
+        "idcol_debt_pct": { "type": "number" },
+        "idcol_interest": { "type": "number" },
+        "idcol_term_years": { "type": "integer" },
+        "dscr_scenario_a": { "type": "number" },
+        "dscr_scenario_b": { "type": "number" },
+        "dscr_alert_floor": { "type": "number" },
+        "capacity_factor": { "type": "number" },
+        "opex_per_kw": { "type": "number" }
+      }
+    },
+
+    "approval_thresholds": {
+      "type": "object",
+      "description": "Venture-level approval thresholds referenced by harness approval gates.",
+      "additionalProperties": { "type": "number" }
+    }
+  }
+}
