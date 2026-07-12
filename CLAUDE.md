@@ -25,12 +25,13 @@ Governance-first, multi-venture agentic operating system (Python 3.12+, Pydantic
 │   ├── approval_queue.py  # persistent approval queue (JSONL)
 │   ├── platform/     # JSON schemas (identity, harness, agent, policy)
 │   └── ventures/netso/    # Netso venture binding (financial constants, artifacts)
-├── odysseus/         # FastAPI dashboard runtime (REST + WS + UI)
-│   ├── routes/       # API + websocket routes
-│   ├── services/     # websocket telemetry, executors
-│   ├── models.py     # Pydantic v2 schemas
-│   ├── utils.py      # shared helpers
-│   └── security.py   # sanitize_path, auth helpers
+├── odysseus/         # Thin proxy layer + JS dashboard
+│   ├── routes/       # AOS proxy (REST + WebSocket relay)
+│   │   └── aos_routes.py
+│   └── dashboard/    # Vanilla JS SPA (no build step)
+│       ├── *.js      # 9 page modules + store + keyboard nav
+│       ├── services/ # JS clients (api.js, websocket.js, keyboard.js)
+│       └── dashboard.css / dashboard-a11y.css
 ├── tests/            # pytest suite (target 80%+ coverage)
 ├── docs/             # phase docs + architecture notes
 ├── ops/              # operational runbooks / configs
@@ -91,7 +92,7 @@ Model IDs (via 9router at localhost:20128):
 1. **Path traversal**: all user-supplied paths must pass `sanitize_path()` — blocks URL-encoded traversal, null bytes, backslashes, absolute paths, tilde expansion, `..` normalization bypasses.
 2. **WebSocket auth**: WS endpoint requires `AOS_API_TOKEN` env var.
 3. **Approval gates**: orchestrate gates poll `wait_for_decision()` and block execution; never replace with fire-and-forget.
-4. **Shell execution**: subprocess paths use regex allowlist + shlex validation; new executors must mirror `security.py` patterns.
+4. **Shell execution**: subprocess paths use regex allowlist + shlex validation; new executors must mirror `aos/hardening.py` patterns.
 5. **Connection limiter**: WS endpoint caps concurrency (default 10); wire into any new socket handlers.
 6. **Timing data**: graph nodes (`approval_gates`, `execute`, `log`, `loop_control`) emit `duration_ms` — preserve when refactoring.
 7. **Financial constants**: all numbers sourced from `GROUND_TRUTH_CONSTANTS.md`; blended rate BDT 14.81 is **never** used for savings — true variable rate BDT 12.98 is correct.
