@@ -6,6 +6,7 @@ name: Marketing Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: medium
 mission: >
   Generate demand for Netso Energy through content marketing, LinkedIn
   thought leadership, SEO optimization, and website management. Build
@@ -21,11 +22,32 @@ kpis:
   - { name: organic_traffic_growth, target: ">10% month-over-month" }
   - { name: lead_generation_from_content, target: ">5 qualified leads/month" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [brand_guidelines, content_calendar] }
-
 outputs:
   - { name: content_pieces, type: artifact }
   - { name: linkedin_posts, type: artifact }
   - { name: seo_reports, type: artifact }
+
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [brand_guidelines, content_calendar] }
+
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+name: Marketing Loop
+trigger: weekly_monday_08:00_BDT
+steps:
+  - review: [content_calendar, linkedin_analytics, seo_reports, lead_pipeline]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - evaluate: evaluation
+  - log: decision_log

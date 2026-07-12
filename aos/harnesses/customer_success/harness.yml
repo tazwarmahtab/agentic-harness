@@ -6,6 +6,7 @@ name: Customer Success Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: high
 mission: >
   Ensure customer satisfaction and retention after solar installation.
   Monitor system performance, handle support requests, detect issues
@@ -22,11 +23,33 @@ kpis:
   - { name: upsell_conversion_rate, target: ">20%" }
   - { name: churn_rate, target: "<5%" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [customer_profiles, installation_history] }
-
 outputs:
   - { name: support_tickets, type: artifact }
   - { name: monitoring_reports, type: artifact }
   - { name: upsell_proposals, type: artifact }
+
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [customer_support_standards, retention_playbooks] }
+- { source: crm, items: [customer_profiles, installation_history] }
+
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+name: Customer Success Loop
+trigger: daily_09:00_BDT
+steps:
+  - review: [installation_health, support_tickets, customer_feedback]
+  - prioritize: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - escalate: approval_gates
+  - log: decision_log

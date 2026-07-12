@@ -6,6 +6,7 @@ name: AI Development Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: medium
 mission: >
   Improve the TAZ OS agent ecosystem: optimize prompts, build and test
   workflows, evaluate agent performance, run benchmarks, analyze failures,
@@ -21,11 +22,32 @@ kpis:
   - { name: benchmark_improvement, target: "upward_trend" }
   - { name: cost_reduction, target: "downward_trend" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [prompt_history, evaluation_results] }
-
 outputs:
   - { name: optimized_prompts, type: artifact }
   - { name: evaluation_reports, type: artifact }
   - { name: benchmark_results, type: artifact }
+
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [prompt_engineering_standards, evaluation_methods] }
+
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+name: AI Development Loop
+trigger: event_driven
+steps:
+  - review: [evaluation_results, benchmark_data]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - evaluate: evaluation
+  - log: decision_log

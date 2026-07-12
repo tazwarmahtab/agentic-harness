@@ -4,6 +4,7 @@ name: Operations Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: high
 mission: >
   Execute projects end-to-end: site assessment, procurement, installation
   tracking, quality assurance, and maintenance scheduling. Ensure all
@@ -18,20 +19,33 @@ kpis:
   - { name: quality_incidents, target: "0" }
   - { name: procurement_approval_compliance, target: "100%" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [engineering_standards, supplier_history] }
-
 outputs:
   - { name: site_assessments, type: artifact }
   - { name: installation_reports, type: artifact }
   - { name: procurement_logs, type: artifact }
 
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [engineering_standards, safety_protocols] }
+- { source: projects, items: [procurement_logs, installation_schedules] }
+
+
 components:
   planner: planner.yml
   dispatcher: dispatcher.yml
-  specialists: specialists/
+  specialists_dir: specialists/
   memory: memory.yml
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
+
+execution_cycle:
+name: Operations Loop
+trigger: daily_07:00_BDT
+steps:
+  - review: [site_assessments, procurement_status, installation_schedules, qa_results]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - escalate: approval_gates
+  - log: decision_log

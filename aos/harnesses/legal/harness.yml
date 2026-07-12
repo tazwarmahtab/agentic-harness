@@ -6,6 +6,7 @@ name: Legal Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: high
 mission: >
   Manage all legal operations: NDA generation and review, LOI drafting,
   PPA preparation, contract review, regulatory compliance, and government
@@ -21,21 +22,38 @@ kpis:
   - { name: compliance_gap_detection, target: "100%" }
   - { name: approval_routing_compliance, target: "100%" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [contract_templates, compliance_standards] }
-
 outputs:
   - { name: nda_documents, type: artifact }
   - { name: loi_documents, type: artifact }
   - { name: ppa_documents, type: artifact }
   - { name: compliance_reports, type: artifact }
 
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [contract_templates, compliance_standards] }
+- { source: venture_artifact, ref: regulatory_deadlines }
+
+
 # ===========================================================================
 # TEAMS — logical groupings of specialists
 # ===========================================================================
-teams:
+
 components:
   planner: planner.yml
   dispatcher: dispatcher.yml
-  specialists: specialists/
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+name: Legal Operations Loop
+trigger: event_driven
+steps:
+  - review: [contracts_pending, regulatory_deadlines, compliance_checks]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - escalate: approval_gates
+  - log: decision_log

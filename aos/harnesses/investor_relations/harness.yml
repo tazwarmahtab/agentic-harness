@@ -6,6 +6,7 @@ name: Investor Relations Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: high
 mission: >
   Manage all investor relations: track investor CRM, prepare pitch decks,
   handle due diligence, generate financial projections, and manage the
@@ -21,11 +22,33 @@ kpis:
   - { name: projection_accuracy, target: ">90%" }
   - { name: fundraising_milestone_hit, target: "100%" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [investor_profiles, ground_truth_constants] }
-
 outputs:
   - { name: pitch_decks, type: artifact }
   - { name: investor_updates, type: artifact }
   - { name: due_diligence_packs, type: artifact }
+
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [investor_profiles, pitch_templates] }
+- { source: venture_artifact, ref: financial_projections }
+
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+name: Investor Relations Loop
+trigger: weekly_monday_09:00_BDT
+steps:
+  - review: [investor_contacts, fundraising_pipeline, financial_projections]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - review: evaluation
+  - log: decision_log

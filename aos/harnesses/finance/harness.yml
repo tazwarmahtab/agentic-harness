@@ -4,6 +4,7 @@ name: Finance Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: critical
 mission: >
   Manage all financial operations: unit economics, investor materials,
   data room preparation, cash flow analysis, and financial reporting.
@@ -18,20 +19,33 @@ kpis:
   - { name: investor_update_timeliness, target: "100% on schedule" }
   - { name: number_discipline_violations, target: "0" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [ground_truth_constants, financial_models] }
-
 outputs:
   - { name: financial_models, type: artifact }
   - { name: investor_updates, type: artifact }
   - { name: cash_forecasts, type: artifact }
 
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [financial_models, accounting_standards] }
+- { source: venture_artifact, ref: ground_truth_constants }
+
+
 components:
   planner: planner.yml
   dispatcher: dispatcher.yml
-  specialists: specialists/
+  specialists_dir: specialists/
   memory: memory.yml
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
+
+execution_cycle:
+name: Finance Loop
+trigger: daily_08:00_BDT
+steps:
+  - review: [cash_balance, receivables, payables, investor_updates]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - validate: evaluator
+  - log: decision_log

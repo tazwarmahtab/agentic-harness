@@ -6,6 +6,7 @@ name: Software Development Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: medium
 mission: >
   Manage software development: product management, PRD writing, UI review,
   backend planning, frontend planning, testing, documentation, GitHub
@@ -21,11 +22,33 @@ kpis:
   - { name: test_coverage, target: ">80%" }
   - { name: deployment_frequency, target: "weekly" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [product_backlog, technical_standards] }
-
 outputs:
   - { name: prd_documents, type: artifact }
   - { name: code_reviews, type: artifact }
   - { name: test_reports, type: artifact }
+
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [technical_standards, coding_conventions] }
+- { source: projects, items: [product_backlog, release_plan] }
+
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+name: Software Development Loop
+trigger: event_driven
+steps:
+  - review: [product_backlog, code_reviews, deployment_status]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - review: evaluation
+  - log: decision_log

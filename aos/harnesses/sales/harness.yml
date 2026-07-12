@@ -4,6 +4,7 @@ name: Sales Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: critical
 mission: >
   Drive revenue by managing the sales pipeline: lead qualification,
   customer outreach, proposal generation, LOI management, and deal closure.
@@ -18,20 +19,34 @@ kpis:
   - { name: proposal_conversion_rate, target: ">30%" }
   - { name: follow_up_timeliness, target: "100% within SLA" }
 
-inputs:
-  - { source: executive, items: [priority_list, handoffs] }
-  - { source: memory, items: [crm_pipeline, ground_truth_constants] }
-
 outputs:
   - { name: proposals, type: artifact }
   - { name: outreach_logs, type: artifact }
   - { name: pipeline_updates, type: memory_write }
 
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [sales_playbooks, pricing_templates] }
+- { source: venture_artifact, ref: crm_pipeline }
+- { source: venture_artifact, ref: ground_truth_constants }
+
+
 components:
   planner: planner.yml
   dispatcher: dispatcher.yml
-  specialists: specialists/
+  specialists_dir: specialists/
   memory: memory.yml
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
+
+execution_cycle:
+name: Sales Pipeline Loop
+trigger: daily_08:30_BDT
+steps:
+  - review: [pipeline, lead_stages, follow_ups, proposals_out]
+  - plan: planner
+  - delegate: dispatcher
+  - execute: specialists
+  - validate: evaluator
+  - log: decision_log

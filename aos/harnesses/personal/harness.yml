@@ -6,6 +6,7 @@ name: Personal Harness
 venture: VEN-NETSO-001
 version: 1.0.0
 status: production
+criticality: low
 mission: >
   Keep the founder organized, healthy, and focused. Manage calendar,
   track tasks, monitor health habits, maintain reading list, and
@@ -22,11 +23,31 @@ kpis:
   - { name: exercise_sessions_per_week, target: ">4" }
   - { name: goal_progress, target: "on_track" }
 
-inputs:
-  - { source: calendar, items: [events, meetings] }
-  - { source: memory, items: [goals, habits, reading_list] }
-
 outputs:
   - { name: daily_brief, type: artifact }
   - { name: habit_tracker, type: artifact }
   - { name: goal_progress, type: artifact }
+
+inputs:
+- { source: founder_context, items: [priority_list, handoffs] }
+- { source: knowledge, items: [personal_goals, habit_templates] }
+- { source: calendar, items: [events, meetings, reminders] }
+
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+name: Personal Productivity Loop
+trigger: daily_06:00_BDT
+steps:
+  - review: [calendar, tasks, health_metrics, goals]
+  - plan: planner
+  - execute: specialists
+  - log: decision_log
