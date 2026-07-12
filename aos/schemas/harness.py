@@ -93,6 +93,7 @@ class Components(BaseModel):
 
 class TeamMember(BaseModel):
     """A member of an agent team with a defined role."""
+
     agent_id: str
     role: str = "specialist"
     weight: float = 1.0
@@ -105,6 +106,7 @@ class AgentTeam(BaseModel):
     but `specialists` (legacy flat list) is present, they are populated
     automatically from YAML-side unknowns via the loader.
     """
+
     id: str
     name: str
     description: Optional[str] = None

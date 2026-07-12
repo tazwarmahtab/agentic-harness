@@ -20,6 +20,7 @@ def create_test_app() -> FastAPI:
 def _reset_httpx_client():
     """Reset the cached httpx client before each test to avoid event loop leaks."""
     import odysseus.routes.aos_routes as mod
+
     mod._http_client = None
     yield
     mod._http_client = None
@@ -75,12 +76,14 @@ class TestWebSocketProxy:
     def test_ws_proxy_endpoint_exists(self) -> None:
         """WebSocket proxy endpoint should be registered."""
         from odysseus.routes.aos_routes import ws_router
+
         routes = [route.path for route in ws_router.routes]
         assert "/ws/harness/{harness_name}" in routes
 
     def test_ws_proxy_has_correct_methods(self) -> None:
         """WebSocket proxy should accept WebSocket connections."""
         from odysseus.routes.aos_routes import ws_router
+
         for route in ws_router.routes:
             if hasattr(route, "path") and route.path == "/ws/harness/{harness_name}":
                 assert hasattr(route, "endpoint")

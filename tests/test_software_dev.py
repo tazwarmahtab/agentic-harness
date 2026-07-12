@@ -162,8 +162,17 @@ class TestReleaseManager:
 class TestCLISoftwareDev:
     def test_cli_run_dev_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "run", "--harness", "software_dev", "--dry-run"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "run",
+                "--harness",
+                "software_dev",
+                "--dry-run",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -173,6 +182,7 @@ class TestCLISoftwareDev:
 
     def test_cli_validate_dev_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "validate", "--harness", "software_dev"],
             capture_output=True,

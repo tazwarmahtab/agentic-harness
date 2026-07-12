@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Structured errors
 # ---------------------------------------------------------------------------
 
+
 class AOSError(Exception):
     """Base error with code for structured responses."""
 
@@ -65,6 +66,7 @@ class ValidationError(AOSError):
 # Rate limiter (sliding window)
 # ---------------------------------------------------------------------------
 
+
 class RateLimiter:
     """Thread-safe sliding window rate limiter.
 
@@ -98,6 +100,7 @@ class RateLimiter:
 # ---------------------------------------------------------------------------
 # Connection limiter (WebSocket)
 # ---------------------------------------------------------------------------
+
 
 class ConnectionLimiter:
     """Track and cap concurrent WebSocket connections."""
@@ -179,7 +182,9 @@ def sanitize_path(path: str) -> str | None:
     ]
     for pattern in encoded_patterns:
         if re.search(pattern, combined):
-            logger.warning("Blocked URL-encoded traversal (pattern %s): %s", pattern, path)
+            logger.warning(
+                "Blocked URL-encoded traversal (pattern %s): %s", pattern, path
+            )
             return None
 
     # 3. Null bytes — dangerous in C-backed path operations
@@ -204,9 +209,7 @@ def sanitize_path(path: str) -> str | None:
 
     # 7. Path normalization bypasses — if normpath changed it, the original
     #    contained ./ or // that could be used to confuse logic
-    if normalized != path and (
-        "/." in path or "//" in path
-    ):
+    if normalized != path and ("/." in path or "//" in path):
         logger.warning("Blocked normalization bypass in path: %s", path)
         return None
 
@@ -248,6 +251,7 @@ def validate_path_contents(path: str) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
+
 
 def health_check(
     llm: Any | None = None,

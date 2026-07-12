@@ -92,9 +92,11 @@ def _next_free_model() -> str:
 # Response type
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LLMResponse:
     """Parsed LLM response."""
+
     content: str
     model: str
     usage: dict[str, int] = field(default_factory=dict)
@@ -104,6 +106,7 @@ class LLMResponse:
 # ---------------------------------------------------------------------------
 # Protocol
 # ---------------------------------------------------------------------------
+
 
 class LLMClient(Protocol):
     """Protocol for LLM backends."""
@@ -124,6 +127,7 @@ class LLMClient(Protocol):
 # ---------------------------------------------------------------------------
 # Auto-detection helpers
 # ---------------------------------------------------------------------------
+
 
 def _detect_9router_key() -> str:
     """Auto-detect 9router API key from auth config."""
@@ -190,6 +194,7 @@ def _parse_first_json(raw: str) -> dict:
 
     # Try extracting from ```json ... ``` blocks
     import re
+
     code_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)```", raw, re.DOTALL)
     for block in code_blocks:
         try:
@@ -243,6 +248,7 @@ def _detect_anthropic_key() -> str:
 # ---------------------------------------------------------------------------
 # 9router client (OpenAI-compatible endpoint)
 # ---------------------------------------------------------------------------
+
 
 class RouterLLMClient:
     """LLM client that talks to 9router / OpenAI-compatible endpoint.
@@ -298,6 +304,7 @@ class RouterLLMClient:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         import time as _time
+
         last_error = None
         models_to_try = [model]
 
@@ -316,7 +323,9 @@ class RouterLLMClient:
                     retry_req = urllib.request.Request(
                         url, data=current_data, headers=headers, method="POST"
                     )
-                    with urllib.request.urlopen(retry_req, timeout=self.timeout) as resp:
+                    with urllib.request.urlopen(
+                        retry_req, timeout=self.timeout
+                    ) as resp:
                         raw = resp.read().decode("utf-8")
                         body = _parse_first_json(raw)
 
@@ -337,10 +346,10 @@ class RouterLLMClient:
                 except (urllib.error.URLError, ConnectionError) as e:
                     last_error = e
                     if attempt < 2:
-                        _time.sleep(2 ** attempt)
+                        _time.sleep(2**attempt)
                         continue
                     # 404 means model not found — try next model
-                    if hasattr(e, 'code') and e.code == 404:
+                    if hasattr(e, "code") and e.code == 404:
                         break
                     raise
 
@@ -350,6 +359,7 @@ class RouterLLMClient:
 # ---------------------------------------------------------------------------
 # Direct Anthropic client (Messages API)
 # ---------------------------------------------------------------------------
+
 
 class AnthropicLLMClient:
     """Direct Anthropic API client (Messages API)."""
@@ -420,6 +430,7 @@ class AnthropicLLMClient:
 # NVIDIA NIM client (direct to integrate.api.nvidia.com)
 # ---------------------------------------------------------------------------
 
+
 class NvidiaLLMClient:
     """Direct NVIDIA NIM API client (OpenAI-compatible endpoint).
 
@@ -485,6 +496,7 @@ class NvidiaLLMClient:
 # Dry run client (no API calls)
 # ---------------------------------------------------------------------------
 
+
 class DryRunLLMClient:
     """Mock client for testing — returns a placeholder response."""
 
@@ -509,6 +521,7 @@ class DryRunLLMClient:
 # ---------------------------------------------------------------------------
 # Client factory — auto-detects best available backend
 # ---------------------------------------------------------------------------
+
 
 def create_llm_client(
     *,
@@ -571,6 +584,7 @@ def create_llm_client(
 # ---------------------------------------------------------------------------
 # Model resolution
 # ---------------------------------------------------------------------------
+
 
 def resolve_model(
     agent_criticality: str,

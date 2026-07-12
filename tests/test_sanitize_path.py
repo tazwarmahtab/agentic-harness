@@ -10,7 +10,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 
-
 class TestSanitizePath:
     """Thorough tests for sanitize_path input validation."""
 

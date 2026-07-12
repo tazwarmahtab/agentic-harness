@@ -168,7 +168,10 @@ class OrchestratePipeline:
             result = self.gates.check(
                 gate=Gate.PLAN,
                 summary=f"Approve plan: {self.ctx.plan_path.name if self.ctx.plan_path else 'unknown'}",
-                details={"scores": self.ctx.review_scores, "decisions": len(self.ctx.review_decisions)},
+                details={
+                    "scores": self.ctx.review_scores,
+                    "decisions": len(self.ctx.review_decisions),
+                },
             )
             if result.decision == GateDecision.REJECTED:
                 print("Plan rejected. Stopping pipeline.")
@@ -194,11 +197,17 @@ class OrchestratePipeline:
             self._skip_phase(Phase.REVIEWLOOP, "user requested --skip-review")
 
         # Review gate
-        if Gate.REVIEW in self._active_gates() and not self._is_auto_approved(Gate.REVIEW):
+        if Gate.REVIEW in self._active_gates() and not self._is_auto_approved(
+            Gate.REVIEW
+        ):
             result = self.gates.check(
                 gate=Gate.REVIEW,
                 summary="Approve review findings before ship",
-                details={"iterations": self.ctx.results.get(Phase.REVIEWLOOP, PhaseResult(Phase.REVIEWLOOP, Status.PASSED)).duration_s},
+                details={
+                    "iterations": self.ctx.results.get(
+                        Phase.REVIEWLOOP, PhaseResult(Phase.REVIEWLOOP, Status.PASSED)
+                    ).duration_s
+                },
             )
             if result.decision == GateDecision.REJECTED:
                 print("Review gate rejected. Stopping pipeline.")
@@ -245,7 +254,9 @@ class OrchestratePipeline:
         # Build the /spec command
         cmd = self._build_spec_command()
         print(f"  Command: {cmd[:120]}...")
-        print("  /spec writes the issue, runs quality gate, and optionally spawns an agent.")
+        print(
+            "  /spec writes the issue, runs quality gate, and optionally spawns an agent."
+        )
         print()
 
         if self.ctx.dry_run:
@@ -337,7 +348,9 @@ class OrchestratePipeline:
             steps = self._decompose_plan(self.ctx.plan_path)
             print(f"  Steps detected: {len(steps)}")
             for s in steps:
-                print(f"    Step {s['id']}: {s['title']} [{','.join(s['tags'])}] → {s['chain']}")
+                print(
+                    f"    Step {s['id']}: {s['title']} [{','.join(s['tags'])}] → {s['chain']}"
+                )
             result.status = Status.PASSED
             result.outputs = {"steps": steps, "dry_run": True}
             self.ctx.record(result)
@@ -448,7 +461,9 @@ class OrchestratePipeline:
                     "findings": findings_summary,
                 }
                 self.ctx.record(result)
-                print(f"  ✓ /reviewloop complete ({result.duration_s:.1f}s, {iteration} iterations)")
+                print(
+                    f"  ✓ /reviewloop complete ({result.duration_s:.1f}s, {iteration} iterations)"
+                )
                 print()
                 return True
 
@@ -462,7 +477,11 @@ class OrchestratePipeline:
         result.status = Status.FAILED
         result.finished_at = datetime.now().isoformat()
         result.duration_s = self._duration(result)
-        result.outputs = {"iterations": iteration, "findings": findings_summary, "max_reached": True}
+        result.outputs = {
+            "iterations": iteration,
+            "findings": findings_summary,
+            "max_reached": True,
+        }
         self.ctx.record(result)
         print()
         return False
@@ -607,11 +626,25 @@ class OrchestratePipeline:
 
         trigger_map = [
             ("security", ["encrypt", "auth", "secret", "owasp", "pii", "secure"]),
-            ("db", ["schema", "migration", "index", "sql", "postgres", "alembic", "database"]),
+            (
+                "db",
+                [
+                    "schema",
+                    "migration",
+                    "index",
+                    "sql",
+                    "postgres",
+                    "alembic",
+                    "database",
+                ],
+            ),
             ("refactor", ["refactor", "cleanup", "dedupe", "split", "reorganize"]),
             ("design", ["architecture", "design", "rfc", "evaluate", "choose"]),
             ("test", ["test", "coverage", "e2e", "integration", "qa"]),
-            ("impl", ["implement", "build", "add", "create", "port", "write", "develop"]),
+            (
+                "impl",
+                ["implement", "build", "add", "create", "port", "write", "develop"],
+            ),
             ("docs", ["docs", "readme", "codemap", "changelog", "document"]),
             ("review", ["review", "audit", "verify", "check"]),
         ]
@@ -646,7 +679,10 @@ class OrchestratePipeline:
                 "db": f"database-reviewer{lang_suffix}",
                 "impl": f"{lang}-reviewer" if lang != "unknown" else "code-reviewer",
             }
-            tail = tail_map.get(tags[0] if len(tags) == 1 else tags[-1], f"{lang}-reviewer" if lang != "unknown" else "code-reviewer")
+            tail = tail_map.get(
+                tags[0] if len(tags) == 1 else tags[-1],
+                f"{lang}-reviewer" if lang != "unknown" else "code-reviewer",
+            )
             if chain and chain[-1] != tail:
                 chain.append(tail)
 
@@ -665,7 +701,12 @@ class OrchestratePipeline:
 
     def _build_spec_command(self) -> str:
         """Build the /spec invocation command."""
-        plan_path = self.ctx.plan_path or Path(".gstack") / "plans" / f"orchestrate-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
+        plan_path = (
+            self.ctx.plan_path
+            or Path(".gstack")
+            / "plans"
+            / f"orchestrate-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
+        )
         return f"/spec {self.ctx.one_liner} --plan-file {plan_path}"
 
     def _invoke_skill(self, skill: str, args: str) -> tuple[int, str, str]:
@@ -690,7 +731,7 @@ class OrchestratePipeline:
         slash_cmd = skill_map.get(skill, f"/{skill}")
         prompt = f"{slash_cmd} {args}".strip() if args else slash_cmd
 
-        print(f"  → Invoking: claude -p \"{prompt[:80]}...\"")
+        print(f'  → Invoking: claude -p "{prompt[:80]}..."')
 
         max_retries = 2
         backoff_seconds = [5, 15]
@@ -708,7 +749,9 @@ class OrchestratePipeline:
 
                 if result.returncode != 0:
                     stderr_preview = result.stderr[:200] if result.stderr else ""
-                    print(f"  ✗ Skill '{skill}' exited with code {result.returncode}: {stderr_preview}")
+                    print(
+                        f"  ✗ Skill '{skill}' exited with code {result.returncode}: {stderr_preview}"
+                    )
 
                 return result.returncode, result.stdout, result.stderr
 
@@ -718,10 +761,14 @@ class OrchestratePipeline:
             except subprocess.TimeoutExpired:
                 if attempt < max_retries:
                     wait = backoff_seconds[attempt]
-                    print(f"  ⏳ Skill '{skill}' timed out (attempt {attempt + 1}/{1 + max_retries}). Retrying in {wait}s...")
+                    print(
+                        f"  ⏳ Skill '{skill}' timed out (attempt {attempt + 1}/{1 + max_retries}). Retrying in {wait}s..."
+                    )
                     time.sleep(wait)
                 else:
-                    print(f"  ✗ Skill '{skill}' timed out after {1 + max_retries} attempts.")
+                    print(
+                        f"  ✗ Skill '{skill}' timed out after {1 + max_retries} attempts."
+                    )
                     return 124, "", ""
 
         # Unreachable but satisfies type checker
@@ -740,10 +787,19 @@ class OrchestratePipeline:
 
         # Match structured markers: [CRITICAL], severity: high, level: medium, etc.
         patterns = {
-            "critical": re.compile(r"(?:\[CRITICAL\]|severity:\s*critical|level:\s*critical)", re.IGNORECASE),
-            "high": re.compile(r"(?:\[HIGH\]|severity:\s*high|level:\s*high)", re.IGNORECASE),
-            "medium": re.compile(r"(?:\[MEDIUM\]|severity:\s*medium|level:\s*medium)", re.IGNORECASE),
-            "low": re.compile(r"(?:\[LOW\]|\[NOTE\]|severity:\s*low|level:\s*low)", re.IGNORECASE),
+            "critical": re.compile(
+                r"(?:\[CRITICAL\]|severity:\s*critical|level:\s*critical)",
+                re.IGNORECASE,
+            ),
+            "high": re.compile(
+                r"(?:\[HIGH\]|severity:\s*high|level:\s*high)", re.IGNORECASE
+            ),
+            "medium": re.compile(
+                r"(?:\[MEDIUM\]|severity:\s*medium|level:\s*medium)", re.IGNORECASE
+            ),
+            "low": re.compile(
+                r"(?:\[LOW\]|\[NOTE\]|severity:\s*low|level:\s*low)", re.IGNORECASE
+            ),
         }
 
         for line in stdout.split("\n"):
@@ -756,7 +812,11 @@ class OrchestratePipeline:
     def _prompt_continue_or_abort(self, step_id: int) -> str:
         """Prompt user to continue or abort after step failure."""
         while True:
-            raw = input(f"  Step {step_id} failed. Continue? [continue/abort]: ").strip().lower()
+            raw = (
+                input(f"  Step {step_id} failed. Continue? [continue/abort]: ")
+                .strip()
+                .lower()
+            )
             if raw in ("continue", "c", "yes", "y"):
                 return "continue"
             if raw in ("abort", "a", "no", "n"):
@@ -786,7 +846,12 @@ class OrchestratePipeline:
         for phase in Phase:
             result = self.ctx.results.get(phase)
             if result:
-                icon = {"passed": "✓", "failed": "✗", "skipped": "⊘", "blocked": "⊘"}.get(result.status.value, "?")
+                icon = {
+                    "passed": "✓",
+                    "failed": "✗",
+                    "skipped": "⊘",
+                    "blocked": "⊘",
+                }.get(result.status.value, "?")
                 dur = f"{result.duration_s:.1f}s" if result.duration_s else "—"
                 print(f"  {icon} {phase.value:15s} {result.status.value:10s} {dur}")
 
@@ -801,7 +866,9 @@ class OrchestratePipeline:
         # Overall status
         failed = [p for p, r in self.ctx.results.items() if r.status == Status.FAILED]
         if failed:
-            print(f"\n  STATUS: DONE_WITH_CONCERNS (failed phases: {', '.join(p.value for p in failed)})")
+            print(
+                f"\n  STATUS: DONE_WITH_CONCERNS (failed phases: {', '.join(p.value for p in failed)})"
+            )
         else:
             print("\n  STATUS: DONE")
 

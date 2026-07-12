@@ -17,6 +17,7 @@ Usage:
         payload={"task": "investor_deck", "target": "AGT-FIN-UNIT"},
     ))
 """
+
 from __future__ import annotations
 
 import uuid
@@ -28,30 +29,31 @@ from typing import Any, Callable
 
 class EventType(str, Enum):
     # Task lifecycle
-    TASK_CREATED    = "harness.task.created"
-    TASK_COMPLETED  = "harness.task.completed"
-    TASK_BLOCKED    = "harness.task.blocked"
-    TASK_ESCALATED  = "harness.task.escalated"
+    TASK_CREATED = "harness.task.created"
+    TASK_COMPLETED = "harness.task.completed"
+    TASK_BLOCKED = "harness.task.blocked"
+    TASK_ESCALATED = "harness.task.escalated"
     # Approval lifecycle
     APPROVAL_REQUESTED = "approval.requested"
-    APPROVAL_DECIDED   = "approval.decided"
+    APPROVAL_DECIDED = "approval.decided"
     # Memory
-    MEMORY_CANDIDATE   = "memory.candidate.submitted"
-    MEMORY_STORED      = "memory.entry.stored"
+    MEMORY_CANDIDATE = "memory.candidate.submitted"
+    MEMORY_STORED = "memory.entry.stored"
     # Alerts
-    ALERT_TRIGGERED    = "alert.triggered"
-    DSCR_BREACH        = "alert.dscr_breach"
+    ALERT_TRIGGERED = "alert.triggered"
+    DSCR_BREACH = "alert.dscr_breach"
     # Artifacts
-    ARTIFACT_PRODUCED  = "artifact.produced"
+    ARTIFACT_PRODUCED = "artifact.produced"
     # System
-    HARNESS_STARTED    = "system.harness.started"
-    HARNESS_STOPPED    = "system.harness.stopped"
-    CYCLE_COMPLETED    = "system.cycle.completed"
+    HARNESS_STARTED = "system.harness.started"
+    HARNESS_STOPPED = "system.harness.stopped"
+    CYCLE_COMPLETED = "system.cycle.completed"
 
 
 @dataclass
 class AOSEvent:
     """Immutable AOS event."""
+
     type: EventType
     source_harness: str
     source_agent: str
@@ -79,6 +81,7 @@ class EventBus:
             except Exception as exc:
                 # Never let a handler crash the bus
                 import logging
+
                 logging.getLogger("aos.event_bus").warning(
                     "Handler error for %s: %s", event.type, exc
                 )

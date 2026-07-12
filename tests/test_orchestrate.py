@@ -204,7 +204,9 @@ class TestOrchestratePipeline:
         mock_gates._active_gates.return_value = {Gate.SPEC}
 
         # Need spec enabled, dry_run off so gates are not auto-approved
-        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False)
+        ctx = _make_ctx(
+            skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False
+        )
         pipeline = OrchestratePipeline(ctx, mock_gates)
 
         rc = pipeline.run()
@@ -445,8 +447,10 @@ class TestInvokeSkill:
 
         timeout_error = sp.TimeoutExpired(cmd=["claude"], timeout=600)
 
-        with patch("subprocess.run", side_effect=timeout_error) as mock_run, \
-             patch("time.sleep"):
+        with (
+            patch("subprocess.run", side_effect=timeout_error) as mock_run,
+            patch("time.sleep"),
+        ):
             rc, stdout, stderr = pipeline._invoke_skill("review", "")
 
             assert rc == 124
@@ -464,8 +468,10 @@ class TestInvokeSkill:
         timeout_error = sp.TimeoutExpired(cmd=["claude"], timeout=600)
         success = MagicMock(returncode=0, stdout="ok", stderr="")
 
-        with patch("subprocess.run", side_effect=[timeout_error, success]) as mock_run, \
-             patch("time.sleep"):
+        with (
+            patch("subprocess.run", side_effect=[timeout_error, success]) as mock_run,
+            patch("time.sleep"),
+        ):
             rc, stdout, stderr = pipeline._invoke_skill("spec", "hello")
 
             assert rc == 0
@@ -481,7 +487,9 @@ class TestInvokeSkill:
         with patch("subprocess.run", return_value=mock_result) as mock_run:
             pipeline._invoke_skill("ship", "")
 
-            cwd = mock_run.call_args.kwargs.get("cwd") or mock_run.call_args[1].get("cwd")
+            cwd = mock_run.call_args.kwargs.get("cwd") or mock_run.call_args[1].get(
+                "cwd"
+            )
             assert cwd == "/workspace"
 
 
@@ -573,7 +581,9 @@ class TestGateBlocking:
             gm._queue.decide(result.item_id, ApprovalDecision.APPROVE)
 
             # wait_for_decision should immediately resolve
-            resolved = gm.wait_for_decision(result.item_id, Gate.SPEC, timeout_s=5, poll_interval=0.1)
+            resolved = gm.wait_for_decision(
+                result.item_id, Gate.SPEC, timeout_s=5, poll_interval=0.1
+            )
             assert resolved.decision == GateDecision.APPROVED
 
     def test_wait_for_decision_reject(self):
@@ -585,7 +595,9 @@ class TestGateBlocking:
             result = gm.check(Gate.PLAN, "Approve plan", {})
             gm._queue.decide(result.item_id, ApprovalDecision.REJECT)
 
-            resolved = gm.wait_for_decision(result.item_id, Gate.PLAN, timeout_s=5, poll_interval=0.1)
+            resolved = gm.wait_for_decision(
+                result.item_id, Gate.PLAN, timeout_s=5, poll_interval=0.1
+            )
             assert resolved.decision == GateDecision.REJECTED
 
     def test_wait_for_decision_timeout(self):
@@ -597,7 +609,9 @@ class TestGateBlocking:
             result = gm.check(Gate.REVIEW, "Approve review", {})
 
             # Don't decide — let it timeout
-            resolved = gm.wait_for_decision(result.item_id, Gate.REVIEW, timeout_s=0.5, poll_interval=0.1)
+            resolved = gm.wait_for_decision(
+                result.item_id, Gate.REVIEW, timeout_s=0.5, poll_interval=0.1
+            )
             assert resolved.decision == GateDecision.SKIPPED
 
     def test_pipeline_stops_on_gate_timeout(self):
@@ -613,7 +627,9 @@ class TestGateBlocking:
         )
 
         # dry_run=False so gates are not auto-approved
-        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False)
+        ctx = _make_ctx(
+            skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False
+        )
         pipeline = OrchestratePipeline(ctx, mock_gates)
 
         rc = pipeline.run()

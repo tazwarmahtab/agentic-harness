@@ -60,10 +60,14 @@ _ID_PATTERN = re.compile(
 class Identity(BaseModel):
     """Globally unique identity for every object in TAZ OS."""
 
-    id: str = Field(..., description="Globally unique. TYPE-CONTEXT-NUMBER or TYPE-NUMBER.")
+    id: str = Field(
+        ..., description="Globally unique. TYPE-CONTEXT-NUMBER or TYPE-NUMBER."
+    )
     type: IdentityType
     name: str
-    owner: Optional[str] = Field(None, description="ID of the owning identity. Null for root.")
+    owner: Optional[str] = Field(
+        None, description="ID of the owning identity. Null for root."
+    )
     status: IdentityStatus
     classification: Classification = Classification.INTERNAL
     created_at: Optional[datetime] = None
@@ -73,5 +77,7 @@ class Identity(BaseModel):
     @classmethod
     def validate_id(cls, v: str) -> str:
         if not _ID_PATTERN.match(v):
-            raise ValueError(f"ID must match TYPE-CONTEXT-NUMBER or HUM-NUMBER format: {v}")
+            raise ValueError(
+                f"ID must match TYPE-CONTEXT-NUMBER or HUM-NUMBER format: {v}"
+            )
         return v

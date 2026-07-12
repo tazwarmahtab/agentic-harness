@@ -8,7 +8,9 @@ from aos.usage import UsageTracker
 class TestUsageTracker:
     def test_record_usage(self) -> None:
         tracker = UsageTracker()
-        tracker.record("AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500})
+        tracker.record(
+            "AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500}
+        )
         report = tracker.report()
         assert report.total_prompt_tokens == 1000
         assert report.total_completion_tokens == 500
@@ -16,8 +18,12 @@ class TestUsageTracker:
 
     def test_accumulates_multiple_calls(self) -> None:
         tracker = UsageTracker()
-        tracker.record("AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500})
-        tracker.record("AGT-EXEC-COO", "sonnet", {"prompt_tokens": 800, "completion_tokens": 300})
+        tracker.record(
+            "AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500}
+        )
+        tracker.record(
+            "AGT-EXEC-COO", "sonnet", {"prompt_tokens": 800, "completion_tokens": 300}
+        )
         report = tracker.report()
         assert report.total_prompt_tokens == 1800
         assert report.total_completion_tokens == 800
@@ -25,8 +31,12 @@ class TestUsageTracker:
 
     def test_per_agent_breakdown(self) -> None:
         tracker = UsageTracker()
-        tracker.record("AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500})
-        tracker.record("AGT-EXEC-COO", "haiku", {"prompt_tokens": 800, "completion_tokens": 300})
+        tracker.record(
+            "AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500}
+        )
+        tracker.record(
+            "AGT-EXEC-COO", "haiku", {"prompt_tokens": 800, "completion_tokens": 300}
+        )
         report = tracker.report()
         assert "AGT-EXEC-CFO" in report.by_agent
         assert "AGT-EXEC-COO" in report.by_agent
@@ -61,7 +71,9 @@ class TestUsageTracker:
 
     def test_summary_string(self) -> None:
         tracker = UsageTracker()
-        tracker.record("AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500})
+        tracker.record(
+            "AGT-EXEC-CFO", "sonnet", {"prompt_tokens": 1000, "completion_tokens": 500}
+        )
         report = tracker.report()
         summary = report.summary()
         assert "1 calls" in summary

@@ -13,6 +13,7 @@ from typing import Any
 @dataclass
 class UsageReport:
     """Aggregated usage report for one cycle."""
+
     total_calls: int = 0
     total_prompt_tokens: int = 0
     total_completion_tokens: int = 0
@@ -48,12 +49,14 @@ class UsageTracker:
         """Record one LLM call's usage."""
         prompt = usage.get("prompt_tokens", 0) or 0
         completion = usage.get("completion_tokens", 0) or 0
-        self._records.append({
-            "agent_id": agent_id,
-            "model": model,
-            "prompt_tokens": prompt,
-            "completion_tokens": completion,
-        })
+        self._records.append(
+            {
+                "agent_id": agent_id,
+                "model": model,
+                "prompt_tokens": prompt,
+                "completion_tokens": completion,
+            }
+        )
 
     def report(self) -> UsageReport:
         """Generate aggregated report."""

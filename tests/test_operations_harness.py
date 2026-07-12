@@ -5,17 +5,26 @@ from pathlib import Path
 import pytest
 
 from aos.loader import (
-    load_harness, load_agent, load_memory, load_tool_registry,
-    load_evaluation, load_policy_collection, load_sop,
+    load_harness,
+    load_agent,
+    load_memory,
+    load_tool_registry,
+    load_evaluation,
+    load_policy_collection,
+    load_sop,
 )
 
-HARNESS_DIR = Path(__file__).resolve().parent.parent / "aos" / "harnesses" / "operations"
+HARNESS_DIR = (
+    Path(__file__).resolve().parent.parent / "aos" / "harnesses" / "operations"
+)
+
 
 @pytest.fixture
 def harness_dir():
     if not HARNESS_DIR.exists():
         pytest.skip("Operations harness directory not found")
     return HARNESS_DIR
+
 
 class TestOperationsManifests:
     def test_harness_loads(self, harness_dir):
@@ -37,6 +46,7 @@ class TestOperationsManifests:
     def test_installation_tracker_loads(self, harness_dir):
         a = load_agent(harness_dir / "specialists" / "installation-tracker.yml")
         assert "INST" in a.id
+
 
 class TestOperationsComponents:
     def test_memory_loads(self, harness_dir):

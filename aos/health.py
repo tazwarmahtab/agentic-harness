@@ -2,6 +2,7 @@
 
 Used by /health/ready and startup checks.
 """
+
 from __future__ import annotations
 
 import os
@@ -12,7 +13,7 @@ from typing import Any
 @dataclass
 class ComponentHealth:
     name: str
-    status: str          # "ok" | "degraded" | "down"
+    status: str  # "ok" | "degraded" | "down"
     details: str = ""
     required: bool = True
 
@@ -52,29 +53,37 @@ def check_system_health(memory_store=None) -> SystemHealth:
 
     if anthropic_ok or local_ok or nvidia_ok:
         active = ", ".join(
-            p for p, ok in [
+            p
+            for p, ok in [
                 ("anthropic", anthropic_ok),
                 ("local", local_ok),
                 ("nvidia", nvidia_ok),
-            ] if ok
+            ]
+            if ok
         )
         health.components.append(
             ComponentHealth("llm_provider", "ok", f"active: {active}")
         )
     else:
-        health.components.append(ComponentHealth(
-            "llm_provider", "down",
-            "No LLM provider configured", required=False,
-        ))
+        health.components.append(
+            ComponentHealth(
+                "llm_provider",
+                "down",
+                "No LLM provider configured",
+                required=False,
+            )
+        )
 
     # Auth token
     token = os.getenv("AOS_API_TOKEN") or os.getenv("TAZOS_API_TOKEN")
-    health.components.append(ComponentHealth(
-        "api_token",
-        "ok" if token else "degraded",
-        "" if token else "AOS_API_TOKEN not set — WebSocket unauthenticated",
-        required=False,
-    ))
+    health.components.append(
+        ComponentHealth(
+            "api_token",
+            "ok" if token else "degraded",
+            "" if token else "AOS_API_TOKEN not set — WebSocket unauthenticated",
+            required=False,
+        )
+    )
 
     # Memory store
     if memory_store is not None:
@@ -92,8 +101,8 @@ def check_system_health(memory_store=None) -> SystemHealth:
                 ComponentHealth("memory_store", "degraded", str(exc))
             )
     else:
-        health.components.append(ComponentHealth(
-            "memory_store", "ok", "lazy init", required=False
-        ))
+        health.components.append(
+            ComponentHealth("memory_store", "ok", "lazy init", required=False)
+        )
 
     return health

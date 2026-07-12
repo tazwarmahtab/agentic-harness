@@ -38,7 +38,9 @@ def discover_ventures(ventures_dir: Path | None = None) -> list[tuple[Path, Vent
     return results
 
 
-def find_venture(name_or_id: str, ventures_dir: Path | None = None) -> tuple[Path, Venture] | None:
+def find_venture(
+    name_or_id: str, ventures_dir: Path | None = None
+) -> tuple[Path, Venture] | None:
     """Find a venture by name or ID (case-insensitive).
 
     Accepts:

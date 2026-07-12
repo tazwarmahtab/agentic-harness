@@ -3,17 +3,25 @@
 from pathlib import Path
 import pytest
 from aos.loader import (
-    load_harness, load_memory, load_tool_registry,
-    load_evaluation, load_policy_collection, load_sop,
+    load_harness,
+    load_memory,
+    load_tool_registry,
+    load_evaluation,
+    load_policy_collection,
+    load_sop,
 )
 
-HARNESS_DIR = Path(__file__).resolve().parent.parent / "aos" / "harnesses" / "software_dev"
+HARNESS_DIR = (
+    Path(__file__).resolve().parent.parent / "aos" / "harnesses" / "software_dev"
+)
+
 
 @pytest.fixture
 def harness_dir():
     if not HARNESS_DIR.exists():
         pytest.skip("Software Dev harness directory not found")
     return HARNESS_DIR
+
 
 class TestDevManifests:
     def test_harness_loads(self, harness_dir):
@@ -23,6 +31,7 @@ class TestDevManifests:
     def test_six_specialists(self, harness_dir):
         specs = list((harness_dir / "specialists").glob("*.yml"))
         assert len(specs) == 6
+
 
 class TestDevComponents:
     def test_memory_loads(self, harness_dir):

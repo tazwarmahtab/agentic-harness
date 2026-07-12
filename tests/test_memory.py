@@ -19,16 +19,29 @@ from aos.memory import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def permissions() -> dict[str, dict[str, list[str]]]:
     return {
         "AGT-EXEC-COO": {
-            "read": ["dashboard", "weekly_plan", "backlog", "blockers", "lessons", "decision_log"],
+            "read": [
+                "dashboard",
+                "weekly_plan",
+                "backlog",
+                "blockers",
+                "lessons",
+                "decision_log",
+            ],
             "write": ["dashboard", "blockers", "lessons"],
             "cannot_read": ["founder_personal_notes", "cap_table"],
         },
         "AGT-EXEC-CFO": {
-            "read": ["ground_truth_constants", "financial_models", "decision_log", "dashboard"],
+            "read": [
+                "ground_truth_constants",
+                "financial_models",
+                "decision_log",
+                "dashboard",
+            ],
             "write": ["financial_models"],
             "cannot_read": ["founder_personal_notes"],
         },
@@ -55,8 +68,16 @@ def manifest() -> dict:
         "layers": {
             "long_term": {
                 "company_facts": [
-                    {"key": "legal_entity_name", "value": "Netso Energy", "classification": "internal"},
-                    {"key": "primary_market", "value": "Bangladesh RMG", "classification": "internal"},
+                    {
+                        "key": "legal_entity_name",
+                        "value": "Netso Energy",
+                        "classification": "internal",
+                    },
+                    {
+                        "key": "primary_market",
+                        "value": "Bangladesh RMG",
+                        "classification": "internal",
+                    },
                 ],
                 "financial_ground_truth": {
                     "ref": "ground_truth_constants",
@@ -102,38 +123,52 @@ def manifest() -> dict:
 # MemoryStore — seeding
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryStoreSeeding:
     def test_seed_list_entries(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "company_facts", [
-            {"key": "entity", "value": "Netso", "classification": "internal"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "company_facts",
+            [
+                {"key": "entity", "value": "Netso", "classification": "internal"},
+            ],
+        )
         entries = store.layers["long_term"]["company_facts"]
         assert len(entries) == 1
         assert entries[0].key == "entity"
         assert entries[0].value == "Netso"
 
     def test_seed_dict_entry(self, store: MemoryStore) -> None:
-        store.seed_from_dict("semantic", "pricing", {
-            "description": "PPA methodology",
-            "classification": "confidential",
-        })
+        store.seed_from_dict(
+            "semantic",
+            "pricing",
+            {
+                "description": "PPA methodology",
+                "classification": "confidential",
+            },
+        )
         entries = store.layers["semantic"]["pricing"]
         assert len(entries) == 1
         assert entries[0].content == "PPA methodology"
         assert entries[0].classification == "confidential"
 
     def test_seed_multiple_entries(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "facts", [
-            {"key": "a", "value": "1"},
-            {"key": "b", "value": "2"},
-            {"key": "c", "value": "3"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "facts",
+            [
+                {"key": "a", "value": "1"},
+                {"key": "b", "value": "2"},
+                {"key": "c", "value": "3"},
+            ],
+        )
         assert len(store.layers["long_term"]["facts"]) == 3
 
 
 # ---------------------------------------------------------------------------
 # MemoryStore — permissions
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryPermissions:
     def test_coo_can_read_dashboard(self, store: MemoryStore) -> None:
@@ -167,29 +202,42 @@ class TestMemoryPermissions:
 # MemoryStore — read operations
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryRead:
     def test_read_returns_active_entries(self, store: MemoryStore) -> None:
-        store.seed_from_dict("episodic", "dashboard", [
-            {"key": "status", "value": "active"},
-        ])
+        store.seed_from_dict(
+            "episodic",
+            "dashboard",
+            [
+                {"key": "status", "value": "active"},
+            ],
+        )
         entries = store.read("episodic", "dashboard", "AGT-EXEC-COO")
         assert len(entries) == 1
 
     def test_read_excludes_superseded(self, store: MemoryStore) -> None:
-        store.seed_from_dict("episodic", "dashboard", [
-            {"key": "status", "value": "old"},
-        ])
+        store.seed_from_dict(
+            "episodic",
+            "dashboard",
+            [
+                {"key": "status", "value": "old"},
+            ],
+        )
         # Manually supersede (frozen dataclass bypass)
         entry = store.layers["episodic"]["dashboard"][0]
-        object.__setattr__(entry, 'replaced_by', 'MEM-FAKE')
+        object.__setattr__(entry, "replaced_by", "MEM-FAKE")
 
         entries = store.read("episodic", "dashboard", "AGT-EXEC-COO")
         assert len(entries) == 0
 
     def test_read_denied_for_unauthorized_agent(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "financial_models", [
-            {"key": "revenue", "value": "1M"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "financial_models",
+            [
+                {"key": "revenue", "value": "1M"},
+            ],
+        )
         entries = store.read("long_term", "financial_models", "AGT-EXEC-COO")
         assert len(entries) == 0
 
@@ -203,9 +251,13 @@ class TestMemoryRead:
         assert len(all_memory["long_term"]) > 0
 
     def test_search(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "facts", [
-            {"key": "entity", "value": "Netso Energy"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "facts",
+            [
+                {"key": "entity", "value": "Netso Energy"},
+            ],
+        )
         results = store.search("Netso", "AGT-EXEC-CEO")
         assert len(results) == 1
         assert results[0].key == "entity"
@@ -215,18 +267,27 @@ class TestMemoryRead:
 # MemoryStore — retrieve_for_agent (prompt injection)
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryRetrieval:
     def test_retrieve_returns_accessible_memory(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "company_facts", [
-            {"key": "entity", "value": "Netso Energy"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "company_facts",
+            [
+                {"key": "entity", "value": "Netso Energy"},
+            ],
+        )
         context = store.retrieve_for_agent("AGT-EXEC-CEO", "company_facts")
         assert "Netso Energy" in context
 
     def test_retrieve_respects_permissions(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "financial_models", [
-            {"key": "revenue", "value": "1M"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "financial_models",
+            [
+                {"key": "revenue", "value": "1M"},
+            ],
+        )
         # COO cannot read financial_models
         context = store.retrieve_for_agent("AGT-EXEC-COO", "financial_models")
         assert "1M" not in context
@@ -236,35 +297,53 @@ class TestMemoryRetrieval:
         assert context == ""
 
     def test_retrieve_formats_output(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "dashboard", [
-            {"key": "status", "value": "on_track"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "dashboard",
+            [
+                {"key": "status", "value": "on_track"},
+            ],
+        )
         context = store.retrieve_for_agent("AGT-EXEC-COO", "dashboard")
         assert "on_track" in context
         assert isinstance(context, str)
 
     def test_retrieve_searches_all_layers(self, store: MemoryStore) -> None:
-        store.seed_from_dict("semantic", "pricing_model", [
-            {"key": "ppa_rate", "value": "10.00"},
-        ])
+        store.seed_from_dict(
+            "semantic",
+            "pricing_model",
+            [
+                {"key": "ppa_rate", "value": "10.00"},
+            ],
+        )
         context = store.retrieve_for_agent("AGT-EXEC-CEO", "pricing")
         assert "10.00" in context
 
     def test_retrieve_no_hint_returns_all_accessible(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "company_facts", [
-            {"key": "entity", "value": "Netso"},
-        ])
-        store.seed_from_dict("episodic", "dashboard", [
-            {"key": "status", "value": "ok"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "company_facts",
+            [
+                {"key": "entity", "value": "Netso"},
+            ],
+        )
+        store.seed_from_dict(
+            "episodic",
+            "dashboard",
+            [
+                {"key": "status", "value": "ok"},
+            ],
+        )
         context = store.retrieve_for_agent("AGT-EXEC-CEO")
         assert "Netso" in context
         assert "ok" in context
 
     def test_retrieve_respects_max_chars(self, store: MemoryStore) -> None:
-        store.seed_from_dict("long_term", "big_domain", [
-            {"key": f"key_{i}", "value": "x" * 100} for i in range(50)
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "big_domain",
+            [{"key": f"key_{i}", "value": "x" * 100} for i in range(50)],
+        )
         context = store.retrieve_for_agent("AGT-EXEC-CEO", max_chars=200)
         assert len(context) < 500  # well under 50 * 120 chars
 
@@ -272,6 +351,7 @@ class TestMemoryRetrieval:
 # ---------------------------------------------------------------------------
 # MemoryStore — candidate submission and review
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryCandidates:
     def test_submit_candidate(self, store: MemoryStore) -> None:
@@ -303,9 +383,13 @@ class TestMemoryCandidates:
 
     def test_review_version_existing(self, store: MemoryStore) -> None:
         # Seed existing entry
-        store.seed_from_dict("episodic", "dashboard", [
-            {"key": "status", "value": "old_status"},
-        ])
+        store.seed_from_dict(
+            "episodic",
+            "dashboard",
+            [
+                {"key": "status", "value": "old_status"},
+            ],
+        )
 
         candidate = store.submit_candidate(
             agent_id="AGT-EXEC-COO",
@@ -343,6 +427,7 @@ class TestMemoryCandidates:
 # MemoryStore — auto-review
 # ---------------------------------------------------------------------------
 
+
 class TestAutoReview:
     def test_review_pending_stores(self, store: MemoryStore) -> None:
         store.submit_candidate(
@@ -358,9 +443,17 @@ class TestAutoReview:
 
     def test_review_pending_dedup(self, store: MemoryStore) -> None:
         # Seed same content — both value and content must match the candidate
-        store.seed_from_dict("episodic", "dashboard", [
-            {"key": "kpi", "value": "Revenue up 10%", "description": "Revenue up 10%"},
-        ])
+        store.seed_from_dict(
+            "episodic",
+            "dashboard",
+            [
+                {
+                    "key": "kpi",
+                    "value": "Revenue up 10%",
+                    "description": "Revenue up 10%",
+                },
+            ],
+        )
 
         store.submit_candidate(
             agent_id="AGT-EXEC-COO",
@@ -378,6 +471,7 @@ class TestAutoReview:
 # ---------------------------------------------------------------------------
 # MemoryStore — persistence
 # ---------------------------------------------------------------------------
+
 
 class TestPersistence:
     def test_persist_audit_log(self, store: MemoryStore) -> None:
@@ -409,9 +503,13 @@ class TestPersistence:
     def test_persist_memory_snapshot(self, store: MemoryStore) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store.seed_from_dict("long_term", "facts", [
-                {"key": "entity", "value": "Netso"},
-            ])
+            store.seed_from_dict(
+                "long_term",
+                "facts",
+                [
+                    {"key": "entity", "value": "Netso"},
+                ],
+            )
 
             store.persist_to_disk(root)
 
@@ -456,6 +554,7 @@ class TestPersistence:
 # build_memory_from_manifest
 # ---------------------------------------------------------------------------
 
+
 class TestBuildFromManifest:
     def test_builds_store(self, manifest: dict) -> None:
         store = build_memory_from_manifest(manifest)
@@ -491,10 +590,12 @@ class TestBuildFromManifest:
 # MemoryStore — vector (semantic) search
 # ---------------------------------------------------------------------------
 
+
 class TestVectorSearch:
     @pytest.fixture
     def vector_store(self) -> MemoryStore:
         from aos.vector_store import TfidfEmbeddingProvider
+
         provider = TfidfEmbeddingProvider(dimensions=64)
         store = MemoryStore(
             permissions={
@@ -507,16 +608,28 @@ class TestVectorSearch:
             },
             embedding_provider=provider,
         )
-        store.seed_from_dict("long_term", "company_facts", [
-            {"key": "entity", "value": "Netso Energy provides rooftop solar"},
-            {"key": "market", "value": "Bangladesh RMG factories"},
-        ])
-        store.seed_from_dict("semantic", "pricing", [
-            {"key": "ppa_rate", "value": "BDT 10.00 per kilowatt hour"},
-        ])
-        store.seed_from_dict("long_term", "dashboard", [
-            {"key": "status", "value": "on track for Q3 targets"},
-        ])
+        store.seed_from_dict(
+            "long_term",
+            "company_facts",
+            [
+                {"key": "entity", "value": "Netso Energy provides rooftop solar"},
+                {"key": "market", "value": "Bangladesh RMG factories"},
+            ],
+        )
+        store.seed_from_dict(
+            "semantic",
+            "pricing",
+            [
+                {"key": "ppa_rate", "value": "BDT 10.00 per kilowatt hour"},
+            ],
+        )
+        store.seed_from_dict(
+            "long_term",
+            "dashboard",
+            [
+                {"key": "status", "value": "on track for Q3 targets"},
+            ],
+        )
         return store
 
     def test_vector_search_returns_results(self, vector_store: MemoryStore) -> None:
@@ -530,7 +643,9 @@ class TestVectorSearch:
         results = vector_store.search_vector("energy", "AGT-CEO", top_k=1)
         assert len(results) <= 1
 
-    def test_vector_search_respects_permissions(self, vector_store: MemoryStore) -> None:
+    def test_vector_search_respects_permissions(
+        self, vector_store: MemoryStore
+    ) -> None:
         # COO can only read dashboard + lessons, not company_facts or pricing
         results = vector_store.search_vector("solar", "AGT-COO")
         # Should not return financial/facts entries
@@ -540,12 +655,18 @@ class TestVectorSearch:
 
     def test_vector_search_falls_back_to_keyword(self) -> None:
         """Without embedding_provider, search_vector falls back to keyword."""
-        store = MemoryStore(permissions={
-            "AGT-CEO": {"read": ["all_long_term", "all_episodic", "all_semantic"]},
-        })
-        store.seed_from_dict("long_term", "facts", [
-            {"key": "entity", "value": "Netso Energy"},
-        ])
+        store = MemoryStore(
+            permissions={
+                "AGT-CEO": {"read": ["all_long_term", "all_episodic", "all_semantic"]},
+            }
+        )
+        store.seed_from_dict(
+            "long_term",
+            "facts",
+            [
+                {"key": "entity", "value": "Netso Energy"},
+            ],
+        )
         results = store.search_vector("Netso", "AGT-CEO")
         assert len(results) == 1
 
@@ -555,7 +676,9 @@ class TestVectorSearch:
             assert r.layer == "semantic"
 
     def test_vector_search_domain_filter(self, vector_store: MemoryStore) -> None:
-        results = vector_store.search_vector("energy", "AGT-CEO", domain="company_facts")
+        results = vector_store.search_vector(
+            "energy", "AGT-CEO", domain="company_facts"
+        )
         for r in results:
             assert r.domain == "company_facts"
 
@@ -565,9 +688,13 @@ class TestVectorSearch:
         initial_count = len(results1)
 
         # Add new entry
-        vector_store.seed_from_dict("long_term", "hiring", [
-            {"key": "role", "value": "Sales lead for Chittagong region"},
-        ])
+        vector_store.seed_from_dict(
+            "long_term",
+            "hiring",
+            [
+                {"key": "role", "value": "Sales lead for Chittagong region"},
+            ],
+        )
 
         # Search should find the new entry
         results2 = vector_store.search_vector("sales hiring", "AGT-CEO")
@@ -577,6 +704,7 @@ class TestVectorSearch:
 
     def test_vector_search_empty_index(self) -> None:
         from aos.vector_store import TfidfEmbeddingProvider
+
         store = MemoryStore(embedding_provider=TfidfEmbeddingProvider(dimensions=64))
         results = store.search_vector("anything", "AGT-CEO")
         assert results == []

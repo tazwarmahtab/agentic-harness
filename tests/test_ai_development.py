@@ -169,8 +169,17 @@ class TestFailureAnalyzer:
 class TestCLIAIDevelopment:
     def test_cli_run_ai_dev_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "run", "--harness", "ai_development", "--dry-run"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "run",
+                "--harness",
+                "ai_development",
+                "--dry-run",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -180,6 +189,7 @@ class TestCLIAIDevelopment:
 
     def test_cli_validate_ai_dev_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "validate", "--harness", "ai_development"],
             capture_output=True,

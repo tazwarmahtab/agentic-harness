@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 
-
 from aos.memory import MemoryStore
 
 
@@ -11,15 +10,18 @@ from aos.memory import MemoryStore
 # Rate limiter
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimiter:
     def test_allows_within_limit(self) -> None:
         from aos.hardening import RateLimiter
+
         limiter = RateLimiter(max_requests=10, window_seconds=60)
         for _ in range(10):
             assert limiter.allow("test-key") is True
 
     def test_blocks_over_limit(self) -> None:
         from aos.hardening import RateLimiter
+
         limiter = RateLimiter(max_requests=3, window_seconds=60)
         for _ in range(3):
             assert limiter.allow("test-key") is True
@@ -27,6 +29,7 @@ class TestRateLimiter:
 
     def test_separate_keys_independent(self) -> None:
         from aos.hardening import RateLimiter
+
         limiter = RateLimiter(max_requests=2, window_seconds=60)
         assert limiter.allow("a") is True
         assert limiter.allow("a") is True
@@ -35,6 +38,7 @@ class TestRateLimiter:
 
     def test_window_expiry_resets(self) -> None:
         from aos.hardening import RateLimiter
+
         limiter = RateLimiter(max_requests=2, window_seconds=0)
         # Window of 0 means always expired
         for _ in range(10):
@@ -44,6 +48,7 @@ class TestRateLimiter:
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
+
 
 class TestHealthCheck:
     def test_health_llm_ok(self) -> None:
@@ -89,15 +94,18 @@ class TestHealthCheck:
 # Input validation
 # ---------------------------------------------------------------------------
 
+
 class TestInputValidation:
     def test_validate_harness_name_valid(self) -> None:
         from aos.hardening import validate_harness_name
+
         assert validate_harness_name("executive") is True
         assert validate_harness_name("evaluator") is True
         assert validate_harness_name("my-harness-123") is True
 
     def test_validate_harness_name_invalid(self) -> None:
         from aos.hardening import validate_harness_name
+
         assert validate_harness_name("") is False
         assert validate_harness_name("../../etc/passwd") is False
         assert validate_harness_name("exec; rm -rf /") is False
@@ -105,6 +113,7 @@ class TestInputValidation:
 
     def test_sanitize_path(self) -> None:
         from aos.hardening import sanitize_path
+
         result = sanitize_path("project/aos/harnesses/executive")
         assert result is not None
         assert ".." not in result
@@ -112,6 +121,7 @@ class TestInputValidation:
 
     def test_sanitize_path_rejects_traversal(self) -> None:
         from aos.hardening import sanitize_path
+
         result = sanitize_path("/project/../../etc/passwd")
         assert result is None
 
@@ -120,9 +130,9 @@ class TestInputValidation:
 # Audit trail cap
 # ---------------------------------------------------------------------------
 
+
 class TestAuditTrailCap:
     def test_audit_trail_capped(self) -> None:
-
         store = MemoryStore()
         # Submit many candidates to build up audit trail
         for i in range(250):
@@ -161,15 +171,18 @@ class TestAuditTrailCap:
 # WebSocket connection limiter
 # ---------------------------------------------------------------------------
 
+
 class TestConnectionLimiter:
     def test_allows_within_limit(self) -> None:
         from aos.hardening import ConnectionLimiter
+
         limiter = ConnectionLimiter(max_connections=5)
         assert limiter.try_acquire("conn-1") is True
         assert limiter.try_acquire("conn-2") is True
 
     def test_blocks_over_limit(self) -> None:
         from aos.hardening import ConnectionLimiter
+
         limiter = ConnectionLimiter(max_connections=2)
         assert limiter.try_acquire("a") is True
         assert limiter.try_acquire("b") is True
@@ -177,6 +190,7 @@ class TestConnectionLimiter:
 
     def test_release_allows_new(self) -> None:
         from aos.hardening import ConnectionLimiter
+
         limiter = ConnectionLimiter(max_connections=1)
         assert limiter.try_acquire("a") is True
         assert limiter.try_acquire("b") is False
@@ -185,6 +199,7 @@ class TestConnectionLimiter:
 
     def test_release_unknown_is_safe(self) -> None:
         from aos.hardening import ConnectionLimiter
+
         limiter = ConnectionLimiter(max_connections=5)
         limiter.release("nonexistent")  # should not raise
 
@@ -193,9 +208,15 @@ class TestConnectionLimiter:
 # Structured errors
 # ---------------------------------------------------------------------------
 
+
 class TestStructuredErrors:
     def test_error_hierarchy(self) -> None:
-        from aos.hardening import AOSError, HarnessNotFoundError, RateLimitError, ValidationError
+        from aos.hardening import (
+            AOSError,
+            HarnessNotFoundError,
+            RateLimitError,
+            ValidationError,
+        )
 
         assert issubclass(HarnessNotFoundError, AOSError)
         assert issubclass(RateLimitError, AOSError)

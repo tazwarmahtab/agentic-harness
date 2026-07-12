@@ -29,9 +29,11 @@ from typing import Any, Protocol
 # Tool execution result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ToolResult:
     """Result of a tool execution."""
+
     tool_id: str
     capability: str
     agent_id: str
@@ -57,9 +59,11 @@ class ToolResult:
 # Tool definition (from tools.yml)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ToolDef:
     """Parsed tool definition from the registry."""
+
     id: str
     name: str
     capability: str
@@ -80,6 +84,7 @@ class ToolDef:
 # Provider protocol
 # ---------------------------------------------------------------------------
 
+
 class ToolProvider(Protocol):
     """Protocol for tool backends."""
 
@@ -97,13 +102,16 @@ class ToolProvider(Protocol):
 # Built-in providers
 # ---------------------------------------------------------------------------
 
+
 class FileProvider:
     """File-based tool provider for markdown artifacts.
 
     Handles read/write of venture artifacts, handoffs, memory, dashboards.
     """
 
-    def __init__(self, venture_root: Path | None = None, memory_store: Any | None = None):
+    def __init__(
+        self, venture_root: Path | None = None, memory_store: Any | None = None
+    ):
         self.venture_root = venture_root
         self.memory_store = memory_store
 
@@ -136,14 +144,21 @@ class FileProvider:
         # If we have a memory store, check memory permission first
         if self.memory_store and ref:
             if not self.memory_store.can_read(agent_id, ref):
-                return {"content": "", "error": f"Permission denied: Agent {agent_id} cannot read memory domain {ref}"}
+                return {
+                    "content": "",
+                    "error": f"Permission denied: Agent {agent_id} cannot read memory domain {ref}",
+                }
             # Try to read from memory store first
             for layer in ["long_term", "episodic", "semantic"]:
                 entries = self.memory_store.read(layer, ref, agent_id)
                 if entries:
                     # Return combined contents
                     content = "\n\n".join(e.content for e in entries if e.content)
-                    return {"content": content, "path": f"memory://{layer}/{ref}", "size": len(content)}
+                    return {
+                        "content": content,
+                        "path": f"memory://{layer}/{ref}",
+                        "size": len(content),
+                    }
 
         if not path_str and self.venture_root and ref:
             path_str = ref
@@ -207,7 +222,11 @@ class FileProvider:
 """
 
         # Write to handoffs directory
-        handoffs_dir = self.venture_root / "ai_system" / "Nexus" / "logs" / "handoffs" if self.venture_root else Path("handoffs")
+        handoffs_dir = (
+            self.venture_root / "ai_system" / "Nexus" / "logs" / "handoffs"
+            if self.venture_root
+            else Path("handoffs")
+        )
         handoffs_dir.mkdir(parents=True, exist_ok=True)
         path = handoffs_dir / filename
         path.write_text(content)
@@ -326,7 +345,9 @@ class ApprovalProvider:
             return self._escalation_alert(inputs, agent_id)
         raise ValueError(f"ApprovalProvider: unknown capability: {capability}")
 
-    def _request_approval(self, inputs: dict[str, Any], agent_id: str) -> dict[str, Any]:
+    def _request_approval(
+        self, inputs: dict[str, Any], agent_id: str
+    ) -> dict[str, Any]:
         self._counter += 1
         approval_id = f"APR-{self._counter:04d}"
         action = inputs.get("action", "")
@@ -353,7 +374,9 @@ class ApprovalProvider:
             "message": f"Approval request {approval_id} added to founder queue.",
         }
 
-    def _escalation_alert(self, inputs: dict[str, Any], agent_id: str) -> dict[str, Any]:
+    def _escalation_alert(
+        self, inputs: dict[str, Any], agent_id: str
+    ) -> dict[str, Any]:
         alert_type = inputs.get("alert_type", "general")
         severity = inputs.get("severity", "normal")
         target = inputs.get("target", "founder")
@@ -377,6 +400,7 @@ class ApprovalProvider:
 # ---------------------------------------------------------------------------
 # Tool Gateway — main entry point
 # ---------------------------------------------------------------------------
+
 
 class ToolGateway:
     """Capability-based tool gateway with permission checks and providers.
@@ -421,7 +445,9 @@ class ToolGateway:
                 status=t.get("status", "registered"),
                 read_agents=t.get("permissions", {}).get("read", []),
                 write_agents=t.get("permissions", {}).get("write", []),
-                execute_agents=t.get("permissions", {}).get("execute", []) if isinstance(t.get("permissions", {}).get("execute"), list) else [],
+                execute_agents=t.get("permissions", {}).get("execute", [])
+                if isinstance(t.get("permissions", {}).get("execute"), list)
+                else [],
                 execute_gated=t.get("permissions", {}).get("execute") == "gated",
                 required_inputs=t.get("inputs", {}).get("required", []),
                 optional_inputs=t.get("inputs", {}).get("optional", []),
@@ -432,18 +458,29 @@ class ToolGateway:
             if tool.capability:
                 self.tools[tool.capability] = tool
 
-    def check_permission(self, capability: str, agent_id: str, mode: str = "read") -> bool:
+    def check_permission(
+        self, capability: str, agent_id: str, mode: str = "read"
+    ) -> bool:
         """Check if an agent has permission for a tool capability."""
         tool = self.tools.get(capability)
         if not tool:
             return False
 
         if mode == "read":
-            return agent_id in tool.read_agents or "all_executive_specialists" in tool.read_agents
+            return (
+                agent_id in tool.read_agents
+                or "all_executive_specialists" in tool.read_agents
+            )
         if mode == "write":
-            return agent_id in tool.write_agents or "all_executive_specialists" in tool.write_agents
+            return (
+                agent_id in tool.write_agents
+                or "all_executive_specialists" in tool.write_agents
+            )
         if mode == "execute":
-            return agent_id in tool.execute_agents or "all_executive_specialists" in tool.execute_agents
+            return (
+                agent_id in tool.execute_agents
+                or "all_executive_specialists" in tool.execute_agents
+            )
         return False
 
     def check_rate_limit(self, capability: str, limit: int | None = None) -> bool:
@@ -460,8 +497,7 @@ class ToolGateway:
 
         # Prune old entries
         self._rate_counters[key] = [
-            t for t in self._rate_counters[key]
-            if t.timestamp() > hour_ago
+            t for t in self._rate_counters[key] if t.timestamp() > hour_ago
         ]
 
         return len(self._rate_counters[key]) < tool.rate_limit
@@ -484,9 +520,11 @@ class ToolGateway:
             )
 
         # Permission check
-        if not self.check_permission(capability, agent_id, "read") and \
-           not self.check_permission(capability, agent_id, "write") and \
-           not self.check_permission(capability, agent_id, "execute"):
+        if (
+            not self.check_permission(capability, agent_id, "read")
+            and not self.check_permission(capability, agent_id, "write")
+            and not self.check_permission(capability, agent_id, "execute")
+        ):
             return ToolResult(
                 tool_id=tool.id,
                 capability=capability,
@@ -508,11 +546,14 @@ class ToolGateway:
         # Approval gate check
         if tool.execute_gated or tool.approval_gate:
             if self._approval_provider:
-                approval_result = self._approval_provider._request_approval({
-                    "action": capability,
-                    "rationale": tool.approval_gate or f"Gated tool: {capability}",
-                    "risk_assessment": "auto-gated by tool gateway",
-                }, agent_id)
+                approval_result = self._approval_provider._request_approval(
+                    {
+                        "action": capability,
+                        "rationale": tool.approval_gate or f"Gated tool: {capability}",
+                        "risk_assessment": "auto-gated by tool gateway",
+                    },
+                    agent_id,
+                )
                 return ToolResult(
                     tool_id=tool.id,
                     capability=capability,
@@ -684,7 +725,11 @@ class ToolGateway:
         # Specific capability overrides
         if capability in ("request_approval", "send_escalation_alert"):
             provider_name = "approval"
-        elif capability.startswith("read_") or capability.startswith("write_") or capability.startswith("generate_"):
+        elif (
+            capability.startswith("read_")
+            or capability.startswith("write_")
+            or capability.startswith("generate_")
+        ):
             provider_name = "file"
 
         return self.providers.get(provider_name)

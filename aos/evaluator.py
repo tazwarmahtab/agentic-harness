@@ -21,6 +21,7 @@ from aos.constants import (
 @dataclass
 class ValidationResult:
     """Result of output validation."""
+
     passed: bool = True
     violations: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -190,7 +191,9 @@ def _check_capex_scenario_a(output: dict, result: ValidationResult) -> None:
             )
 
 
-def _check_true_variable_rate(output: dict, flat: str, result: ValidationResult) -> None:
+def _check_true_variable_rate(
+    output: dict, flat: str, result: ValidationResult
+) -> None:
     """Check that true variable rate (12.98) is used, not blended (14.81) for savings."""
     # If savings are mentioned, verify the rate used is 12.98 not 14.81
     savings_keywords = ["savings", "saving", "avoided cost", "cost reduction"]

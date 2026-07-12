@@ -15,6 +15,7 @@ from aos.llm import MODEL_TABLE, RouterLLMClient, _parse_first_json
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_response(body: dict) -> MagicMock:
     """Build a mock HTTP response that decodes to *body*."""
     raw = json.dumps(body).encode("utf-8")
@@ -44,6 +45,7 @@ _OK_BODY: dict = {
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def client() -> RouterLLMClient:
     return _make_client(timeout=5)
@@ -62,8 +64,11 @@ def call_kwargs() -> dict:
 # 1. test_retry_on_urlerror
 # ---------------------------------------------------------------------------
 
+
 class TestRetryOnError:
-    def test_retry_on_urlerror(self, client: RouterLLMClient, call_kwargs: dict) -> None:
+    def test_retry_on_urlerror(
+        self, client: RouterLLMClient, call_kwargs: dict
+    ) -> None:
         """First call raises URLError, second succeeds -> 2 total calls, correct response."""
         url_error = urllib.error.URLError("connection refused")
         side_effects = [url_error, _make_response(_OK_BODY)]
@@ -80,7 +85,9 @@ class TestRetryOnError:
     # 2. test_retry_on_connection_error
     # -----------------------------------------------------------------------
 
-    def test_retry_on_connection_error(self, client: RouterLLMClient, call_kwargs: dict) -> None:
+    def test_retry_on_connection_error(
+        self, client: RouterLLMClient, call_kwargs: dict
+    ) -> None:
         """First call raises ConnectionError, second succeeds -> retry happens."""
         side_effects = [ConnectionError("timeout"), _make_response(_OK_BODY)]
 
@@ -95,7 +102,9 @@ class TestRetryOnError:
     # 3. test_404_triggers_model_fallback
     # -----------------------------------------------------------------------
 
-    def test_404_triggers_model_fallback(self, client: RouterLLMClient, call_kwargs: dict) -> None:
+    def test_404_triggers_model_fallback(
+        self, client: RouterLLMClient, call_kwargs: dict
+    ) -> None:
         """First model returns 404 -> code falls back to next model in MODEL_TABLE."""
         not_found = urllib.error.URLError("not found")
         not_found.code = 404  # type: ignore[attr-defined]
@@ -104,7 +113,9 @@ class TestRetryOnError:
 
         # First model (requested) fails 3x with 404, then fallback model succeeds
         side_effects = [
-            not_found, not_found, not_found,  # 3 attempts on requested model
+            not_found,
+            not_found,
+            not_found,  # 3 attempts on requested model
             _make_response({**_OK_BODY, "model": fallback_model}),
         ]
 
@@ -153,7 +164,9 @@ class TestRetryOnError:
     # 6. test_exponential_backoff
     # -----------------------------------------------------------------------
 
-    def test_exponential_backoff(self, client: RouterLLMClient, call_kwargs: dict) -> None:
+    def test_exponential_backoff(
+        self, client: RouterLLMClient, call_kwargs: dict
+    ) -> None:
         """Verify sleep(1) on attempt 1, sleep(2) on attempt 2 (2**attempt pattern)."""
         side_effects = [
             urllib.error.URLError("err1"),
@@ -161,8 +174,10 @@ class TestRetryOnError:
             _make_response(_OK_BODY),
         ]
 
-        with patch("aos.llm.urllib.request.urlopen") as mock_open, \
-             patch("time.sleep") as mock_sleep:
+        with (
+            patch("aos.llm.urllib.request.urlopen") as mock_open,
+            patch("time.sleep") as mock_sleep,
+        ):
             mock_open.side_effect = side_effects
             client.complete(**call_kwargs)
 
@@ -174,6 +189,7 @@ class TestRetryOnError:
 # ---------------------------------------------------------------------------
 # 7. test_parse_first_json_from_json_block
 # ---------------------------------------------------------------------------
+
 
 class TestParseFirstJson:
     def test_parse_first_json_from_json_block(self) -> None:
@@ -222,7 +238,7 @@ class TestParseFirstJson:
 
     def test_parse_braces_fallback(self) -> None:
         """Falls back to finding first complete { ... } when no code block."""
-        raw = "prefix {\"a\": 1} suffix"
+        raw = 'prefix {"a": 1} suffix'
         result = _parse_first_json(raw)
         assert result == {"a": 1}
 
@@ -236,8 +252,11 @@ class TestParseFirstJson:
 # Edge cases for complete()
 # ---------------------------------------------------------------------------
 
+
 class TestCompleteEdgeCases:
-    def test_error_in_body_raises_connection_error(self, client: RouterLLMClient, call_kwargs: dict) -> None:
+    def test_error_in_body_raises_connection_error(
+        self, client: RouterLLMClient, call_kwargs: dict
+    ) -> None:
         """Response body contains 'error' key -> raises ConnectionError."""
         error_body = {"error": "rate limit exceeded"}
         with patch("aos.llm.urllib.request.urlopen") as mock_open:
@@ -245,7 +264,9 @@ class TestCompleteEdgeCases:
             with pytest.raises(ConnectionError, match="rate limit exceeded"):
                 client.complete(**call_kwargs)
 
-    def test_reasoning_fallback_to_content(self, client: RouterLLMClient, call_kwargs: dict) -> None:
+    def test_reasoning_fallback_to_content(
+        self, client: RouterLLMClient, call_kwargs: dict
+    ) -> None:
         """When content is empty but reasoning exists, reasoning is used as content."""
         body = {
             "model": "test",

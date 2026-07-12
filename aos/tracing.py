@@ -66,9 +66,11 @@ from typing import Any, Protocol
 # Event data models
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class NodeEvent:
     """Event for a graph node execution."""
+
     node_name: str
     agent_id: str | None
     status: str  # success, error, skipped
@@ -81,6 +83,7 @@ class NodeEvent:
 @dataclass
 class LLMEvent:
     """Event for an LLM completion call."""
+
     agent_id: str
     model: str
     prompt_tokens: int
@@ -93,6 +96,7 @@ class LLMEvent:
 @dataclass
 class ToolEvent:
     """Event for a tool call."""
+
     agent_id: str
     tool_name: str
     args: dict[str, Any]
@@ -105,6 +109,7 @@ class ToolEvent:
 @dataclass
 class RetrievalEvent:
     """Event for memory/context retrieval."""
+
     agent_id: str
     retrieval_type: str  # memory, artifact, context
     query: str
@@ -116,6 +121,7 @@ class RetrievalEvent:
 # ---------------------------------------------------------------------------
 # Tracer protocol
 # ---------------------------------------------------------------------------
+
 
 class Tracer(Protocol):
     """Abstract interface for tracing backends."""
@@ -195,6 +201,7 @@ class Tracer(Protocol):
 # JSON-based tracer (fallback implementation)
 # ---------------------------------------------------------------------------
 
+
 class JSONTracer:
     """Simple JSON-based tracer that writes events to disk.
 
@@ -244,18 +251,20 @@ class JSONTracer:
             output=output,
             error=error,
         )
-        self._events.append({
-            "type": "node",
-            "data": {
-                "node_name": event.node_name,
-                "agent_id": event.agent_id,
-                "status": event.status,
-                "duration_ms": event.duration_ms,
-                "output": event.output,
-                "error": event.error,
-                "timestamp": event.timestamp,
-            },
-        })
+        self._events.append(
+            {
+                "type": "node",
+                "data": {
+                    "node_name": event.node_name,
+                    "agent_id": event.agent_id,
+                    "status": event.status,
+                    "duration_ms": event.duration_ms,
+                    "output": event.output,
+                    "error": event.error,
+                    "timestamp": event.timestamp,
+                },
+            }
+        )
 
     def log_llm(
         self,
@@ -274,19 +283,21 @@ class JSONTracer:
             latency_ms=latency_ms,
             provider=provider,
         )
-        self._events.append({
-            "type": "llm",
-            "data": {
-                "agent_id": event.agent_id,
-                "model": event.model,
-                "prompt_tokens": event.prompt_tokens,
-                "completion_tokens": event.completion_tokens,
-                "total_tokens": event.prompt_tokens + event.completion_tokens,
-                "latency_ms": event.latency_ms,
-                "provider": event.provider,
-                "timestamp": event.timestamp,
-            },
-        })
+        self._events.append(
+            {
+                "type": "llm",
+                "data": {
+                    "agent_id": event.agent_id,
+                    "model": event.model,
+                    "prompt_tokens": event.prompt_tokens,
+                    "completion_tokens": event.completion_tokens,
+                    "total_tokens": event.prompt_tokens + event.completion_tokens,
+                    "latency_ms": event.latency_ms,
+                    "provider": event.provider,
+                    "timestamp": event.timestamp,
+                },
+            }
+        )
 
     def log_tool(
         self,
@@ -305,18 +316,20 @@ class JSONTracer:
             duration_ms=duration_ms,
             status=status,
         )
-        self._events.append({
-            "type": "tool",
-            "data": {
-                "agent_id": event.agent_id,
-                "tool_name": event.tool_name,
-                "args": event.args,
-                "result": event.result,
-                "duration_ms": event.duration_ms,
-                "status": event.status,
-                "timestamp": event.timestamp,
-            },
-        })
+        self._events.append(
+            {
+                "type": "tool",
+                "data": {
+                    "agent_id": event.agent_id,
+                    "tool_name": event.tool_name,
+                    "args": event.args,
+                    "result": event.result,
+                    "duration_ms": event.duration_ms,
+                    "status": event.status,
+                    "timestamp": event.timestamp,
+                },
+            }
+        )
 
     def log_retrieval(
         self,
@@ -333,17 +346,19 @@ class JSONTracer:
             results_count=results_count,
             duration_ms=duration_ms,
         )
-        self._events.append({
-            "type": "retrieval",
-            "data": {
-                "agent_id": event.agent_id,
-                "retrieval_type": event.retrieval_type,
-                "query": event.query,
-                "results_count": event.results_count,
-                "duration_ms": event.duration_ms,
-                "timestamp": event.timestamp,
-            },
-        })
+        self._events.append(
+            {
+                "type": "retrieval",
+                "data": {
+                    "agent_id": event.agent_id,
+                    "retrieval_type": event.retrieval_type,
+                    "query": event.query,
+                    "results_count": event.results_count,
+                    "duration_ms": event.duration_ms,
+                    "timestamp": event.timestamp,
+                },
+            }
+        )
 
     def end_cycle(
         self,
@@ -379,15 +394,9 @@ class JSONTracer:
         tool_events = [e for e in self._events if e["type"] == "tool"]
         node_events = [e for e in self._events if e["type"] == "node"]
 
-        total_tokens = sum(
-            e["data"]["total_tokens"] for e in llm_events
-        )
-        total_llm_latency = sum(
-            e["data"]["latency_ms"] for e in llm_events
-        )
-        total_tool_latency = sum(
-            e["data"]["duration_ms"] for e in tool_events
-        )
+        total_tokens = sum(e["data"]["total_tokens"] for e in llm_events)
+        total_llm_latency = sum(e["data"]["latency_ms"] for e in llm_events)
+        total_tool_latency = sum(e["data"]["duration_ms"] for e in tool_events)
 
         return {
             "total_llm_calls": len(llm_events),
@@ -396,14 +405,19 @@ class JSONTracer:
             "total_tokens": total_tokens,
             "total_llm_latency_ms": total_llm_latency,
             "total_tool_latency_ms": total_tool_latency,
-            "successful_nodes": len([e for e in node_events if e["data"]["status"] == "success"]),
-            "failed_nodes": len([e for e in node_events if e["data"]["status"] == "error"]),
+            "successful_nodes": len(
+                [e for e in node_events if e["data"]["status"] == "success"]
+            ),
+            "failed_nodes": len(
+                [e for e in node_events if e["data"]["status"] == "error"]
+            ),
         }
 
 
 # ---------------------------------------------------------------------------
 # Langfuse tracer (preferred implementation)
 # ---------------------------------------------------------------------------
+
 
 class LangfuseTracer:
     """Langfuse-based tracer with full observability features.
@@ -609,6 +623,7 @@ class LangfuseTracer:
 # ---------------------------------------------------------------------------
 # Null tracer (no-op for disabled tracing)
 # ---------------------------------------------------------------------------
+
 
 class NullTracer:
     """No-op tracer for when tracing is disabled."""

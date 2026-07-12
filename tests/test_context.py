@@ -31,8 +31,14 @@ def cfo_agent() -> Agent:
         financial_rules={
             "canonical_source": "GROUND_TRUTH_CONSTANTS.md",
             "hard_fails": [
-                {"description": "blended_rate_used_for_savings", "correct_value": "True Variable Rate BDT 12.98/kWh"},
-                {"description": "scenario_b_without_nbr", "correct_value": "Scenario A (BDT 55,000/kW)"},
+                {
+                    "description": "blended_rate_used_for_savings",
+                    "correct_value": "True Variable Rate BDT 12.98/kWh",
+                },
+                {
+                    "description": "scenario_b_without_nbr",
+                    "correct_value": "Scenario A (BDT 55,000/kW)",
+                },
             ],
             "constants_to_enforce": {
                 "true_variable_rate": 12.98,
@@ -41,7 +47,12 @@ def cfo_agent() -> Agent:
                 "customer_savings_pct": 23.0,
             },
         },
-        reasoning_structure=["retrieve_ground_truth_values", "cross_check_constants", "calculate", "validate_output"],
+        reasoning_structure=[
+            "retrieve_ground_truth_values",
+            "cross_check_constants",
+            "calculate",
+            "validate_output",
+        ],
         self_check=["Does every number match ground truth?"],
         constraints=["Never use blended rate for savings"],
     )
@@ -146,6 +157,7 @@ class TestMemoryPermissions:
 class TestFinancialRules:
     def test_cfo_gets_financial_constants(self, cfo_agent: Agent) -> None:
         from aos.constants import NETSO_FINANCIAL
+
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "12.98" in prompt  # true_variable_rate
         assert "14.81" in prompt  # blended_rate
@@ -153,17 +165,20 @@ class TestFinancialRules:
 
     def test_cfo_gets_hard_fail_rules(self, cfo_agent: Agent) -> None:
         from aos.constants import NETSO_FINANCIAL
+
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "HARD FAIL" in prompt
         assert "blended" in prompt.lower()
 
     def test_coo_does_not_get_financial_constants(self, minimal_agent: Agent) -> None:
         from aos.constants import NETSO_FINANCIAL
+
         prompt = build_prompt(minimal_agent, netso_financial=NETSO_FINANCIAL)
         assert "HARD FAIL" not in prompt
 
     def test_cfo_gets_scenario_b_rules(self, cfo_agent: Agent) -> None:
         from aos.constants import NETSO_FINANCIAL
+
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "scenario" in prompt.lower() or "SCENARIO" in prompt
 
@@ -180,6 +195,7 @@ class TestOutputFormat:
 
     def test_dispatcher_gets_routing_table(self) -> None:
         from aos.schemas.agent import RoutingEntry, RoutingTable
+
         dispatcher = Agent(
             id="AGT-EXEC-DISPATCH",
             name="Dispatcher",
@@ -190,7 +206,9 @@ class TestOutputFormat:
             allowed_memory=AllowedMemory(read=[], write=[], cannot_read=[]),
             routing_table=RoutingTable(
                 executive_internal=[
-                    RoutingEntry(task="financial_modeling", route_to="AGT-EXEC-CFO", sla="4h"),
+                    RoutingEntry(
+                        task="financial_modeling", route_to="AGT-EXEC-CFO", sla="4h"
+                    ),
                 ],
             ),
         )

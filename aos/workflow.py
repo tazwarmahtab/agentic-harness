@@ -12,6 +12,7 @@ Usage:
     engine.resume(run_id)          # after approval
     run = engine.get_run(run_id)
 """
+
 from __future__ import annotations
 
 import uuid
@@ -24,17 +25,18 @@ from aos.event_bus import AOSEvent, EventBus, EventType, default_bus
 
 
 class WorkflowStatus(str, Enum):
-    PENDING   = "pending"
-    RUNNING   = "running"
-    PAUSED    = "paused"       # waiting for approval
+    PENDING = "pending"
+    RUNNING = "running"
+    PAUSED = "paused"  # waiting for approval
     COMPLETED = "completed"
-    FAILED    = "failed"
+    FAILED = "failed"
     CANCELLED = "cancelled"
 
 
 @dataclass
 class WorkflowStep:
     """One recorded step in a workflow run."""
+
     step: int
     node: str
     status: WorkflowStatus
@@ -48,6 +50,7 @@ class WorkflowStep:
 @dataclass
 class WorkflowRun:
     """A single workflow execution instance."""
+
     id: str
     harness_id: str
     venture_id: str
@@ -65,6 +68,7 @@ class WorkflowRun:
     def duration_s(self) -> float | None:
         if self.started_at and self.completed_at:
             from datetime import datetime
+
             try:
                 s = datetime.fromisoformat(self.started_at)
                 e = datetime.fromisoformat(self.completed_at)
@@ -115,13 +119,15 @@ class WorkflowEngine:
         )
         self._runs[run_id] = run
 
-        self._bus.emit(AOSEvent(
-            type=EventType.HARNESS_STARTED,
-            source_harness=self._harness_id,
-            source_agent="workflow_engine",
-            payload={"run_id": run_id},
-            venture_id=self._venture_id,
-        ))
+        self._bus.emit(
+            AOSEvent(
+                type=EventType.HARNESS_STARTED,
+                source_harness=self._harness_id,
+                source_agent="workflow_engine",
+                payload={"run_id": run_id},
+                venture_id=self._venture_id,
+            )
+        )
 
         run.status = WorkflowStatus.RUNNING
         run.started_at = datetime.now(timezone.utc).isoformat()
@@ -132,13 +138,15 @@ class WorkflowEngine:
             run.final_state = {k: str(v)[:200] for k, v in (state or {}).items()}
             run.status = WorkflowStatus.COMPLETED
             run.completed_at = datetime.now(timezone.utc).isoformat()
-            self._bus.emit(AOSEvent(
-                type=EventType.CYCLE_COMPLETED,
-                source_harness=self._harness_id,
-                source_agent="workflow_engine",
-                payload={"run_id": run_id, "duration_s": run.duration_s()},
-                venture_id=self._venture_id,
-            ))
+            self._bus.emit(
+                AOSEvent(
+                    type=EventType.CYCLE_COMPLETED,
+                    source_harness=self._harness_id,
+                    source_agent="workflow_engine",
+                    payload={"run_id": run_id, "duration_s": run.duration_s()},
+                    venture_id=self._venture_id,
+                )
+            )
         except Exception as exc:
             run.status = WorkflowStatus.FAILED
             run.error = str(exc)
@@ -157,7 +165,6 @@ class WorkflowEngine:
         return {
             "total": len(runs),
             "by_status": {
-                s.value: sum(1 for r in runs if r.status == s)
-                for s in WorkflowStatus
+                s.value: sum(1 for r in runs if r.status == s) for s in WorkflowStatus
             },
         }

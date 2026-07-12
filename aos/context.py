@@ -181,7 +181,9 @@ def _build_routing_block(routing_table: Any) -> str:
         lines.append("  Cross-harness:")
         for entry in routing_table.cross_harness:
             harness = entry.harness or "unknown"
-            lines.append(f"    {entry.task} -> {entry.route_to} [{harness}] (SLA: {entry.sla})")
+            lines.append(
+                f"    {entry.task} -> {entry.route_to} [{harness}] (SLA: {entry.sla})"
+            )
     lines.append("")
     return "\n".join(lines)
 

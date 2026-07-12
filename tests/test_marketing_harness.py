@@ -153,6 +153,7 @@ class TestWebsiteManager:
 class TestCLIMarketingHarness:
     def test_cli_run_marketing_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--harness", "marketing", "--dry-run"],
             capture_output=True,
@@ -164,6 +165,7 @@ class TestCLIMarketingHarness:
 
     def test_cli_validate_marketing_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "validate", "--harness", "marketing"],
             capture_output=True,

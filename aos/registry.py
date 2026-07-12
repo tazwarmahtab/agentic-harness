@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HarnessBundle:
     """All manifests belonging to a single harness."""
+
     harness: Harness
     planner: Agent | None = None
     dispatcher: Agent | None = None
@@ -46,6 +47,7 @@ class HarnessBundle:
 @dataclass
 class Registry:
     """Complete registry of all loaded manifests."""
+
     venture: Venture | None = None
     harnesses: dict[str, HarnessBundle] = field(default_factory=dict)
 
@@ -99,8 +101,12 @@ class Registry:
             specialist_count = len(bundle.specialists)
             sop_count = len(bundle.sops)
             lines.append(f"  Harness: {bundle.harness.name} ({hid})")
-            lines.append(f"    Planner: {bundle.planner.name if bundle.planner else 'none'}")
-            lines.append(f"    Dispatcher: {bundle.dispatcher.name if bundle.dispatcher else 'none'}")
+            lines.append(
+                f"    Planner: {bundle.planner.name if bundle.planner else 'none'}"
+            )
+            lines.append(
+                f"    Dispatcher: {bundle.dispatcher.name if bundle.dispatcher else 'none'}"
+            )
             lines.append(f"    Specialists: {specialist_count}")
             lines.append(f"    Memory: {'yes' if bundle.memory else 'no'}")
             lines.append(f"    Tools: {'yes' if bundle.tools else 'no'}")
@@ -109,8 +115,6 @@ class Registry:
             lines.append(f"    SOPs: {sop_count}")
         lines.append(f"  Total agents: {len(self.all_agents())}")
         return "\n".join(lines)
-
-
 
     def live_status(self) -> dict[str, dict]:
         """Return live status of all loaded harnesses.
@@ -126,8 +130,8 @@ class Registry:
                 "status": bundle.harness.status,
                 "criticality": bundle.harness.criticality,
                 "agents": len(bundle.specialists)
-                    + (1 if bundle.planner else 0)
-                    + (1 if bundle.dispatcher else 0),
+                + (1 if bundle.planner else 0)
+                + (1 if bundle.dispatcher else 0),
                 "has_memory": bundle.memory is not None,
                 "has_tools": bundle.tools is not None,
                 "has_approvals": bundle.approvals is not None,
@@ -135,6 +139,7 @@ class Registry:
                 "sop_count": len(bundle.sops),
             }
         return result
+
 
 def load_registry(
     harness_dir: Path,

@@ -171,8 +171,17 @@ class TestUpsellSpecialist:
 class TestCLICustomerSuccess:
     def test_cli_run_cs_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "run", "--harness", "customer_success", "--dry-run"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "run",
+                "--harness",
+                "customer_success",
+                "--dry-run",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -182,6 +191,7 @@ class TestCLICustomerSuccess:
 
     def test_cli_validate_cs_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "validate", "--harness", "customer_success"],
             capture_output=True,

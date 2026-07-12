@@ -15,14 +15,23 @@ from aos.schemas.policy import Policy, PolicyAction
 from aos.schemas.policy_collection import PolicyCollection
 
 __all__ = [
-    "Identity", "IdentityType", "IdentityStatus", "Classification",
-    "Harness", "HarnessStatus", "Criticality",
-    "Agent", "AgentStatus", "ToolPermission",
-    "Venture", "VentureStatus",
+    "Identity",
+    "IdentityType",
+    "IdentityStatus",
+    "Classification",
+    "Harness",
+    "HarnessStatus",
+    "Criticality",
+    "Agent",
+    "AgentStatus",
+    "ToolPermission",
+    "Venture",
+    "VentureStatus",
     "Memory",
     "ToolRegistry",
     "Evaluation",
     "SOP",
-    "Policy", "PolicyAction",
+    "Policy",
+    "PolicyAction",
     "PolicyCollection",
 ]

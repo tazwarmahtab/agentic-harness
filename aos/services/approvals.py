@@ -1,4 +1,5 @@
 """Approvals service — approval queue management."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Any
 @dataclass(frozen=True)
 class Approval:
     """Single approval request."""
+
     id: str
     title: str
     description: str

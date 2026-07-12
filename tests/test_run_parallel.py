@@ -4,6 +4,7 @@ _run_parallel wraps synchronous callables in asyncio.to_thread for
 I/O-bound workloads (HTTP, LLM calls). Falls back to ThreadPoolExecutor
 when an event loop is already running (LangGraph, Jupyter).
 """
+
 from __future__ import annotations
 
 import time
@@ -46,6 +47,7 @@ class TestRunParallel:
 
     def test_exception_in_one_item_doesnt_crash(self) -> None:
         """Exception in one callable is caught by the caller."""
+
         def maybe_fail(x: int) -> int:
             if x == 3:
                 raise ValueError("boom")

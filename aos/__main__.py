@@ -20,8 +20,8 @@ from typing import Optional
 
 from aos.orchestrate.gates import GateManager
 from aos.orchestrate.pipeline import (
-  OrchestratePipeline,
-  PipelineContext,
+    OrchestratePipeline,
+    PipelineContext,
 )
 from aos.registry import load_registry
 from aos.validator import validate_all
@@ -153,7 +153,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     harnesses_root = harness_dir.parent
     if harnesses_root.exists():
         for sibling in harnesses_root.iterdir():
-            if sibling.is_dir() and sibling != harness_dir and (sibling / "harness.yml").exists():
+            if (
+                sibling.is_dir()
+                and sibling != harness_dir
+                and (sibling / "harness.yml").exists()
+            ):
                 sibling_registry = load_registry(sibling, vp)
                 for hid, bundle in sibling_registry.harnesses.items():
                     if hid not in registry.harnesses:
@@ -205,9 +209,16 @@ def cmd_orchestrate(args: argparse.Namespace) -> int:
         plan_path = p if p.is_absolute() else root / p
     elif args.one_liner and not args.skip_spec:
         # /spec will create the plan
-        plan_path = root / ".gstack" / "plans" / f"orch-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
+        plan_path = (
+            root
+            / ".gstack"
+            / "plans"
+            / f"orch-{datetime.now().strftime('%Y%m%d-%H%M%S')}.md"
+        )
     elif not args.skip_spec:
-        logger.error("Provide --one-liner or --plan-path (or use --skip-spec with existing plan).")
+        logger.error(
+            "Provide --one-liner or --plan-path (or use --skip-spec with existing plan)."
+        )
         return 1
 
     # Parse gates
@@ -255,12 +266,18 @@ def cmd_ventures(args: argparse.Namespace) -> int:
     print(f"AOS Ventures ({len(ventures)} found):")
     print()
     for path, venture in ventures:
-        status_icon = {"active": "🟢", "planning": "🟡", "inactive": "⚫"}.get(venture.status, "❓")
+        status_icon = {"active": "🟢", "planning": "🟡", "inactive": "⚫"}.get(
+            venture.status, "❓"
+        )
         print(f" {status_icon} {venture.name} ({venture.id})")
         print(f" Status: {venture.status}")
         print(f" Path: {path.parent}")
         if venture.description:
-            desc = venture.description[:80] + "..." if len(venture.description) > 80 else venture.description
+            desc = (
+                venture.description[:80] + "..."
+                if len(venture.description) > 80
+                else venture.description
+            )
             print(f" Desc: {desc}")
         print()
 
@@ -324,7 +341,9 @@ def cmd_approvals(args: argparse.Namespace) -> int:
             return 1
         return 0
 
-    print("Usage: python -m aos approvals [list|approve-all|reject-all|approve ID|reject ID]")
+    print(
+        "Usage: python -m aos approvals [list|approve-all|reject-all|approve ID|reject ID]"
+    )
     return 0
 
 
@@ -338,8 +357,12 @@ def main() -> int:
     # validate command
     validate_parser = subparsers.add_parser("validate", help="Validate all manifests")
     validate_parser.add_argument("--harness", help="Validate specific harness only")
-    validate_parser.add_argument("--venture", "-v", help="Validate against specific venture")
-    validate_parser.add_argument("--verbose", action="store_true", help="Detailed output")
+    validate_parser.add_argument(
+        "--venture", "-v", help="Validate against specific venture"
+    )
+    validate_parser.add_argument(
+        "--verbose", action="store_true", help="Detailed output"
+    )
 
     # status command
     status_parser = subparsers.add_parser("status", help="Show system status")
@@ -350,31 +373,67 @@ def main() -> int:
     run_parser = subparsers.add_parser("run", help="Execute the daily harness cycle")
     run_parser.add_argument("--harness", help="Run specific harness only")
     run_parser.add_argument("--venture", "-v", help="Run against specific venture")
-    run_parser.add_argument("--dry-run", action="store_true", help="Dry run — no LLM calls")
-    run_parser.add_argument("--prefer", choices=["router", "anthropic"], help="Force specific LLM backend")
-    run_parser.add_argument("--verbose", action="store_true", help="Show LLM backend selection")
+    run_parser.add_argument(
+        "--dry-run", action="store_true", help="Dry run — no LLM calls"
+    )
+    run_parser.add_argument(
+        "--prefer", choices=["router", "anthropic"], help="Force specific LLM backend"
+    )
+    run_parser.add_argument(
+        "--verbose", action="store_true", help="Show LLM backend selection"
+    )
 
     # ventures command
     subparsers.add_parser("ventures", help="List all discovered ventures")
 
     # orchestrate command
-    orch_parser = subparsers.add_parser("orchestrate", help="Run end-to-end pipeline: /spec → /autoplan → /implement → /reviewloop → /ship")
-    orch_parser.add_argument("plan_path", nargs="?", help="Path to plan document (or use --one-liner)")
-    orch_parser.add_argument("--one-liner", help="One-line description (triggers /spec)")
-    orch_parser.add_argument("--skip-spec", action="store_true", help="Skip /spec phase")
-    orch_parser.add_argument("--skip-plan", action="store_true", help="Skip /autoplan phase")
-    orch_parser.add_argument("--skip-review", action="store_true", help="Skip /reviewloop phase")
-    orch_parser.add_argument("--gate", action="append", help="Enforce gate(s): spec, plan, review (repeatable, default: all)")
-    orch_parser.add_argument("--dry-run", action="store_true", help="Log actions without executing")
-    orch_parser.add_argument("--max-review-iterations", type=int, default=3, help="Max review-fix iterations (default: 3)")
+    orch_parser = subparsers.add_parser(
+        "orchestrate",
+        help="Run end-to-end pipeline: /spec → /autoplan → /implement → /reviewloop → /ship",
+    )
+    orch_parser.add_argument(
+        "plan_path", nargs="?", help="Path to plan document (or use --one-liner)"
+    )
+    orch_parser.add_argument(
+        "--one-liner", help="One-line description (triggers /spec)"
+    )
+    orch_parser.add_argument(
+        "--skip-spec", action="store_true", help="Skip /spec phase"
+    )
+    orch_parser.add_argument(
+        "--skip-plan", action="store_true", help="Skip /autoplan phase"
+    )
+    orch_parser.add_argument(
+        "--skip-review", action="store_true", help="Skip /reviewloop phase"
+    )
+    orch_parser.add_argument(
+        "--gate",
+        action="append",
+        help="Enforce gate(s): spec, plan, review (repeatable, default: all)",
+    )
+    orch_parser.add_argument(
+        "--dry-run", action="store_true", help="Log actions without executing"
+    )
+    orch_parser.add_argument(
+        "--max-review-iterations",
+        type=int,
+        default=3,
+        help="Max review-fix iterations (default: 3)",
+    )
 
     # approvals command
     approvals_parser = subparsers.add_parser("approvals", help="Manage approval queue")
-    approvals_sub = approvals_parser.add_subparsers(dest="approvals_action", help="Approval actions")
+    approvals_sub = approvals_parser.add_subparsers(
+        dest="approvals_action", help="Approval actions"
+    )
     approvals_sub.add_parser("list", help="List pending approvals")
-    aa_parser = approvals_sub.add_parser("approve-all", help="Approve all pending approvals")
+    aa_parser = approvals_sub.add_parser(
+        "approve-all", help="Approve all pending approvals"
+    )
     aa_parser.add_argument("--note", help="Founder note for all approvals")
-    ra_parser = approvals_sub.add_parser("reject-all", help="Reject all pending approvals")
+    ra_parser = approvals_sub.add_parser(
+        "reject-all", help="Reject all pending approvals"
+    )
     ra_parser.add_argument("--note", help="Founder note for all rejections")
     approve_one = approvals_sub.add_parser("approve", help="Approve a specific item")
     approve_one.add_argument("item_id", help="Approval item ID (e.g. APR-0001)")

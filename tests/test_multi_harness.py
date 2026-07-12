@@ -106,7 +106,9 @@ class TestOperationsSpecialists:
             pytest.skip("Operations harness not found")
         registry = load_registry(harness_dir)
         bundle = list(registry.harnesses.values())[0]
-        assert len(bundle.specialists) >= 3  # site-assessor, procurement, installation-tracker
+        assert (
+            len(bundle.specialists) >= 3
+        )  # site-assessor, procurement, installation-tracker
 
     def test_procurement_has_approval_gates(self) -> None:
         harness_dir = Path("aos/harnesses/operations")
@@ -124,6 +126,7 @@ class TestOperationsSpecialists:
 class TestCLICrossHarness:
     def test_cli_run_finance_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--harness", "finance", "--dry-run"],
             capture_output=True,
@@ -136,6 +139,7 @@ class TestCLICrossHarness:
 
     def test_cli_run_sales_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--harness", "sales", "--dry-run"],
             capture_output=True,
@@ -147,8 +151,17 @@ class TestCLICrossHarness:
 
     def test_cli_run_operations_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "run", "--harness", "operations", "--dry-run"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "run",
+                "--harness",
+                "operations",
+                "--dry-run",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -158,14 +171,25 @@ class TestCLICrossHarness:
 
     def test_cli_run_unknown_harness_fails(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "run", "--harness", "nonexistent", "--dry-run"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "run",
+                "--harness",
+                "nonexistent",
+                "--dry-run",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode != 0
-        assert "not found" in result.stderr.lower() or "not found" in result.stdout.lower()
+        assert (
+            "not found" in result.stderr.lower() or "not found" in result.stdout.lower()
+        )
 
 
 # ── Cross-bundle resolution tests ─────────────────────────────────────

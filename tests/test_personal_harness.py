@@ -172,6 +172,7 @@ class TestGoalTracker:
 class TestCLIPersonalHarness:
     def test_cli_run_personal_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--harness", "personal", "--dry-run"],
             capture_output=True,
@@ -183,6 +184,7 @@ class TestCLIPersonalHarness:
 
     def test_cli_validate_personal_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "validate", "--harness", "personal"],
             capture_output=True,

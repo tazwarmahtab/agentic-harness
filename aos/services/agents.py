@@ -1,4 +1,5 @@
 """Agents service — agent usage and status."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Any
 @dataclass(frozen=True)
 class AgentStatus:
     """Agent status summary."""
+
     total_agents: int
     active_agents: int
     agents: list[dict[str, Any]]

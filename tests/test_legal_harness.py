@@ -210,6 +210,7 @@ class TestContractReviewer:
 class TestCLILegalHarness:
     def test_cli_run_legal_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--harness", "legal", "--dry-run"],
             capture_output=True,
@@ -221,6 +222,7 @@ class TestCLILegalHarness:
 
     def test_cli_validate_legal_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "validate", "--harness", "legal"],
             capture_output=True,

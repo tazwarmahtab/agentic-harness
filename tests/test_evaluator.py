@@ -13,7 +13,11 @@ class TestValidateOutput:
         assert result.passed
 
     def test_blended_rate_detected(self) -> None:
-        output = {"savings_pct": 14.0, "rate_used": 14.81, "note": "based on blended rate"}
+        output = {
+            "savings_pct": 14.0,
+            "rate_used": 14.81,
+            "note": "based on blended rate",
+        }
         result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
         assert not result.passed
         assert any("blended" in v.lower() for v in result.violations)
@@ -101,7 +105,9 @@ class TestValidateOutput:
         }
         result = validate_output(output, "AGT-EXEC-CFO", NETSO_FINANCIAL)
         assert not result.passed
-        assert any("blended" in v.lower() and "savings" in v.lower() for v in result.violations)
+        assert any(
+            "blended" in v.lower() and "savings" in v.lower() for v in result.violations
+        )
 
     def test_true_variable_rate_near_savings_passes(self) -> None:
         output = {

@@ -8,6 +8,7 @@ Covers:
   - duration_ms values are positive numbers
   - Multiple executions produce distinct duration_ms values
 """
+
 from __future__ import annotations
 
 import time
@@ -30,6 +31,7 @@ from aos.graph_tracing import wrap_node_with_tracing
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_config(
     *,
@@ -85,6 +87,7 @@ def _make_state(**overrides: Any) -> dict[str, Any]:
 # ===========================================================================
 # 1. JSONTracer instantiation and event recording
 # ===========================================================================
+
 
 class TestJSONTracerInstantiation:
     """JSONTracer can be created and configured."""
@@ -209,6 +212,7 @@ class TestJSONTracerRecording:
         output_file = tmp_path / "cyc-1.json"
         assert output_file.exists()
         import json
+
         trace = json.loads(output_file.read_text())
         assert trace["cycle_id"] == "cyc-1"
         assert trace["total_duration_ms"] == 200
@@ -243,6 +247,7 @@ class TestJSONTracerSummary:
 # 2. NullTracer behaves correctly
 # ===========================================================================
 
+
 class TestNullTracer:
     """NullTracer is a no-op that never crashes."""
 
@@ -261,6 +266,7 @@ class TestNullTracer:
 # 3. wrap_node_with_tracing
 # ===========================================================================
 
+
 class TestWrapNodeWithTracing:
     """wrap_node_with_tracing instruments graph nodes.
 
@@ -271,12 +277,14 @@ class TestWrapNodeWithTracing:
     def _traced_fn(self, state: dict[str, Any]) -> dict[str, Any]:
         """Dummy node that returns a step result."""
         return {
-            "step_results": [{
-                "step": "test_node",
-                "status": "success",
-                "output": {"key": "val"},
-                "duration_ms": 0,
-            }]
+            "step_results": [
+                {
+                    "step": "test_node",
+                    "status": "success",
+                    "output": {"key": "val"},
+                    "duration_ms": 0,
+                }
+            ]
         }
 
     def test_without_tracer_runs_node_directly(self) -> None:
@@ -305,6 +313,7 @@ class TestWrapNodeWithTracing:
 
     def test_with_tracer_emits_log_on_error(self) -> None:
         """When node raises, tracer still records duration_ms."""
+
         def failing_fn(state: dict[str, Any]) -> dict[str, Any]:
             raise RuntimeError("boom")
 
@@ -323,9 +332,19 @@ class TestWrapNodeWithTracing:
 
     def test_duration_ms_is_positive_integer(self) -> None:
         """duration_ms passed to tracer is always a positive int."""
+
         def slow_fn(state: dict[str, Any]) -> dict[str, Any]:
             time.sleep(0.01)
-            return {"step_results": [{"step": "slow", "status": "success", "output": {}, "duration_ms": 0}]}
+            return {
+                "step_results": [
+                    {
+                        "step": "slow",
+                        "status": "success",
+                        "output": {},
+                        "duration_ms": 0,
+                    }
+                ]
+            }
 
         mock_tracer = MagicMock()
         config = _make_config(tracer=mock_tracer)
@@ -361,6 +380,7 @@ class TestWrapNodeWithTracing:
 # ===========================================================================
 # 4. approval_gates_node emits duration_ms
 # ===========================================================================
+
 
 class TestApprovalGatesNodeTiming:
     """approval_gates_node emits duration_ms in step_results."""
@@ -423,6 +443,7 @@ class TestApprovalGatesNodeTiming:
 # 5. execute_node emits duration_ms
 # ===========================================================================
 
+
 class TestExecuteNodeTiming:
     """execute_node emits duration_ms in step_results."""
 
@@ -476,6 +497,7 @@ class TestExecuteNodeTiming:
 # 6. log_node emits duration_ms
 # ===========================================================================
 
+
 class TestLogNodeTiming:
     """log_node emits duration_ms in step_results."""
 
@@ -528,6 +550,7 @@ class TestLogNodeTiming:
 # ===========================================================================
 # 7. loop_control_node emits duration_ms
 # ===========================================================================
+
 
 class TestLoopControlNodeTiming:
     """loop_control_node emits duration_ms in step_results."""
@@ -589,11 +612,13 @@ class TestLoopControlNodeTiming:
 # 8. duration_ms values are always positive numbers
 # ===========================================================================
 
+
 class TestDurationMsAlwaysPositive:
     """All nodes that emit duration_ms produce values >= 0."""
 
     def test_approval_gates_duration_ms_non_negative(self) -> None:
         from aos.graph import approval_gates_node
+
         bundle = MagicMock()
         bundle.specialists = {}
         config = _make_config(bundle=bundle)
@@ -604,6 +629,7 @@ class TestDurationMsAlwaysPositive:
 
     def test_execute_duration_ms_non_negative(self) -> None:
         from aos.graph import execute_node
+
         config = _make_config()
         state = _make_state()
         with patch("aos.graph.get_config", return_value=config):
@@ -612,6 +638,7 @@ class TestDurationMsAlwaysPositive:
 
     def test_log_duration_ms_non_negative(self) -> None:
         from aos.graph import log_node
+
         config = _make_config()
         state = _make_state()
         with patch("aos.graph.get_config", return_value=config):
@@ -620,6 +647,7 @@ class TestDurationMsAlwaysPositive:
 
     def test_loop_control_duration_ms_non_negative(self) -> None:
         from aos.graph import loop_control_node
+
         state = _make_state(max_iterations=1)
         result = loop_control_node(state)
         assert result["step_results"][0]["duration_ms"] >= 0
@@ -635,11 +663,13 @@ class TestDurationMsAlwaysPositive:
 # 9. Multiple executions produce distinct duration_ms values
 # ===========================================================================
 
+
 class TestDistinctDurationMs:
     """Multiple node executions produce different duration_ms values."""
 
     def test_multiple_execute_node_calls_differ(self) -> None:
         from aos.graph import execute_node
+
         config = _make_config()
         durations: list[int] = []
         for _ in range(5):
@@ -652,6 +682,7 @@ class TestDistinctDurationMs:
 
     def test_multiple_log_node_calls_differ(self) -> None:
         from aos.graph import log_node
+
         config = _make_config()
         durations: list[int] = []
         for _ in range(5):
@@ -666,6 +697,7 @@ class TestDistinctDurationMs:
         in step_results. The 'continue' path overwrites step_results via
         _reset_iteration_state, so we only test the complete path."""
         from aos.graph import loop_control_node
+
         durations: list[int] = []
         for _ in range(5):
             state = _make_state(max_iterations=1)
@@ -675,6 +707,7 @@ class TestDistinctDurationMs:
 
     def test_multiple_approval_gates_calls_differ(self) -> None:
         from aos.graph import approval_gates_node
+
         bundle = MagicMock()
         bundle.specialists = {}
         config = _make_config(bundle=bundle)
@@ -690,6 +723,7 @@ class TestDistinctDurationMs:
 # ===========================================================================
 # 10. Tracer factory and global instance management
 # ===========================================================================
+
 
 class TestTracerFactory:
     """get_tracer / set_tracer / reset_tracer work correctly."""
@@ -722,6 +756,7 @@ class TestTracerFactory:
 
     def test_tracing_disabled_returns_null(self) -> None:
         import os
+
         os.environ["AOS_TRACING"] = "disabled"
         try:
             reset_tracer()
@@ -735,6 +770,7 @@ class TestTracerFactory:
 # ===========================================================================
 # 11. NodeEvent dataclass
 # ===========================================================================
+
 
 class TestNodeEvent:
     """NodeEvent dataclass is constructed correctly."""

@@ -10,6 +10,7 @@ Implements the 5-phase sales cycle:
 Follows the same patterns as the Executive Harness (graph.py)
 but with sales-specific nodes and routing.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,9 +32,11 @@ from aos.tools import ToolGateway
 # State
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SalesCycleState:
     """Mutable state flowing through the sales graph."""
+
     # Identity
     cycle_id: str = ""
     harness_id: str = "HAR-SAL-001"
@@ -85,6 +88,7 @@ class SalesCycleState:
 # Node: QUALIFY
 # ---------------------------------------------------------------------------
 
+
 async def qualify_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
     """Phase 1: Qualify incoming lead.
 
@@ -102,8 +106,8 @@ async def qualify_node(state: SalesCycleState, config: Any = None) -> SalesCycle
 TASK: Qualify the following lead and provide a score.
 
 LEAD INFORMATION:
-- Name: {state.lead_name or 'Unknown lead'}
-- ID: {state.lead_id or 'Pending'}
+- Name: {state.lead_name or "Unknown lead"}
+- ID: {state.lead_id or "Pending"}
 
 ICP CRITERIA (Bangladesh RMG Rooftop Solar):
 1. Industry: Bangladesh RMG/garment manufacturing
@@ -152,13 +156,15 @@ RESPONSE FORMAT (JSON):
         state.current_phase = "disqualified"
         state.deal_outcome = "lost"
 
-    state.pipeline_actions.append({
-        "phase": "qualify",
-        "action": "lead_scored",
-        "score": state.lead_score,
-        "icp_match": state.icp_match,
-        "timestamp": time.time(),
-    })
+    state.pipeline_actions.append(
+        {
+            "phase": "qualify",
+            "action": "lead_scored",
+            "score": state.lead_score,
+            "icp_match": state.icp_match,
+            "timestamp": time.time(),
+        }
+    )
 
     return state
 
@@ -166,6 +172,7 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 # Node: OUTREACH
 # ---------------------------------------------------------------------------
+
 
 async def outreach_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
     """Phase 2: Execute outreach to qualified lead.
@@ -219,12 +226,14 @@ RESPONSE FORMAT (JSON):
         }
 
     state.current_phase = "propose"
-    state.pipeline_actions.append({
-        "phase": "outreach",
-        "action": "outreach_sent",
-        "channel": state.outreach_channel,
-        "timestamp": time.time(),
-    })
+    state.pipeline_actions.append(
+        {
+            "phase": "outreach",
+            "action": "outreach_sent",
+            "channel": state.outreach_channel,
+            "timestamp": time.time(),
+        }
+    )
 
     return state
 
@@ -232,6 +241,7 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 # Node: PROPOSE
 # ---------------------------------------------------------------------------
+
 
 async def propose_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
     """Phase 3: Generate commercial proposal.
@@ -303,17 +313,21 @@ RESPONSE FORMAT (JSON):
     # Check approval gate
     if state.requires_founder_approval:
         state.current_phase = "approval_pending"
-        state.warnings.append(f"Proposal value BDT {state.proposal_value_bdt:,.0f} exceeds BDT 5M threshold — requires founder approval")
+        state.warnings.append(
+            f"Proposal value BDT {state.proposal_value_bdt:,.0f} exceeds BDT 5M threshold — requires founder approval"
+        )
     else:
         state.current_phase = "negotiate"
 
-    state.pipeline_actions.append({
-        "phase": "propose",
-        "action": "proposal_generated",
-        "value_bdt": state.proposal_value_bdt,
-        "requires_approval": state.requires_founder_approval,
-        "timestamp": time.time(),
-    })
+    state.pipeline_actions.append(
+        {
+            "phase": "propose",
+            "action": "proposal_generated",
+            "value_bdt": state.proposal_value_bdt,
+            "requires_approval": state.requires_founder_approval,
+            "timestamp": time.time(),
+        }
+    )
 
     return state
 
@@ -321,6 +335,7 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 # Node: NEGOTIATE
 # ---------------------------------------------------------------------------
+
 
 async def negotiate_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
     """Phase 4: Handle objections and negotiate terms.
@@ -389,13 +404,15 @@ RESPONSE FORMAT (JSON):
             "negotiation_status": "won",
         }
 
-    state.pipeline_actions.append({
-        "phase": "negotiate",
-        "action": "negotiation_complete",
-        "objections": state.objections,
-        "terms_adjusted": state.terms_adjusted,
-        "timestamp": time.time(),
-    })
+    state.pipeline_actions.append(
+        {
+            "phase": "negotiate",
+            "action": "negotiation_complete",
+            "objections": state.objections,
+            "terms_adjusted": state.terms_adjusted,
+            "timestamp": time.time(),
+        }
+    )
 
     return state
 
@@ -403,6 +420,7 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 # Node: CLOSE
 # ---------------------------------------------------------------------------
+
 
 async def close_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
     """Phase 5: Close the deal.
@@ -414,22 +432,26 @@ async def close_node(state: SalesCycleState, config: Any = None) -> SalesCycleSt
     state.deal_outcome = "won"
     state.current_phase = "closed"
 
-    state.pipeline_actions.append({
-        "phase": "close",
-        "action": "deal_closed",
-        "outcome": state.deal_outcome,
-        "value_bdt": state.proposal_value_bdt,
-        "timestamp": time.time(),
-    })
+    state.pipeline_actions.append(
+        {
+            "phase": "close",
+            "action": "deal_closed",
+            "outcome": state.deal_outcome,
+            "value_bdt": state.proposal_value_bdt,
+            "timestamp": time.time(),
+        }
+    )
 
-    state.artifacts.append({
-        "type": "closed_deal",
-        "lead_id": state.lead_id,
-        "lead_name": state.lead_name,
-        "value_bdt": state.proposal_value_bdt,
-        "outcome": state.deal_outcome,
-        "pipeline_actions": state.pipeline_actions,
-    })
+    state.artifacts.append(
+        {
+            "type": "closed_deal",
+            "lead_id": state.lead_id,
+            "lead_name": state.lead_name,
+            "value_bdt": state.proposal_value_bdt,
+            "outcome": state.deal_outcome,
+            "pipeline_actions": state.pipeline_actions,
+        }
+    )
 
     return state
 
@@ -437,6 +459,7 @@ async def close_node(state: SalesCycleState, config: Any = None) -> SalesCycleSt
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_sales_graph(
     bundle: HarnessBundle,
@@ -513,6 +536,7 @@ def build_sales_graph(
 # Convenience: run sales cycle via graph
 # ---------------------------------------------------------------------------
 
+
 async def run_sales_cycle(
     bundle: HarnessBundle,
     lead_name: str = "",
@@ -556,13 +580,13 @@ async def run_sales_cycle(
         result = raw
 
     if verbose:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"SALES CYCLE COMPLETE: {result.cycle_id}")
         print(f"Lead: {result.lead_name} (Score: {result.lead_score})")
         print(f"Outcome: {result.deal_outcome}")
         print(f"Phases: {list(result.phase_results.keys())}")
         print(f"Errors: {result.errors}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     return result
 
@@ -590,13 +614,16 @@ if __name__ == "__main__":
     bundle = next(iter(registry.harnesses.values()))
 
     import asyncio
-    result = asyncio.run(run_sales_cycle(
-        bundle=bundle,
-        lead_name=args.lead_name,
-        lead_id=args.lead_id,
-        dry_run=args.dry_run,
-        verbose=args.verbose,
-    ))
+
+    result = asyncio.run(
+        run_sales_cycle(
+            bundle=bundle,
+            lead_name=args.lead_name,
+            lead_id=args.lead_id,
+            dry_run=args.dry_run,
+            verbose=args.verbose,
+        )
+    )
 
     # Output summary
     summary = {

@@ -157,7 +157,9 @@ class RegressionDetector:
 
         # 5. total_tokens increased by >50% → MEDIUM
         if baseline.total_tokens > 0:
-            token_ratio = (current.total_tokens - baseline.total_tokens) / baseline.total_tokens
+            token_ratio = (
+                current.total_tokens - baseline.total_tokens
+            ) / baseline.total_tokens
             if token_ratio > 0.50:
                 regressions.append(
                     Regression(

@@ -23,6 +23,7 @@ EXECUTIVE_HARNESS_DIR = HARNESS_DIR / "executive"
 # mock_llm_client
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_llm_client() -> MagicMock:
     """Mock LLM client that returns a successful completion by default."""
@@ -40,6 +41,7 @@ def mock_llm_client() -> MagicMock:
 # test_harness_dir
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def test_harness_dir() -> Path:
     """Path to the executive harness bundle (canonical test fixture)."""
@@ -52,6 +54,7 @@ def test_harness_dir() -> Path:
 # test_registry
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def test_registry() -> Registry:
     """Minimal registry loaded from the executive harness."""
@@ -63,6 +66,7 @@ def test_registry() -> Registry:
 # ---------------------------------------------------------------------------
 # mock_ws_client
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_ws_client() -> MagicMock:

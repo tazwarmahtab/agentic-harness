@@ -5,17 +5,24 @@ from pathlib import Path
 import pytest
 
 from aos.loader import (
-    load_harness, load_agent, load_memory, load_tool_registry,
-    load_evaluation, load_policy_collection, load_sop,
+    load_harness,
+    load_agent,
+    load_memory,
+    load_tool_registry,
+    load_evaluation,
+    load_policy_collection,
+    load_sop,
 )
 
 HARNESS_DIR = Path(__file__).resolve().parent.parent / "aos" / "harnesses" / "legal"
+
 
 @pytest.fixture
 def harness_dir():
     if not HARNESS_DIR.exists():
         pytest.skip("Legal harness directory not found")
     return HARNESS_DIR
+
 
 class TestLegalManifests:
     def test_harness_loads(self, harness_dir):
@@ -37,6 +44,7 @@ class TestLegalManifests:
     def test_ppa_specialist_loads(self, harness_dir):
         a = load_agent(harness_dir / "specialists" / "ppa-specialist.yml")
         assert "PPA" in a.id
+
 
 class TestLegalComponents:
     def test_memory_loads(self, harness_dir):

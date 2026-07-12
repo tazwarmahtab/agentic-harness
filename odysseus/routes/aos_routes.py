@@ -193,25 +193,31 @@ async def ws_harness_proxy(
 
     except websockets.exceptions.InvalidURI:
         logger.error("Invalid WS target URL: %s", target_url)
-        await websocket.send_json({
-            "event": "error",
-            "message": "Invalid AOS engine URL",
-        })
+        await websocket.send_json(
+            {
+                "event": "error",
+                "message": "Invalid AOS engine URL",
+            }
+        )
         await websocket.close(code=1011)
     except websockets.exceptions.ConnectionClosedError:
         logger.error("Could not connect to AOS engine WS at %s", target_url)
-        await websocket.send_json({
-            "event": "error",
-            "message": "AOS engine unavailable",
-        })
+        await websocket.send_json(
+            {
+                "event": "error",
+                "message": "AOS engine unavailable",
+            }
+        )
         await websocket.close(code=1011)
     except Exception as exc:
         logger.exception("WS proxy error")
         try:
-            await websocket.send_json({
-                "event": "error",
-                "message": str(exc),
-            })
+            await websocket.send_json(
+                {
+                    "event": "error",
+                    "message": str(exc),
+                }
+            )
             await websocket.close(code=1011)
         except Exception:
             pass  # WebSocket may already be closed

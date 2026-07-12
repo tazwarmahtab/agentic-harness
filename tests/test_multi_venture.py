@@ -107,6 +107,7 @@ class TestCLIMultiVenture:
     def test_cli_has_ventures_command(self) -> None:
         """CLI should have a 'ventures' subcommand."""
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "ventures"],
             capture_output=True,
@@ -119,6 +120,7 @@ class TestCLIMultiVenture:
     def test_cli_run_with_venture_flag(self) -> None:
         """CLI should accept --venture flag."""
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
@@ -130,13 +132,26 @@ class TestCLIMultiVenture:
     def test_cli_run_with_unknown_venture_fails(self) -> None:
         """CLI should fail gracefully with unknown venture."""
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "run", "--venture", "nonexistent", "--dry-run"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "run",
+                "--venture",
+                "nonexistent",
+                "--dry-run",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
         )
-        assert result.returncode != 0 or "not found" in result.stderr.lower() or "error" in result.stderr.lower()
+        assert (
+            result.returncode != 0
+            or "not found" in result.stderr.lower()
+            or "error" in result.stderr.lower()
+        )
 
 
 # ---------------------------------------------------------------------------

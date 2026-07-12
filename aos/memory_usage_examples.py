@@ -15,6 +15,7 @@ from aos.memory import MemoryStore, ProceduralMemory
 # Example 1: Procedural Memory — Skills and SOPs
 # =============================================================================
 
+
 def example_procedural_memory():
     """Load and retrieve procedural memory (skills/SOPs)."""
 
@@ -63,6 +64,7 @@ def example_procedural_memory():
 # Example 2: Memory Consolidation — Episodic to Semantic
 # =============================================================================
 
+
 def example_memory_consolidation():
     """Consolidate episodic memory into semantic memory."""
 
@@ -99,24 +101,33 @@ def example_memory_consolidation():
 # Example 3: Dual Retrieval Strategy — RAG + SQL
 # =============================================================================
 
+
 def example_dual_retrieval():
     """Demonstrate hybrid retrieval: RAG for semantic, SQL for episodic."""
 
     store = MemoryStore()
 
     # Seed semantic memory (facts, patterns)
-    store.seed_from_dict("semantic", "coding_standards", {
-        "key": "error_handling",
-        "value": "Always use explicit error handling, never swallow exceptions",
-        "classification": "internal",
-    })
+    store.seed_from_dict(
+        "semantic",
+        "coding_standards",
+        {
+            "key": "error_handling",
+            "value": "Always use explicit error handling, never swallow exceptions",
+            "classification": "internal",
+        },
+    )
 
     # Seed episodic memory (time-series events)
-    store.seed_from_dict("episodic", "deploy_events", [
-        {"content": "2026-07-01T10:00:00: Deployed v1.2.0 to production"},
-        {"content": "2026-07-01T14:30:00: Rollback due to memory leak"},
-        {"content": "2026-07-02T09:00:00: Fixed memory leak, deployed v1.2.1"},
-    ])
+    store.seed_from_dict(
+        "episodic",
+        "deploy_events",
+        [
+            {"content": "2026-07-01T10:00:00: Deployed v1.2.0 to production"},
+            {"content": "2026-07-01T14:30:00: Rollback due to memory leak"},
+            {"content": "2026-07-02T09:00:00: Fixed memory leak, deployed v1.2.1"},
+        ],
+    )
 
     # Hybrid retrieval: semantic search + time-series query
     results = store.retrieve_hybrid(
@@ -148,6 +159,7 @@ def example_dual_retrieval():
 # Example 4: Memory Health Metrics
 # =============================================================================
 
+
 def example_memory_health():
     """Get memory health metrics and diagnostics."""
 
@@ -172,7 +184,7 @@ def example_memory_health():
     print(f"  Consolidation needed: {metrics['consolidation_needed']}")
     print(f"  Last consolidation: {metrics['last_consolidation']}")
 
-    for layer, stats in metrics['layers'].items():
+    for layer, stats in metrics["layers"].items():
         print(f"\n  {layer.upper()}:")
         print(f"    Domains: {stats['domains']}")
         print(f"    Active entries: {stats['active_entries']}")
@@ -186,6 +198,7 @@ def example_memory_health():
 # =============================================================================
 # Example 5: Complete Workflow
 # =============================================================================
+
 
 def example_complete_workflow():
     """Complete workflow: procedural + consolidation + hybrid retrieval."""

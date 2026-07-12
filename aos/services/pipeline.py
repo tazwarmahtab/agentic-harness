@@ -1,4 +1,5 @@
 """Pipeline service — status and control endpoints."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Any
 @dataclass(frozen=True)
 class PipelineStatus:
     """Pipeline execution status."""
+
     active: bool
     current_step: str | None
     progress: float  # 0.0 to 1.0

@@ -7,6 +7,7 @@ Entities tracked:
 
 Every entity has: id, venture_id, created_at, created_by, status, version.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -17,24 +18,24 @@ from typing import Any
 
 
 class EntityType(str, Enum):
-    VENTURE  = "venture"
+    VENTURE = "venture"
     CUSTOMER = "customer"
-    PROJECT  = "project"
+    PROJECT = "project"
     PROPOSAL = "proposal"
     CONTRACT = "contract"
-    INVOICE  = "invoice"
-    MEETING  = "meeting"
+    INVOICE = "invoice"
+    MEETING = "meeting"
     DECISION = "decision"
-    BLOCKER  = "blocker"
-    TASK     = "task"
-    HANDOFF  = "handoff"
-    HARNESS  = "harness"
-    AGENT    = "agent"
-    MEMORY   = "memory"
+    BLOCKER = "blocker"
+    TASK = "task"
+    HANDOFF = "handoff"
+    HARNESS = "harness"
+    AGENT = "agent"
+    MEMORY = "memory"
     WORKFLOW = "workflow"
     APPROVAL = "approval"
     ARTIFACT = "artifact"
-    ALERT    = "alert"
+    ALERT = "alert"
 
 
 @dataclass
@@ -89,8 +90,11 @@ class EntityIndex:
         return self._store.get(entity_id)
 
     def list_by_type(self, entity_type: EntityType) -> list[Entity]:
-        return [self._store[eid] for eid in self._by_type.get(entity_type, [])
-                if eid in self._store]
+        return [
+            self._store[eid]
+            for eid in self._by_type.get(entity_type, [])
+            if eid in self._store
+        ]
 
     def find(self, name: str) -> list[Entity]:
         q = name.lower()

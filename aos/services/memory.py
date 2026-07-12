@@ -1,4 +1,5 @@
 """Memory service — memory store summaries."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Any
 @dataclass(frozen=True)
 class MemorySummary:
     """Memory store summary."""
+
     total_domains: int
     total_entries: int
     domains: list[dict[str, Any]]

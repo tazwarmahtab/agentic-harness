@@ -138,7 +138,7 @@ class TestDashboardAggregate:
         response = client.get("/api/dashboard")
         assert response.status_code == 200
         body = response.json()
-        
+
         # Check all required fields
         assert "harnesses" in body
         assert "tests" in body
@@ -149,7 +149,7 @@ class TestDashboardAggregate:
         assert "approval_count" in body
         assert "ws_connections" in body
         assert "health_score" in body
-        
+
         # Check types
         assert isinstance(body["harnesses"], int)
         assert isinstance(body["tests"], int)
@@ -160,12 +160,12 @@ class TestDashboardAggregate:
         assert isinstance(body["approval_count"], int)
         assert isinstance(body["ws_connections"], dict)
         assert isinstance(body["health_score"], float)
-        
+
         # Check pipeline structure
         pipeline = body["pipeline"]
         assert "active" in pipeline
         assert "progress" in pipeline
-        
+
         # Check ws_connections structure
         ws = body["ws_connections"]
         assert "active_connections" in ws

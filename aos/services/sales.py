@@ -1,4 +1,5 @@
 """Sales service — sales graph status."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from typing import Any
 @dataclass(frozen=True)
 class SalesStatus:
     """Sales graph status."""
+
     total_customers: int
     active_deals: int
     pipeline_value: float

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 # Embedding provider — abstract + implementations
 # ---------------------------------------------------------------------------
 
+
 class EmbeddingProvider(ABC):
     """Abstract interface for text → vector embedding."""
 
@@ -141,6 +142,7 @@ class TfidfEmbeddingProvider(EmbeddingProvider):
     def _tokenize(text: str) -> list[str]:
         """Simple whitespace + lowercase tokenization."""
         import re
+
         return re.findall(r"[a-z0-9]+", text.lower())
 
 
@@ -161,6 +163,7 @@ class NumpyEmbeddingProvider(EmbeddingProvider):
         """Attempt to load sentence-transformers model."""
         try:
             from sentence_transformers import SentenceTransformer
+
             self._model = SentenceTransformer(self._model_name)
             # Get actual dimensions from model
             test_emb = self._model.encode(["test"])
@@ -196,9 +199,11 @@ class NumpyEmbeddingProvider(EmbeddingProvider):
 # Vector entry
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class VectorEntry:
     """Immutable vector store entry."""
+
     entry_id: str
     content: str
     embedding: list[float]
@@ -211,9 +216,11 @@ class VectorEntry:
 # Search result
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class SearchResult:
     """Result from vector similarity search."""
+
     entry: VectorEntry
     score: float
 
@@ -237,6 +244,7 @@ class SearchResult:
 # ---------------------------------------------------------------------------
 # VectorIndex
 # ---------------------------------------------------------------------------
+
 
 class VectorIndex:
     """In-memory vector index with cosine similarity search.
@@ -408,6 +416,7 @@ class VectorIndex:
 # Factory: build from MemoryStore
 # ---------------------------------------------------------------------------
 
+
 def build_vector_index_from_memory(
     store: MemoryStore,
     provider: EmbeddingProvider,
@@ -449,12 +458,14 @@ def build_vector_index_from_memory(
                 if not searchable_text.strip():
                     continue
 
-                all_entries.append((
-                    entry.id,
-                    searchable_text,
-                    layer_name,
-                    {"domain": domain, "key": entry.key, "value": entry.value},
-                ))
+                all_entries.append(
+                    (
+                        entry.id,
+                        searchable_text,
+                        layer_name,
+                        {"domain": domain, "key": entry.key, "value": entry.value},
+                    )
+                )
 
     # Fit provider on corpus for TF-IDF
     if all_entries:
@@ -477,6 +488,7 @@ def build_vector_index_from_memory(
 # ---------------------------------------------------------------------------
 # Cosine similarity
 # ---------------------------------------------------------------------------
+
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
     """Compute cosine similarity between two vectors."""

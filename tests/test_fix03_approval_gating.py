@@ -7,6 +7,7 @@ permanently.
 The fix: resolved_approval_ids tracks which items were approved/rejected.
 should_execute() only blocks on genuinely pending items.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -17,6 +18,7 @@ from aos.approval_queue import ApprovalQueue, ApprovalDecision
 # ---------------------------------------------------------------------------
 # should_execute — the conditional edge
 # ---------------------------------------------------------------------------
+
 
 class TestShouldExecute:
     """Tests for the should_execute conditional routing function."""
@@ -118,6 +120,7 @@ class TestShouldExecute:
 # approval_gates_node — cross-references against ApprovalQueue
 # ---------------------------------------------------------------------------
 
+
 class TestApprovalGatesNode:
     """Tests for approval_gates_node resolving items against ApprovalQueue.
 
@@ -127,8 +130,10 @@ class TestApprovalGatesNode:
 
     def _make_config(self, approval_queue: ApprovalQueue | None = None) -> dict:
         """Build a fake LangGraph config with a mock bundle and optional queue."""
+
         class _FakeBundle:
             specialists = {}
+
         cfg = {"configurable": {"bundle": _FakeBundle()}}
         if approval_queue:
             cfg["configurable"]["approval_queue"] = approval_queue

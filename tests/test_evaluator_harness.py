@@ -1,4 +1,5 @@
 """Tests for baseline evaluation harness."""
+
 from __future__ import annotations
 
 from aos.constants import NETSO_FINANCIAL
@@ -33,8 +34,16 @@ class TestBaselineEvaluator:
 
     def test_report_aggregates(self) -> None:
         cases = [
-            {"agent_id": "AGT-EXEC-CFO", "output": {"savings_pct": 23.0, "rate_used": 12.98}, "constants": NETSO_FINANCIAL},
-            {"agent_id": "AGT-EXEC-CFO", "output": {"savings_pct": 14.0, "rate_used": 14.81}, "constants": NETSO_FINANCIAL},
+            {
+                "agent_id": "AGT-EXEC-CFO",
+                "output": {"savings_pct": 23.0, "rate_used": 12.98},
+                "constants": NETSO_FINANCIAL,
+            },
+            {
+                "agent_id": "AGT-EXEC-CFO",
+                "output": {"savings_pct": 14.0, "rate_used": 14.81},
+                "constants": NETSO_FINANCIAL,
+            },
         ]
         results = [self.ev.evaluate(**c) for c in cases]
         report = self.ev.report(results)
@@ -53,7 +62,12 @@ class TestBaselineEvaluator:
     def test_report_no_financial_constants(self) -> None:
         """Report marks financial_accuracy_rate as None for planning ventures."""
         results = [
-            EvalResult(harness_id="eval", cycle_id="eval-1", status="pass", financial_accuracy=None),
+            EvalResult(
+                harness_id="eval",
+                cycle_id="eval-1",
+                status="pass",
+                financial_accuracy=None,
+            ),
         ]
         report = self.ev.report(results, has_financial_constants=False)
         assert report["financial_accuracy_rate"] is None

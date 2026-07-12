@@ -21,6 +21,7 @@ class TestTokenAuth:
             # Re-import to pick up the env var
             import importlib
             import aos.api
+
             importlib.reload(aos.api)
             assert aos.api.AOS_API_TOKEN == "test-secret-123"
             # Restore
@@ -34,6 +35,7 @@ class TestTokenAuth:
             os.environ.pop("TAZOS_API_TOKEN", None)
             import importlib
             import aos.api
+
             importlib.reload(aos.api)
             assert aos.api.AOS_API_TOKEN == ""
             # Restore
@@ -44,6 +46,7 @@ class TestTokenAuth:
         with patch.dict(os.environ, {"AOS_API_TOKEN": "correct-token"}):
             import importlib
             import aos.api
+
             importlib.reload(aos.api)
 
             mock_ws = MagicMock()
@@ -58,9 +61,7 @@ class TestTokenAuth:
 
             loop = asyncio.new_event_loop()
             try:
-                loop.run_until_complete(
-                    harness_ws(mock_ws, "executive")
-                )
+                loop.run_until_complete(harness_ws(mock_ws, "executive"))
             finally:
                 loop.close()
 
@@ -78,6 +79,7 @@ class TestTokenAuth:
         with patch.dict(os.environ, {"AOS_API_TOKEN": "correct-token"}):
             import importlib
             import aos.api
+
             importlib.reload(aos.api)
 
             mock_ws = MagicMock()
@@ -94,9 +96,7 @@ class TestTokenAuth:
             loop = asyncio.new_event_loop()
             try:
                 # Should NOT hit the auth rejection — will fail later on bundle resolution
-                loop.run_until_complete(
-                    harness_ws(mock_ws, "nonexistent-harness")
-                )
+                loop.run_until_complete(harness_ws(mock_ws, "nonexistent-harness"))
             except Exception:
                 pass
             finally:
@@ -135,10 +135,12 @@ class TestConnectionLimiterWiring:
             loop.close()
 
         mock_limiter.try_acquire.assert_called_once()
-        mock_ws.send_json.assert_called_once_with({
-            "event": "error",
-            "message": "Connection limit reached. Try again later.",
-        })
+        mock_ws.send_json.assert_called_once_with(
+            {
+                "event": "error",
+                "message": "Connection limit reached. Try again later.",
+            }
+        )
         mock_ws.close.assert_called_once_with(code=4029)
 
     @patch("aos.api.AOS_API_TOKEN", "")
@@ -226,12 +228,14 @@ class TestDashboardEndpoints:
         assert body["harnesses"] > 0
         assert isinstance(body["tests"], int)
 
+
 class TestResolveBundleValidation:
     """Tests for harness name validation in _resolve_bundle."""
 
     def test_rejects_path_traversal(self) -> None:
         """_resolve_bundle should reject harness names with path traversal."""
         from aos.api import _resolve_bundle
+
         bundle, venture_id, harness_id = _resolve_bundle("../../etc/passwd")
         assert bundle is None
         assert harness_id == "../../etc/passwd"
@@ -239,18 +243,21 @@ class TestResolveBundleValidation:
     def test_rejects_absolute_path(self) -> None:
         """_resolve_bundle should reject absolute path harness names."""
         from aos.api import _resolve_bundle
+
         bundle, venture_id, harness_id = _resolve_bundle("/etc/passwd")
         assert bundle is None
 
     def test_rejects_special_characters(self) -> None:
         """_resolve_bundle should reject names with shell metacharacters."""
         from aos.api import _resolve_bundle
+
         bundle, venture_id, harness_id = _resolve_bundle("exec; rm -rf /")
         assert bundle is None
 
     def test_allows_valid_name(self) -> None:
         """_resolve_bundle should accept valid harness names."""
         from aos.api import _resolve_bundle
+
         # "nonexistent" is a valid name format (just doesn't exist on disk)
         bundle, venture_id, harness_id = _resolve_bundle("nonexistent")
         assert bundle is None  # not found, but name was valid

@@ -5,17 +5,24 @@ from pathlib import Path
 import pytest
 
 from aos.loader import (
-    load_harness, load_agent, load_memory, load_tool_registry,
-    load_evaluation, load_policy_collection, load_sop,
+    load_harness,
+    load_agent,
+    load_memory,
+    load_tool_registry,
+    load_evaluation,
+    load_policy_collection,
+    load_sop,
 )
 
 HARNESS_DIR = Path(__file__).resolve().parent.parent / "aos" / "harnesses" / "marketing"
+
 
 @pytest.fixture
 def harness_dir():
     if not HARNESS_DIR.exists():
         pytest.skip("Marketing harness directory not found")
     return HARNESS_DIR
+
 
 class TestMarketingManifests:
     def test_harness_loads(self, harness_dir):
@@ -41,6 +48,7 @@ class TestMarketingManifests:
     def test_website_manager_loads(self, harness_dir):
         a = load_agent(harness_dir / "specialists" / "website-manager.yml")
         assert "WEB" in a.id
+
 
 class TestMarketingComponents:
     def test_memory_loads(self, harness_dir):

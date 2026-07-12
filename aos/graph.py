@@ -56,15 +56,16 @@ logger = logging.getLogger("aos.graph")
 # Constants — extracted from inline magic numbers
 # ---------------------------------------------------------------------------
 
-MAX_CONCURRENCY = 8               # asyncio.Semaphore cap + ThreadPoolExecutor default
+MAX_CONCURRENCY = 8  # asyncio.Semaphore cap + ThreadPoolExecutor default
 MEMORY_CONTEXT_CHAR_LIMIT = 3000  # char budget for vector memory context
 ARTIFACT_READ_LIMIT_CHARS = 2000  # max chars read from venture artifact files
-CONSENSUS_WEIGHT_THRESHOLD = 0.67 # voting strategy: fraction of weight needed
+CONSENSUS_WEIGHT_THRESHOLD = 0.67  # voting strategy: fraction of weight needed
 
 
 # ---------------------------------------------------------------------------
 # Graph state — TypedDict with reducers for accumulating fields
 # ---------------------------------------------------------------------------
+
 
 class CycleState(TypedDict, total=False):
     """LangGraph state for one execution cycle.
@@ -88,7 +89,7 @@ class CycleState(TypedDict, total=False):
     cycle_id: str
 
     # --- Input data ---
-    venture_artifacts: dict[str, Any]   # key → str(Path)
+    venture_artifacts: dict[str, Any]  # key → str(Path)
     inputs: dict[str, Any]
 
     # --- Accumulated results (reducer: list concat) ---
@@ -120,6 +121,7 @@ class CycleState(TypedDict, total=False):
 # Infrastructure config — passed via RunnableConfig.configurable
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class GraphConfig:
     """Infrastructure objects that nodes need but don't belong in state."""
@@ -135,6 +137,7 @@ class GraphConfig:
 # ---------------------------------------------------------------------------
 # Loop Engineering — Guardrails and Context Management
 # ---------------------------------------------------------------------------
+
 
 def _check_completion_criteria(
     state: CycleState,
@@ -211,7 +214,9 @@ def _summarize_iteration(state: CycleState) -> dict[str, Any]:
     error_count = len(errors)
     resolved_ids = set(state.get("resolved_approval_ids", []))
     approval_queue = state.get("approval_queue", [])
-    approval_count = sum(1 for a in approval_queue if a.get("id", "") not in resolved_ids)
+    approval_count = sum(
+        1 for a in approval_queue if a.get("id", "") not in resolved_ids
+    )
     handoff_count = len(state.get("handoffs", []))
 
     # Compress outputs — keep only essential data
@@ -231,7 +236,8 @@ def _summarize_iteration(state: CycleState) -> dict[str, Any]:
         "key_outputs": {
             "tasks_planned": len(prioritize_summary.get("tasks", [])),
             "agents_assigned": len(delegate_summary.get("assignments", [])),
-            "specialists_run": specialists_summary.get("solo_run", 0) + specialists_summary.get("teams_run", 0),
+            "specialists_run": specialists_summary.get("solo_run", 0)
+            + specialists_summary.get("teams_run", 0),
         },
         "errors_summary": errors[-5:] if errors else [],  # Keep last 5 errors only
     }
@@ -328,9 +334,7 @@ async def _gather_items(
         async with sem:
             return await asyncio.to_thread(fn, item)
 
-    return list(
-        await asyncio.gather(*[_bounded(item) for item in items])
-    )
+    return list(await asyncio.gather(*[_bounded(item) for item in items]))
 
 
 def _fallback_threadpool(
@@ -353,6 +357,7 @@ def _fallback_threadpool(
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_json(text: str) -> dict[str, Any] | None:
     """Extract the first JSON object from text that may contain markdown."""
@@ -423,14 +428,14 @@ def _fallback_routing(
         task_type = "general"
         sla = "24h"
         if routing_table:
-            for entry in (routing_table.executive_internal or []):
+            for entry in routing_table.executive_internal or []:
                 if entry.route_to == agent_id:
                     task_type = entry.task
                     sla = entry.sla
                     break
             # Also check cross-harness routes
             if task_type == "general":
-                for entry in (routing_table.cross_harness or []):
+                for entry in routing_table.cross_harness or []:
                     if entry.route_to == agent_id:
                         task_type = entry.task
                         sla = entry.sla
@@ -439,13 +444,15 @@ def _fallback_routing(
         # Extract task description for this agent (look for nearby text)
         task_text = text[:500]  # Default to full text
 
-        assignments.append({
-            "agent_id": agent_id,
-            "task": task_text,
-            "input": "",
-            "priority": "P1",
-            "sla": sla,
-        })
+        assignments.append(
+            {
+                "agent_id": agent_id,
+                "task": task_text,
+                "input": "",
+                "priority": "P1",
+                "sla": sla,
+            }
+        )
 
     return {
         "assignments": assignments,
@@ -511,7 +518,9 @@ def _run_agent_node(
                 total = 0
                 for entry in vector_results:
                     if entry.key and entry.value:
-                        line = f"[{entry.layer}/{entry.domain}] {entry.key}: {entry.value}"
+                        line = (
+                            f"[{entry.layer}/{entry.domain}] {entry.key}: {entry.value}"
+                        )
                     elif entry.content:
                         line = f"[{entry.layer}/{entry.domain}] {entry.content[:200]}"
                     else:
@@ -519,19 +528,35 @@ def _run_agent_node(
                     if total + len(line) < MEMORY_CONTEXT_CHAR_LIMIT:
                         lines.append(line)
                         total += len(line)
-                memory_context = f"Memory ({len(lines)} entries, {total} chars):\n" + "\n".join(lines) if lines else None
+                memory_context = (
+                    f"Memory ({len(lines)} entries, {total} chars):\n"
+                    + "\n".join(lines)
+                    if lines
+                    else None
+                )
             else:
                 memory_context = memory_store.retrieve_for_agent(agent.id, step_name)
         except AttributeError:
             memory_context = memory_store.retrieve_for_agent(agent.id, step_name)
 
     # Build prompts via context builder (full contract serialization)
-    financial = venture_constants if (agent.financial_rules and venture_constants) else (NETSO_FINANCIAL if agent.financial_rules else None)
+    financial = (
+        venture_constants
+        if (agent.financial_rules and venture_constants)
+        else (NETSO_FINANCIAL if agent.financial_rules else None)
+    )
     system_prompt = build_prompt(
-        agent, netso_financial=financial, memory_context=memory_context,
+        agent,
+        netso_financial=financial,
+        memory_context=memory_context,
     )
     task_prompt = _build_task_prompt(
-        step_name, agent, cycle_id, venture_id, inputs, approval_count,
+        step_name,
+        agent,
+        cycle_id,
+        venture_id,
+        inputs,
+        approval_count,
     )
 
     # Model resolution
@@ -550,7 +575,9 @@ def _run_agent_node(
         )
 
         extracted = _extract_json(response.content)
-        output: dict[str, Any] = extracted if extracted else {"raw_response": response.content}
+        output: dict[str, Any] = (
+            extracted if extracted else {"raw_response": response.content}
+        )
 
         # Track usage
         if usage_tracker:
@@ -568,7 +595,7 @@ def _run_agent_node(
         result: dict[str, Any] = {
             "step": step_name,
             "agent_id": agent.id,
-        "status": "success" if validation.passed else "error",
+            "status": "success" if validation.passed else "error",
             "output": output,
             "duration_ms": elapsed,
         }
@@ -674,8 +701,7 @@ def _run_team(
         }
 
     task_context = "\n".join(
-        f"- {a.get('agent_id', '?')}: {a.get('task', '')[:200]}"
-        for a in assignments
+        f"- {a.get('agent_id', '?')}: {a.get('task', '')[:200]}" for a in assignments
     )
     shared_context = f"Team: {team.name}\nTask: {task_context}"
 
@@ -689,17 +715,25 @@ def _run_team(
             "team_members": [m.agent_id for m in team.members],
         }
         lead_result = _run_agent_node(
-            lead_agent, bundle, f"{step_name}:team:{team.id}:lead",
-            cycle_id, venture_id, lead_inputs, llm,
-            memory_store=memory_store, usage_tracker=usage_tracker,
+            lead_agent,
+            bundle,
+            f"{step_name}:team:{team.id}:lead",
+            cycle_id,
+            venture_id,
+            lead_inputs,
+            llm,
+            memory_store=memory_store,
+            usage_tracker=usage_tracker,
             venture_constants=venture_constants,
         )
-        team_results.append({
-            "agent_id": team.lead,
-            "role": "lead",
-            "status": lead_result.get("status", "error"),
-            "output": lead_result.get("output", {}),
-        })
+        team_results.append(
+            {
+                "agent_id": team.lead,
+                "role": "lead",
+                "status": lead_result.get("status", "error"),
+                "output": lead_result.get("output", {}),
+            }
+        )
         team_errors.extend(_get_errors(lead_result))
 
         lead_output = lead_result.get("output", {})
@@ -716,20 +750,29 @@ def _run_team(
                 "weight": member.weight,
             }
             member_result = _run_agent_node(
-                member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
-                cycle_id, venture_id, member_inputs, llm,
-                memory_store=memory_store, usage_tracker=usage_tracker,
+                member_agent,
+                bundle,
+                f"{step_name}:team:{team.id}:{member.agent_id}",
+                cycle_id,
+                venture_id,
+                member_inputs,
+                llm,
+                memory_store=memory_store,
+                usage_tracker=usage_tracker,
                 venture_constants=venture_constants,
             )
-            team_results.append({
-                "agent_id": member.agent_id,
-                "role": member.role,
-                "status": member_result.get("status", "error"),
-                "output": member_result.get("output", {}),
-            })
+            team_results.append(
+                {
+                    "agent_id": member.agent_id,
+                    "role": member.role,
+                    "status": member_result.get("status", "error"),
+                    "output": member_result.get("output", {}),
+                }
+            )
             team_errors.extend(_get_errors(member_result))
 
     elif strategy == "parallel":
+
         def _run_member(member: TeamMember) -> tuple[str, dict[str, Any]]:
             member_agent = bundle.specialists.get(member.agent_id)
             if not member_agent:
@@ -743,9 +786,15 @@ def _run_team(
                 "weight": member.weight,
             }
             result = _run_agent_node(
-                member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
-                cycle_id, venture_id, member_inputs, llm,
-                memory_store=memory_store, usage_tracker=usage_tracker,
+                member_agent,
+                bundle,
+                f"{step_name}:team:{team.id}:{member.agent_id}",
+                cycle_id,
+                venture_id,
+                member_inputs,
+                llm,
+                memory_store=memory_store,
+                usage_tracker=usage_tracker,
                 venture_constants=venture_constants,
             )
             return member.agent_id, {
@@ -763,6 +812,7 @@ def _run_team(
             team_results.append({"agent_id": agent_id, **result})
 
     elif strategy == "voting":
+
         def _run_voter(member: TeamMember) -> tuple[str, dict[str, Any], float]:
             member_agent = bundle.specialists.get(member.agent_id)
             if not member_agent:
@@ -774,15 +824,25 @@ def _run_team(
                 "weight": member.weight,
             }
             result = _run_agent_node(
-                member_agent, bundle, f"{step_name}:team:{team.id}:{member.agent_id}",
-                cycle_id, venture_id, member_inputs, llm,
-                memory_store=memory_store, usage_tracker=usage_tracker,
+                member_agent,
+                bundle,
+                f"{step_name}:team:{team.id}:{member.agent_id}",
+                cycle_id,
+                venture_id,
+                member_inputs,
+                llm,
+                memory_store=memory_store,
+                usage_tracker=usage_tracker,
                 venture_constants=venture_constants,
             )
-            return member.agent_id, {
-                "status": result.get("status", "error"),
-                "output": result.get("output", {}),
-            }, member.weight
+            return (
+                member.agent_id,
+                {
+                    "status": result.get("status", "error"),
+                    "output": result.get("output", {}),
+                },
+                member.weight,
+            )
 
         # M3: asyncio.gather for voting strategy
         try:
@@ -799,12 +859,22 @@ def _run_team(
             if result.get("status") == "success":
                 agree_weight += weight
 
-        consensus = agree_weight / total_weight >= CONSENSUS_WEIGHT_THRESHOLD if total_weight > 0 else False
-        team_results.append({
-            "agent_id": "TEAM-CONSENSUS",
-            "status": "success" if consensus else "failed",
-            "output": {"consensus": consensus, "agree_weight": agree_weight, "total_weight": total_weight},
-        })
+        consensus = (
+            agree_weight / total_weight >= CONSENSUS_WEIGHT_THRESHOLD
+            if total_weight > 0
+            else False
+        )
+        team_results.append(
+            {
+                "agent_id": "TEAM-CONSENSUS",
+                "status": "success" if consensus else "failed",
+                "output": {
+                    "consensus": consensus,
+                    "agree_weight": agree_weight,
+                    "total_weight": total_weight,
+                },
+            }
+        )
 
     return {
         "team_id": team.id,
@@ -818,6 +888,7 @@ def _run_team(
 # Graph nodes — one function per cycle step
 # ---------------------------------------------------------------------------
 
+
 def review_node(state: CycleState) -> dict:
     """Step 1: Review all inputs — dashboard, blockers, calendar, email.
 
@@ -826,8 +897,8 @@ def review_node(state: CycleState) -> dict:
     """
     config = get_config()
     cfg = config.get("configurable", {})
-    bundle: HarnessBundle = cfg.get("bundle") # type: ignore
-    llm: LLMClient = cfg.get("llm") # type: ignore
+    bundle: HarnessBundle = cfg.get("bundle")  # type: ignore
+    llm: LLMClient = cfg.get("llm")  # type: ignore
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
@@ -845,7 +916,11 @@ def review_node(state: CycleState) -> dict:
             )
             if result.ok:
                 content = result.output.get("content", "")
-                inputs[key] = content[:ARTIFACT_READ_LIMIT_CHARS] if content else f"(empty: {path_str})"
+                inputs[key] = (
+                    content[:ARTIFACT_READ_LIMIT_CHARS]
+                    if content
+                    else f"(empty: {path_str})"
+                )
             else:
                 inputs[key] = f"(could not read {path_str}: {result.error})"
     else:
@@ -862,7 +937,11 @@ def review_node(state: CycleState) -> dict:
                 )
                 inputs[key] = f"(could not read {path_str}: {exc})"
 
-    coo = bundle.specialists.get("AGT-EXEC-COO") if bundle and bundle.specialists else None
+    coo = (
+        bundle.specialists.get("AGT-EXEC-COO")
+        if bundle and bundle.specialists
+        else None
+    )
     # H4: cross-harness fallback via registry
     if not coo:
         registry: Registry | None = cfg.get("registry")
@@ -870,23 +949,35 @@ def review_node(state: CycleState) -> dict:
             resolved = registry.resolve_agent("AGT-EXEC-COO")
             if resolved:
                 coo, _ = resolved
-                logger.info("review_node: resolved COO via cross-harness registry fallback")
+                logger.info(
+                    "review_node: resolved COO via cross-harness registry fallback"
+                )
     if not coo:
         err = "review: COO specialist not found"
         return {
-            "step_results": _step_result_to_list({
-                "step": "review", "agent_id": None,
-                "status": "error", "error": err,
-                "output": {}, "duration_ms": 0,
-            }),
+            "step_results": _step_result_to_list(
+                {
+                    "step": "review",
+                    "agent_id": None,
+                    "status": "error",
+                    "error": err,
+                    "output": {},
+                    "duration_ms": 0,
+                }
+            ),
             "errors": [err],
         }
 
     result = _run_agent_node(
-        coo, bundle, "review",
-        state["cycle_id"], state["venture_id"],
-        inputs, llm,
-        memory_store=memory_store, usage_tracker=usage_tracker,
+        coo,
+        bundle,
+        "review",
+        state["cycle_id"],
+        state["venture_id"],
+        inputs,
+        llm,
+        memory_store=memory_store,
+        usage_tracker=usage_tracker,
         venture_constants=venture_constants,
     )
 
@@ -903,8 +994,8 @@ def prioritize_node(state: CycleState) -> dict:
     """Step 2: Planner generates priority list from review."""
     config = get_config()
     cfg = config.get("configurable", {})
-    bundle: HarnessBundle = cfg.get("bundle") # type: ignore
-    llm: LLMClient = cfg.get("llm") # type: ignore
+    bundle: HarnessBundle = cfg.get("bundle")  # type: ignore
+    llm: LLMClient = cfg.get("llm")  # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
     venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
@@ -912,11 +1003,16 @@ def prioritize_node(state: CycleState) -> dict:
     if not bundle or not bundle.planner:
         err = "prioritize: Planner not loaded"
         return {
-            "step_results": _step_result_to_list({
-                "step": "prioritize", "agent_id": None,
-                "status": "error", "error": err,
-                "output": {}, "duration_ms": 0,
-            }),
+            "step_results": _step_result_to_list(
+                {
+                    "step": "prioritize",
+                    "agent_id": None,
+                    "status": "error",
+                    "error": err,
+                    "output": {},
+                    "duration_ms": 0,
+                }
+            ),
             "errors": [err],
         }
 
@@ -928,10 +1024,15 @@ def prioritize_node(state: CycleState) -> dict:
     }
 
     result = _run_agent_node(
-        bundle.planner, bundle, "prioritize",
-        state["cycle_id"], state["venture_id"],
-        inputs, llm,
-        memory_store=memory_store, usage_tracker=usage_tracker,
+        bundle.planner,
+        bundle,
+        "prioritize",
+        state["cycle_id"],
+        state["venture_id"],
+        inputs,
+        llm,
+        memory_store=memory_store,
+        usage_tracker=usage_tracker,
         venture_constants=venture_constants,
     )
 
@@ -948,8 +1049,8 @@ def delegate_node(state: CycleState) -> dict:
     """Step 3: Dispatcher routes priorities to specialist agents."""
     config = get_config()
     cfg = config.get("configurable", {})
-    bundle: HarnessBundle = cfg.get("bundle") # type: ignore
-    llm: LLMClient = cfg.get("llm") # type: ignore
+    bundle: HarnessBundle = cfg.get("bundle")  # type: ignore
+    llm: LLMClient = cfg.get("llm")  # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
     venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
@@ -957,11 +1058,16 @@ def delegate_node(state: CycleState) -> dict:
     if not bundle or not bundle.dispatcher:
         err = "delegate: Dispatcher not loaded"
         return {
-            "step_results": _step_result_to_list({
-                "step": "delegate", "agent_id": None,
-                "status": "error", "error": err,
-                "output": {}, "duration_ms": 0,
-            }),
+            "step_results": _step_result_to_list(
+                {
+                    "step": "delegate",
+                    "agent_id": None,
+                    "status": "error",
+                    "error": err,
+                    "output": {},
+                    "duration_ms": 0,
+                }
+            ),
             "errors": [err],
         }
 
@@ -980,17 +1086,23 @@ def delegate_node(state: CycleState) -> dict:
         "priority_list": prioritize_output,
         "routing_table": (
             bundle.dispatcher.routing_table.model_dump()
-            if bundle.dispatcher.routing_table else {}
+            if bundle.dispatcher.routing_table
+            else {}
         ),
         "available_agents": available_agents,
         "available_teams": list(bundle.teams.keys()) if bundle.teams else [],
     }
 
     result = _run_agent_node(
-        bundle.dispatcher, bundle, "delegate",
-        state["cycle_id"], state["venture_id"],
-        inputs, llm,
-        memory_store=memory_store, usage_tracker=usage_tracker,
+        bundle.dispatcher,
+        bundle,
+        "delegate",
+        state["cycle_id"],
+        state["venture_id"],
+        inputs,
+        llm,
+        memory_store=memory_store,
+        usage_tracker=usage_tracker,
         venture_constants=venture_constants,
     )
 
@@ -1001,7 +1113,8 @@ def delegate_node(state: CycleState) -> dict:
         raw = output.get("raw_response", "")
         if raw:
             fallback = _fallback_routing(
-                raw, bundle.dispatcher.routing_table,
+                raw,
+                bundle.dispatcher.routing_table,
                 [a.id for a in bundle.specialists.values()],
             )
             output["assignments"] = fallback["assignments"]
@@ -1010,9 +1123,7 @@ def delegate_node(state: CycleState) -> dict:
 
     # Expand team routes to individual member assignments
     if output.get("assignments") and bundle:
-        output["assignments"] = _expand_team_assignments(
-            output["assignments"], bundle
-        )
+        output["assignments"] = _expand_team_assignments(output["assignments"], bundle)
 
     update: dict[str, Any] = {
         "step_results": _step_result_to_list(result),
@@ -1032,8 +1143,8 @@ def specialists_node(state: CycleState) -> dict:
     """
     config = get_config()
     cfg = config.get("configurable", {})
-    bundle: HarnessBundle = cfg.get("bundle") # type: ignore
-    llm: LLMClient = cfg.get("llm") # type: ignore
+    bundle: HarnessBundle = cfg.get("bundle")  # type: ignore
+    llm: LLMClient = cfg.get("llm")  # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
     venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
@@ -1055,20 +1166,25 @@ def specialists_node(state: CycleState) -> dict:
             in_registry = registry and registry.resolve_agent(agent_id) is not None
             if in_local or in_registry:
                 seen.add(agent_id)
-                assignments.append({
-                    "agent_id": agent_id,
-                    "task": raw[:500],
-                    "input": "",
-                })
+                assignments.append(
+                    {
+                        "agent_id": agent_id,
+                        "task": raw[:500],
+                        "input": "",
+                    }
+                )
 
     if not assignments:
         return {
-            "step_results": _step_result_to_list({
-                "step": "run_specialists", "agent_id": None,
-                "status": "skipped",
-                "output": {"reason": "No structured assignments from dispatcher"},
-                "duration_ms": 0,
-            }),
+            "step_results": _step_result_to_list(
+                {
+                    "step": "run_specialists",
+                    "agent_id": None,
+                    "status": "skipped",
+                    "output": {"reason": "No structured assignments from dispatcher"},
+                    "duration_ms": 0,
+                }
+            ),
             "specialists_output": {"specialist_results": [], "approval_count": 0},
         }
 
@@ -1089,15 +1205,18 @@ def specialists_node(state: CycleState) -> dict:
             ]
             if len(team_members_in_assignments) >= 2:
                 team_assignments = [
-                    a for a in assignments
-                    if (a.get("agent_id") or a.get("route_to")) in {m.agent_id for m in team_members_in_assignments}
+                    a
+                    for a in assignments
+                    if (a.get("agent_id") or a.get("route_to"))
+                    in {m.agent_id for m in team_members_in_assignments}
                 ]
                 teams_to_run.append((team, team_assignments))
                 for m in team_members_in_assignments:
                     team_member_ids.add(m.agent_id)
 
     [
-        a for a in assignments
+        a
+        for a in assignments
         if (a.get("agent_id") or a.get("route_to")) not in team_member_ids
     ]
 
@@ -1109,18 +1228,24 @@ def specialists_node(state: CycleState) -> dict:
 
     for team, team_assignments in teams_to_run:
         team_result = _run_team(
-            team, team_assignments, bundle,
+            team,
+            team_assignments,
+            bundle,
             "specialists",
-            state["cycle_id"], state["venture_id"],
+            state["cycle_id"],
+            state["venture_id"],
             llm,
-            memory_store=memory_store, usage_tracker=usage_tracker,
+            memory_store=memory_store,
+            usage_tracker=usage_tracker,
             venture_constants=venture_constants,
         )
-        specialist_results.append({
-            "agent_id": f"TEAM:{team.id}",
-            "status": team_result.get("status", "error"),
-            "output": team_result,
-        })
+        specialist_results.append(
+            {
+                "agent_id": f"TEAM:{team.id}",
+                "status": team_result.get("status", "error"),
+                "output": team_result,
+            }
+        )
         new_errors.extend(team_result.get("errors", []))
 
         for tr in team_result.get("results", []):
@@ -1135,30 +1260,42 @@ def specialists_node(state: CycleState) -> dict:
     # Prepare solo specialist assignments (H4: cross-harness resolution)
     registry: Registry | None = cfg.get("registry")
 
-    def _prepare(a: dict[str, Any]) -> tuple[str, Agent, HarnessBundle, dict[str, Any]] | None:
+    def _prepare(
+        a: dict[str, Any],
+    ) -> tuple[str, Agent, HarnessBundle, dict[str, Any]] | None:
         agent_id = a.get("agent_id") or a.get("route_to")
         if not agent_id:
             return None
         # Try local bundle first (fast path)
         if bundle and bundle.specialists and agent_id in bundle.specialists:
             agent = bundle.specialists[agent_id]
-            return agent_id, agent, bundle, {
-                "task": a.get("task", ""),
-                "context": a.get("input", "") or delegate_output,
-                "priority": a.get("priority", ""),
-                "sla": a.get("sla", ""),
-            }
+            return (
+                agent_id,
+                agent,
+                bundle,
+                {
+                    "task": a.get("task", ""),
+                    "context": a.get("input", "") or delegate_output,
+                    "priority": a.get("priority", ""),
+                    "sla": a.get("sla", ""),
+                },
+            )
         # Cross-harness resolution via registry
         if registry:
             resolved = registry.resolve_agent(agent_id)
             if resolved:
                 agent, agent_bundle = resolved
-                return agent_id, agent, agent_bundle, {
-                    "task": a.get("task", ""),
-                    "context": a.get("input", "") or delegate_output,
-                    "priority": a.get("priority", ""),
-                    "sla": a.get("sla", ""),
-                }
+                return (
+                    agent_id,
+                    agent,
+                    agent_bundle,
+                    {
+                        "task": a.get("task", ""),
+                        "context": a.get("input", "") or delegate_output,
+                        "priority": a.get("priority", ""),
+                        "sla": a.get("sla", ""),
+                    },
+                )
         return None
 
     prepared = [p for p in (_prepare(a) for a in assignments) if p]
@@ -1173,13 +1310,20 @@ def specialists_node(state: CycleState) -> dict:
                 aid,
             )
 
-    def _run_one(item: tuple[str, Agent, HarnessBundle, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    def _run_one(
+        item: tuple[str, Agent, HarnessBundle, dict[str, Any]],
+    ) -> tuple[str, dict[str, Any]]:
         agent_id, agent, agent_bundle, inputs = item
         return agent_id, _run_agent_node(
-            agent, agent_bundle, f"specialist:{agent_id}",
-            state["cycle_id"], state["venture_id"],
-            inputs, llm,
-            memory_store=memory_store, usage_tracker=usage_tracker,
+            agent,
+            agent_bundle,
+            f"specialist:{agent_id}",
+            state["cycle_id"],
+            state["venture_id"],
+            inputs,
+            llm,
+            memory_store=memory_store,
+            usage_tracker=usage_tracker,
             venture_constants=venture_constants,
         )
 
@@ -1190,27 +1334,46 @@ def specialists_node(state: CycleState) -> dict:
     new_handoffs: list[dict[str, Any]] = []
 
     # Wrap _run_one to catch exceptions cleanly
-    def _run_one_safe(item: tuple[str, Agent, HarnessBundle, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+    def _run_one_safe(
+        item: tuple[str, Agent, HarnessBundle, dict[str, Any]],
+    ) -> tuple[str, dict[str, Any]]:
         try:
             return _run_one(item)
         except Exception as exc:
             return "unknown", {
-                "step": "run_specialists", "status": "error",
-                "error": str(exc), "output": {}, "duration_ms": 0,
+                "step": "run_specialists",
+                "status": "error",
+                "error": str(exc),
+                "output": {},
+                "duration_ms": 0,
                 "_errors": [f"specialist: {exc}"],
             }
 
     try:
         raw_results = _run_parallel(prepared, _run_one_safe)
     except Exception as exc:
-        raw_results = [("unknown", {"step": "run_specialists", "status": "error", "error": str(exc), "output": {}, "duration_ms": 0, "_errors": [f"specialist: {exc}"]})]
+        raw_results = [
+            (
+                "unknown",
+                {
+                    "step": "run_specialists",
+                    "status": "error",
+                    "error": str(exc),
+                    "output": {},
+                    "duration_ms": 0,
+                    "_errors": [f"specialist: {exc}"],
+                },
+            )
+        ]
 
     for agent_id, agent_result in raw_results:
-        specialist_results.append({
-            "agent_id": agent_id,
-            "status": agent_result.get("status", "error"),
-            "output": agent_result.get("output", {}),
-        })
+        specialist_results.append(
+            {
+                "agent_id": agent_id,
+                "status": agent_result.get("status", "error"),
+                "output": agent_result.get("output", {}),
+            }
+        )
 
         new_errors.extend(_get_errors(agent_result))
 
@@ -1225,17 +1388,20 @@ def specialists_node(state: CycleState) -> dict:
             new_handoffs.extend(output["handoffs"])
 
     update: dict[str, Any] = {
-        "step_results": _step_result_to_list({
-            "step": "run_specialists", "agent_id": None,
-            "status": "success" if specialist_results else "skipped",
-            "output": {
-                "specialist_results": specialist_results,
-                "teams_run": len(teams_to_run),
-                "solo_run": len(prepared),
-                "approval_count": len(new_approvals),
-            },
-            "duration_ms": 0,
-        }),
+        "step_results": _step_result_to_list(
+            {
+                "step": "run_specialists",
+                "agent_id": None,
+                "status": "success" if specialist_results else "skipped",
+                "output": {
+                    "specialist_results": specialist_results,
+                    "teams_run": len(teams_to_run),
+                    "solo_run": len(prepared),
+                    "approval_count": len(new_approvals),
+                },
+                "duration_ms": 0,
+            }
+        ),
         "specialists_output": {
             "specialist_results": specialist_results,
             "teams_run": len(teams_to_run),
@@ -1256,13 +1422,17 @@ def summarize_node(state: CycleState) -> dict:
     """Step 5: Chief of Staff composes the daily brief."""
     config = get_config()
     cfg = config.get("configurable", {})
-    bundle: HarnessBundle = cfg.get("bundle") # type: ignore
-    llm: LLMClient = cfg.get("llm") # type: ignore
+    bundle: HarnessBundle = cfg.get("bundle")  # type: ignore
+    llm: LLMClient = cfg.get("llm")  # type: ignore
     memory_store: MemoryStore | None = cfg.get("memory_store")
     usage_tracker: UsageTracker | None = cfg.get("usage_tracker")
     venture_constants: dict[str, Any] | None = cfg.get("venture_constants")
 
-    chief = bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF") if bundle and bundle.specialists else None
+    chief = (
+        bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF")
+        if bundle and bundle.specialists
+        else None
+    )
     # H4: cross-harness fallback via registry
     if not chief:
         registry: Registry | None = cfg.get("registry")
@@ -1270,15 +1440,22 @@ def summarize_node(state: CycleState) -> dict:
             resolved = registry.resolve_agent("AGT-EXEC-CHIEFOFSTAFF")
             if resolved:
                 chief, _ = resolved
-                logger.info("summarize_node: resolved Chief of Staff via cross-harness registry fallback")
+                logger.info(
+                    "summarize_node: resolved Chief of Staff via cross-harness registry fallback"
+                )
     if not chief:
         err = "summarize: Chief of Staff not found"
         return {
-            "step_results": _step_result_to_list({
-                "step": "summarize", "agent_id": None,
-                "status": "error", "error": err,
-                "output": {}, "duration_ms": 0,
-            }),
+            "step_results": _step_result_to_list(
+                {
+                    "step": "summarize",
+                    "agent_id": None,
+                    "status": "error",
+                    "error": err,
+                    "output": {},
+                    "duration_ms": 0,
+                }
+            ),
             "errors": [err],
         }
 
@@ -1292,10 +1469,15 @@ def summarize_node(state: CycleState) -> dict:
     }
 
     result = _run_agent_node(
-        chief, bundle, "summarize",
-        state["cycle_id"], state["venture_id"],
-        inputs, llm,
-        memory_store=memory_store, usage_tracker=usage_tracker,
+        chief,
+        bundle,
+        "summarize",
+        state["cycle_id"],
+        state["venture_id"],
+        inputs,
+        llm,
+        memory_store=memory_store,
+        usage_tracker=usage_tracker,
         venture_constants=venture_constants,
     )
 
@@ -1322,8 +1504,12 @@ def approval_gates_node(state: CycleState) -> dict:
     start = time.monotonic()
     config = get_config()
     cfg = config.get("configurable", {})
-    bundle: HarnessBundle = cfg.get("bundle") # type: ignore
-    chief = bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF") if bundle and bundle.specialists else None
+    bundle: HarnessBundle = cfg.get("bundle")  # type: ignore
+    chief = (
+        bundle.specialists.get("AGT-EXEC-CHIEFOFSTAFF")
+        if bundle and bundle.specialists
+        else None
+    )
     # H4: cross-harness fallback via registry
     if not chief:
         registry: Registry | None = cfg.get("registry")
@@ -1331,14 +1517,17 @@ def approval_gates_node(state: CycleState) -> dict:
             resolved = registry.resolve_agent("AGT-EXEC-CHIEFOFSTAFF")
             if resolved:
                 chief, _ = resolved
-                logger.info("approval_gates_node: resolved Chief of Staff via cross-harness registry fallback")
+                logger.info(
+                    "approval_gates_node: resolved Chief of Staff via cross-harness registry fallback"
+                )
 
     approval_items = state.get("approval_queue", [])
     resolved_ids = set(state.get("resolved_approval_ids", []))
 
     # Cross-reference against ApprovalQueue persistence to resolve
     from aos.approval_queue import ApprovalQueue
-    queue: ApprovalQueue | None = cfg.get("approval_queue") # type: ignore
+
+    queue: ApprovalQueue | None = cfg.get("approval_queue")  # type: ignore
 
     newly_resolved: list[str] = []
     still_pending: list[dict[str, Any]] = []
@@ -1375,13 +1564,15 @@ def approval_gates_node(state: CycleState) -> dict:
 
     elapsed = int((time.monotonic() - start) * 1000)
     update: dict[str, Any] = {
-        "step_results": _step_result_to_list({
-            "step": "approval_gates",
-            "agent_id": chief.id if chief else None,
-            "status": gate_status,
-            "output": bundled,
-            "duration_ms": elapsed,
-        }),
+        "step_results": _step_result_to_list(
+            {
+                "step": "approval_gates",
+                "agent_id": chief.id if chief else None,
+                "status": gate_status,
+                "output": bundled,
+                "duration_ms": elapsed,
+            }
+        ),
         "approval_gates_output": bundled,
     }
     if newly_resolved:
@@ -1392,6 +1583,7 @@ def approval_gates_node(state: CycleState) -> dict:
 # ---------------------------------------------------------------------------
 # Conditional edges — routing logic
 # ---------------------------------------------------------------------------
+
 
 def should_execute(state: CycleState) -> str:
     """Conditional edge: route to execute if handoffs exist, else skip to log.
@@ -1473,6 +1665,7 @@ def should_restart_or_end(state: CycleState) -> str:
 # Remaining nodes
 # ---------------------------------------------------------------------------
 
+
 def execute_node(state: CycleState) -> dict:
     """Step 7: Execute approved actions via tool gateway.
 
@@ -1490,12 +1683,14 @@ def execute_node(state: CycleState) -> dict:
     for handoff in state.get("handoffs", []):
         if tool_gateway is not None:
             result = tool_gateway.execute(handoff)
-            executed.append({
-                "type": "handoff",
-                "status": "success" if result.get("ok") else "error",
-                "result": result,
-                **handoff,
-            })
+            executed.append(
+                {
+                    "type": "handoff",
+                    "status": "success" if result.get("ok") else "error",
+                    "result": result,
+                    **handoff,
+                }
+            )
             if not result.get("ok"):
                 new_errors.append(f"execute: {result.get('error', 'unknown error')}")
         else:
@@ -1504,10 +1699,15 @@ def execute_node(state: CycleState) -> dict:
     output = {"executed": executed, "handoff_count": len(state.get("handoffs", []))}
     elapsed = int((time.monotonic() - start) * 1000)
     update: dict[str, Any] = {
-        "step_results": _step_result_to_list({
-            "step": "execute", "agent_id": None,
-            "status": "success", "output": output, "duration_ms": elapsed,
-        }),
+        "step_results": _step_result_to_list(
+            {
+                "step": "execute",
+                "agent_id": None,
+                "status": "success",
+                "output": output,
+                "duration_ms": elapsed,
+            }
+        ),
         "execute_output": output,
     }
     if new_errors:
@@ -1540,7 +1740,8 @@ def log_node(state: CycleState) -> dict:
         "iteration": iteration,
         "steps_completed": [r["step"] for r in results if r.get("status") == "success"],
         "steps_failed": [r["step"] for r in results if r.get("status") == "error"],
-        "approval_queue_size": len(state.get("approval_queue", [])) - len(state.get("resolved_approval_ids", [])),
+        "approval_queue_size": len(state.get("approval_queue", []))
+        - len(state.get("resolved_approval_ids", [])),
         "handoffs_created": len(state.get("handoffs", [])),
     }
 
@@ -1560,17 +1761,20 @@ def log_node(state: CycleState) -> dict:
                 memory_summary["persisted_to"] = persist_result
             except Exception as exc:
                 memory_summary["persist_error"] = str(exc)
-                logger.error(
-                    "log_node: persist_to_disk failed: %s", exc
-                )
+                logger.error("log_node: persist_to_disk failed: %s", exc)
 
     output = {"decision_log_entry": log_entry, "memory_summary": memory_summary}
     elapsed = int((time.monotonic() - start) * 1000)
     return {
-        "step_results": _step_result_to_list({
-            "step": "log", "agent_id": None,
-            "status": "success", "output": output, "duration_ms": elapsed,
-        }),
+        "step_results": _step_result_to_list(
+            {
+                "step": "log",
+                "agent_id": None,
+                "status": "success",
+                "output": output,
+                "duration_ms": elapsed,
+            }
+        ),
         "log_output": output,
     }
 
@@ -1598,50 +1802,56 @@ def loop_control_node(state: CycleState) -> dict:
     if iteration >= max_iterations - 1:
         elapsed = int((time.monotonic() - start) * 1000)
         return {
-            "step_results": _step_result_to_list({
-                "step": "loop_control",
-                "agent_id": None,
-                "status": "complete",
-                "output": {
-                    "reason": "max_iterations_reached",
-                    "iteration": iteration,
-                    "max_iterations": max_iterations,
-                },
-                "duration_ms": elapsed,
-            }),
+            "step_results": _step_result_to_list(
+                {
+                    "step": "loop_control",
+                    "agent_id": None,
+                    "status": "complete",
+                    "output": {
+                        "reason": "max_iterations_reached",
+                        "iteration": iteration,
+                        "max_iterations": max_iterations,
+                    },
+                    "duration_ms": elapsed,
+                }
+            ),
         }
 
     # Check task completion
     if is_complete:
         elapsed = int((time.monotonic() - start) * 1000)
         return {
-            "step_results": _step_result_to_list({
-                "step": "loop_control",
-                "agent_id": None,
-                "status": "complete",
-                "output": {
-                    "reason": reason,
-                    "iteration": iteration,
-                },
-                "duration_ms": elapsed,
-            }),
+            "step_results": _step_result_to_list(
+                {
+                    "step": "loop_control",
+                    "agent_id": None,
+                    "status": "complete",
+                    "output": {
+                        "reason": reason,
+                        "iteration": iteration,
+                    },
+                    "duration_ms": elapsed,
+                }
+            ),
         }
 
     # Continue to next iteration — reset state with fresh context
     reset_update = _reset_iteration_state(state)
     elapsed = int((time.monotonic() - start) * 1000)
     return {
-        "step_results": _step_result_to_list({
-            "step": "loop_control",
-            "agent_id": None,
-            "status": "continue",
-            "output": {
-                "reason": "continuing_to_next_iteration",
-                "iteration": iteration,
-                "next_iteration": iteration + 1,
-            },
-            "duration_ms": elapsed,
-        }),
+        "step_results": _step_result_to_list(
+            {
+                "step": "loop_control",
+                "agent_id": None,
+                "status": "continue",
+                "output": {
+                    "reason": "continuing_to_next_iteration",
+                    "iteration": iteration,
+                    "next_iteration": iteration + 1,
+                },
+                "duration_ms": elapsed,
+            }
+        ),
         **reset_update,
     }
 
@@ -1649,6 +1859,7 @@ def loop_control_node(state: CycleState) -> dict:
 # ---------------------------------------------------------------------------
 # Graph construction
 # ---------------------------------------------------------------------------
+
 
 def build_graph(
     bundle: HarnessBundle,
@@ -1744,6 +1955,7 @@ def build_graph(
 # Convenience: run cycle via graph (drop-in for runtime.run_cycle)
 # ---------------------------------------------------------------------------
 
+
 def run_cycle_graph(
     bundle: HarnessBundle,
     venture_id: str = "UNKNOWN",
@@ -1812,7 +2024,9 @@ def run_cycle_graph(
     memory_store = None
     if bundle.memory:
         memory_data = bundle.memory.model_dump()
-        memory_store = build_memory_from_manifest(memory_data, venture_root=venture_root)
+        memory_store = build_memory_from_manifest(
+            memory_data, venture_root=venture_root
+        )
 
     # Build tool gateway
     gateway = ToolGateway(venture_root=venture_root, memory_store=memory_store)
@@ -1830,8 +2044,15 @@ def run_cycle_graph(
 
     # FIX-03: Build approval queue for founder gating
     from aos.approval_queue import ApprovalQueue
-    queue_path = (Path(venture_root) / "ai_system" / "System" / "approvals.jsonl") if venture_root else None
-    approval_queue = ApprovalQueue(persistence_path=queue_path) if queue_path else ApprovalQueue()
+
+    queue_path = (
+        (Path(venture_root) / "ai_system" / "System" / "approvals.jsonl")
+        if venture_root
+        else None
+    )
+    approval_queue = (
+        ApprovalQueue(persistence_path=queue_path) if queue_path else ApprovalQueue()
+    )
 
     # Build and compile the graph
     compiled = build_graph(
@@ -1856,9 +2077,7 @@ def run_cycle_graph(
         "venture_id": venture_id,
         "harness_id": harness_id,
         "cycle_id": cycle_id,
-        "venture_artifacts": {
-            k: str(v) for k, v in (venture_artifacts or {}).items()
-        },
+        "venture_artifacts": {k: str(v) for k, v in (venture_artifacts or {}).items()},
         "inputs": {},
         "step_results": [],
         "approval_queue": [],
@@ -1896,12 +2115,19 @@ def run_cycle_graph(
         agent_id = step.get("agent_id", "")
         if agent_id and output:
             eval_result = evaluator.evaluate(
-                agent_id=agent_id, output=output, constants=venture_constants,
+                agent_id=agent_id,
+                output=output,
+                constants=venture_constants,
             )
             eval_results.append(eval_result)
-    eval_report = evaluator.report(
-        eval_results, has_financial_constants=venture_constants is not None,
-    ) if eval_results else {}
+    eval_report = (
+        evaluator.report(
+            eval_results,
+            has_financial_constants=venture_constants is not None,
+        )
+        if eval_results
+        else {}
+    )
     result_state["evaluation"] = eval_report
 
     return result_state
@@ -1910,6 +2136,7 @@ def run_cycle_graph(
 # ---------------------------------------------------------------------------
 # Formatting
 # ---------------------------------------------------------------------------
+
 
 def format_state_summary(state: CycleState) -> str:
     """Format a CycleState dict into a human-readable summary.

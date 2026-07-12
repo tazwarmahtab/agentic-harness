@@ -1,4 +1,5 @@
 """System status service — health and metrics."""
+
 from __future__ import annotations
 
 import time
@@ -11,6 +12,7 @@ from aos.health import check_system_health
 @dataclass(frozen=True)
 class SystemStatus:
     """System status with health score."""
+
     health_score: float  # 0.0 to 1.0
     uptime: float
     memory_usage_mb: float
@@ -38,10 +40,10 @@ def get_system_status() -> SystemStatus:
 
     # Calculate health score based on component status
     total_components = len(health.components)
-    healthy_components = sum(
-        1 for c in health.components if c.status == "ok"
+    healthy_components = sum(1 for c in health.components if c.status == "ok")
+    health_score = (
+        healthy_components / total_components if total_components > 0 else 0.0
     )
-    health_score = healthy_components / total_components if total_components > 0 else 0.0
 
     return SystemStatus(
         health_score=health_score,

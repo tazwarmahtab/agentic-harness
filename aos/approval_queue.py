@@ -24,6 +24,7 @@ class ApprovalDecision(str, Enum):
 @dataclass
 class ApprovalItem:
     """A single approval request."""
+
     id: str
     agent_id: str
     action: str
@@ -53,6 +54,7 @@ class ApprovalItem:
 @dataclass
 class ApprovalResult:
     """Result of a decision on an approval item."""
+
     item_id: str
     approved: bool
     decision: str

@@ -21,6 +21,7 @@ from aos.regression import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_snapshot(
     test_count: int = 100,
     tests_passed: int = 98,
@@ -133,7 +134,8 @@ class TestRegressionDetector:
         highs = [
             r
             for r in regressions
-            if r.severity == Severity.HIGH and r.metric_name == "financial_accuracy_rate"
+            if r.severity == Severity.HIGH
+            and r.metric_name == "financial_accuracy_rate"
         ]
         assert highs == []
 

@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ValidationError:
     """A single validation error."""
+
     manifest_path: str
     field: str
     error: str
@@ -37,6 +38,7 @@ class ValidationError:
 @dataclass
 class ValidationResult:
     """Result of validating all manifests."""
+
     errors: list[ValidationError] = field(default_factory=list)
     warnings: list[ValidationError] = field(default_factory=list)
     manifests_validated: int = 0
@@ -74,11 +76,13 @@ def _validate_financial_constants(data: dict, path: Path) -> list[ValidationErro
     for key, expected in NETSO_FINANCIAL.items():
         actual = fc.get(key)
         if actual is not None and abs(float(actual) - float(expected)) > 0.001:
-            errors.append(ValidationError(
-                manifest_path=str(path),
-                field=f"financial_constants.{key}",
-                error=f"Value {actual} does not match ground truth {expected}",
-            ))
+            errors.append(
+                ValidationError(
+                    manifest_path=str(path),
+                    field=f"financial_constants.{key}",
+                    error=f"Value {actual} does not match ground truth {expected}",
+                )
+            )
     return errors
 
 
@@ -94,29 +98,37 @@ def _validate_policy_rules(data: dict, path: Path) -> list[ValidationError]:
             continue
         rule_id = rule.get("id", f"rule[{i}]")
         if "name" not in rule:
-            errors.append(ValidationError(
-                manifest_path=str(path),
-                field=f"rules.{rule_id}.name",
-                error="Policy rule missing required 'name' field",
-            ))
+            errors.append(
+                ValidationError(
+                    manifest_path=str(path),
+                    field=f"rules.{rule_id}.name",
+                    error="Policy rule missing required 'name' field",
+                )
+            )
         if "category" not in rule:
-            errors.append(ValidationError(
-                manifest_path=str(path),
-                field=f"rules.{rule_id}.category",
-                error="Policy rule missing required 'category' field",
-            ))
+            errors.append(
+                ValidationError(
+                    manifest_path=str(path),
+                    field=f"rules.{rule_id}.category",
+                    error="Policy rule missing required 'category' field",
+                )
+            )
         if "rule" not in rule:
-            errors.append(ValidationError(
-                manifest_path=str(path),
-                field=f"rules.{rule_id}.rule",
-                error="Policy rule missing required 'rule' field",
-            ))
+            errors.append(
+                ValidationError(
+                    manifest_path=str(path),
+                    field=f"rules.{rule_id}.rule",
+                    error="Policy rule missing required 'rule' field",
+                )
+            )
         if "action" not in rule:
-            errors.append(ValidationError(
-                manifest_path=str(path),
-                field=f"rules.{rule_id}.action",
-                error="Policy rule missing required 'action' field",
-            ))
+            errors.append(
+                ValidationError(
+                    manifest_path=str(path),
+                    field=f"rules.{rule_id}.action",
+                    error="Policy rule missing required 'action' field",
+                )
+            )
     return errors
 
 
@@ -130,27 +142,33 @@ def _validate_cross_references(
     # Harness → venture reference
     venture = data.get("venture")
     if venture and venture not in known_ids:
-        errors.append(ValidationError(
-            manifest_path=str(path),
-            field="venture",
-            error=f"References unknown venture: {venture}",
-            severity="warning",
-        ))
+        errors.append(
+            ValidationError(
+                manifest_path=str(path),
+                field="venture",
+                error=f"References unknown venture: {venture}",
+                severity="warning",
+            )
+        )
 
     # Agent → harness reference
     harness = data.get("harness")
     if harness and manifest_id.startswith("AGT-") and harness not in known_ids:
-        errors.append(ValidationError(
-            manifest_path=str(path),
-            field="harness",
-            error=f"References unknown harness: {harness}",
-            severity="warning",
-        ))
+        errors.append(
+            ValidationError(
+                manifest_path=str(path),
+                field="harness",
+                error=f"References unknown harness: {harness}",
+                severity="warning",
+            )
+        )
 
     return errors
 
 
-def validate_manifest(path: Path, known_ids: set[str] | None = None) -> list[ValidationError]:
+def validate_manifest(
+    path: Path, known_ids: set[str] | None = None
+) -> list[ValidationError]:
     """Validate a single manifest file."""
     errors = []
 
@@ -168,7 +186,9 @@ def validate_manifest(path: Path, known_ids: set[str] | None = None) -> list[Val
         return errors
 
     if not isinstance(data, dict):
-        errors.append(ValidationError(str(path), "(root)", "YAML root is not a mapping"))
+        errors.append(
+            ValidationError(str(path), "(root)", "YAML root is not a mapping")
+        )
         return errors
 
     # Detect type and validate against JSON schema
@@ -203,10 +223,18 @@ def validate_all(
 
     # Reject traversal in user-supplied paths
     if sanitize_path(str(harness_dir)) is None and ".." in harness_dir.parts:
-        result.errors.append(ValidationError(str(harness_dir), "(path)", "Path traversal detected"))
+        result.errors.append(
+            ValidationError(str(harness_dir), "(path)", "Path traversal detected")
+        )
         return result
-    if venture_path is not None and sanitize_path(str(venture_path)) is None and ".." in venture_path.parts:
-        result.errors.append(ValidationError(str(venture_path), "(path)", "Path traversal detected"))
+    if (
+        venture_path is not None
+        and sanitize_path(str(venture_path)) is None
+        and ".." in venture_path.parts
+    ):
+        result.errors.append(
+            ValidationError(str(venture_path), "(path)", "Path traversal detected")
+        )
         return result
 
     # First pass: collect all known IDs
@@ -247,7 +275,9 @@ def validate_all(
             result.manifests_validated += 1
 
         if verbose:
-            status = "PASS" if not any(e.severity == "error" for e in errors) else "FAIL"
+            status = (
+                "PASS" if not any(e.severity == "error" for e in errors) else "FAIL"
+            )
             print(f"  [{status}] {mf.name}")
 
     return result

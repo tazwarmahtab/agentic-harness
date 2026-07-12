@@ -172,6 +172,7 @@ class TestCLIMultiHarnessLoading:
 
     def test_dry_run_loads_multiple_harnesses(self):
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,
@@ -183,6 +184,7 @@ class TestCLIMultiHarnessLoading:
 
     def test_dry_run_cross_harness_harness_loaded(self):
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "run", "--venture", "netso", "--dry-run"],
             capture_output=True,

@@ -8,6 +8,7 @@ Measures:
 Usage:
   python -m aos.evaluator_harness --harness executive --samples 5
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,7 +45,13 @@ class BaselineEvaluator:
         self.memory = memory
         self.tracker = UsageTracker()
 
-    def evaluate(self, agent_id: str, output: dict[str, Any], model: str = "sonnet", constants: dict | None = None) -> EvalResult:
+    def evaluate(
+        self,
+        agent_id: str,
+        output: dict[str, Any],
+        model: str = "sonnet",
+        constants: dict | None = None,
+    ) -> EvalResult:
         start = time.monotonic()
         validation = validate_output(output, agent_id, constants)
         usage = self.llm.usage() if hasattr(self.llm, "usage") else {}
@@ -56,7 +63,9 @@ class BaselineEvaluator:
         return EvalResult(
             harness_id="eval",
             cycle_id=f"eval-{agent_id}",
-            status="error" if not validation.passed and validation.violations else "pass",
+            status="error"
+            if not validation.passed and validation.violations
+            else "pass",
             financial_accuracy=financial_acc,
             financial_violations=validation.violations,
             tokens_prompt=usage.get("prompt_tokens", 0),
@@ -65,7 +74,9 @@ class BaselineEvaluator:
             output_keys=list(output.keys()),
         )
 
-    def report(self, results: list[EvalResult], has_financial_constants: bool = True) -> dict[str, Any]:
+    def report(
+        self, results: list[EvalResult], has_financial_constants: bool = True
+    ) -> dict[str, Any]:
         total = len(results)
         acc = [r for r in results if r.financial_accuracy is not None]
         rate = sum(1 for r in acc if r.financial_accuracy) / max(len(acc), 1)
@@ -73,7 +84,9 @@ class BaselineEvaluator:
         by_status: Counter = Counter(r.status for r in results)
         report: dict[str, Any] = {
             "total_runs": total,
-            "financial_accuracy_rate": round(rate, 4) if has_financial_constants else None,
+            "financial_accuracy_rate": round(rate, 4)
+            if has_financial_constants
+            else None,
             "total_tokens": total_tokens,
             "by_status": dict(by_status),
             "violations": [v for r in results for v in r.financial_violations],
@@ -94,9 +107,21 @@ def main() -> int:
 
     cases = [
         # Positive cases (should pass)
-        {"agent_id": "AGT-EXEC-CFO", "output": {"savings_pct": 23.0, "rate_used": 12.98, "ppa_rate": 10.0, "dscr": 2.25, "capex_per_kw": 55000}},
+        {
+            "agent_id": "AGT-EXEC-CFO",
+            "output": {
+                "savings_pct": 23.0,
+                "rate_used": 12.98,
+                "ppa_rate": 10.0,
+                "dscr": 2.25,
+                "capex_per_kw": 55000,
+            },
+        },
         # Negative cases (should fail)
-        {"agent_id": "AGT-EXEC-CFO", "output": {"savings_pct": 14.0, "rate_used": 14.81}},
+        {
+            "agent_id": "AGT-EXEC-CFO",
+            "output": {"savings_pct": 14.0, "rate_used": 14.81},
+        },
         {"agent_id": "AGT-EXEC-CFO", "output": {"savings_pct": 23.0, "dscr": 1.5}},
         {"agent_id": "AGT-EXEC-CFO", "output": {"ppa_rate": 12.0, "savings_pct": 23.0}},
     ]

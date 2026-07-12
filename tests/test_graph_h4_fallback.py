@@ -49,7 +49,9 @@ def _make_bundle_without_chief() -> HarnessBundle:
     registry = _build_registry()
     exec_bundle = registry.harnesses.get("HAR-EXEC-001")
     assert exec_bundle is not None
-    filtered = {k: v for k, v in exec_bundle.specialists.items() if k != "AGT-EXEC-CHIEFOFSTAFF"}
+    filtered = {
+        k: v for k, v in exec_bundle.specialists.items() if k != "AGT-EXEC-CHIEFOFSTAFF"
+    }
     return HarnessBundle(
         harness=exec_bundle.harness,
         specialists=filtered,
@@ -167,7 +169,9 @@ class TestSummarizeNodeRegistryFallback:
 
         errors = result.get("errors", [])
         chief_missing = [e for e in errors if "Chief of Staff not found" in e]
-        assert len(chief_missing) == 0, f"Expected no chief-missing error, got: {errors}"
+        assert len(chief_missing) == 0, (
+            f"Expected no chief-missing error, got: {errors}"
+        )
 
 
 class TestApprovalGatesNodeRegistryFallback:

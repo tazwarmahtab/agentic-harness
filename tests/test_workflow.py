@@ -1,4 +1,5 @@
 """Tests for the AOS workflow engine."""
+
 from __future__ import annotations
 
 import pytest

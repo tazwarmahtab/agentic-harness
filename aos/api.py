@@ -33,7 +33,11 @@ from aos.health import check_system_health
 from aos.entity_index import default_index
 from aos.event_bus import default_bus
 from aos.services.pipeline import get_pipeline_status, get_pipeline_history
-from aos.services.approvals import get_pending_approvals, approve_request, reject_request
+from aos.services.approvals import (
+    get_pending_approvals,
+    approve_request,
+    reject_request,
+)
 from aos.services.memory import get_memory_summary
 from aos.services.sales import get_sales_status
 from aos.services.system import get_system_status
@@ -58,7 +62,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     env_check = _check_required_env_vars()
     if not env_check["all_present"]:
-        logger.warning(f"⚠️  Missing required env vars: {', '.join(env_check['missing'])}")
+        logger.warning(
+            f"⚠️  Missing required env vars: {', '.join(env_check['missing'])}"
+        )
     else:
         logger.info("✓ All required env vars present")
 
@@ -79,6 +85,7 @@ TAZOS_API_TOKEN = AOS_API_TOKEN  # backward-compat alias
 # WebSocket connection limiter — caps concurrent connections per server instance
 _ws_limiter = ConnectionLimiter(max_connections=10)
 
+
 def _check_llm_providers() -> dict[str, str | list[str] | bool]:
     """Check which LLM providers are configured and available."""
     providers = {
@@ -87,7 +94,7 @@ def _check_llm_providers() -> dict[str, str | list[str] | bool]:
         "nvidia_nim": False,
     }
     warnings = []
-    
+
     # Check Anthropic
     anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
     anthropic_token = os.getenv("ANTHROPIC_AUTH_TOKEN", "")
@@ -95,21 +102,21 @@ def _check_llm_providers() -> dict[str, str | list[str] | bool]:
         providers["anthropic"] = True
     else:
         warnings.append("ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN not configured")
-    
+
     # Check local router
     router_base = os.getenv("AOS_LLM_BASE_URL", "")
     if router_base:
         providers["local_router"] = True
-    
+
     # Check NVIDIA NIM
     nvidia_key = os.getenv("NVIDIA_NIM_API_KEY", "")
     if nvidia_key:
         providers["nvidia_nim"] = True
-    
+
     return {
         "providers": providers,
         "warnings": warnings,
-        "any_available": any(providers.values())
+        "any_available": any(providers.values()),
     }
 
 
@@ -118,18 +125,16 @@ def _check_required_env_vars() -> dict[str, bool | list[str]]:
     required = {
         "AOS_API_TOKEN": os.getenv("AOS_API_TOKEN", ""),
     }
-    
+
     missing = [k for k, v in required.items() if not v]
-    
-    return {
-        "all_present": len(missing) == 0,
-        "missing": missing
-    }
+
+    return {"all_present": len(missing) == 0, "missing": missing}
 
 
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
+
 
 @app.get("/health")
 async def health() -> dict[str, str]:
@@ -150,6 +155,7 @@ async def health_ready() -> dict:
 # REST — harness catalogue
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/harnesses")
 async def list_harnesses() -> list[dict[str, str]]:
     """Return all available harnesses discovered from aos/harnesses/*."""
@@ -168,14 +174,18 @@ async def list_harnesses() -> list[dict[str, str]]:
             registry = load_registry(harness_dir=child)
             if registry.harnesses:
                 bundle = next(iter(registry.harnesses.values()))
-                result.append({
-                    "id": bundle.harness.id,
-                    "name": child.name,
-                    "venture": registry.venture.id if registry.venture else "",
-                })
+                result.append(
+                    {
+                        "id": bundle.harness.id,
+                        "name": child.name,
+                        "venture": registry.venture.id if registry.venture else "",
+                    }
+                )
         except Exception:
             # Fallback: return directory name even if YAML parsing fails
-            result.append({"id": f"HAR-{child.name.upper()}", "name": child.name, "venture": ""})
+            result.append(
+                {"id": f"HAR-{child.name.upper()}", "name": child.name, "venture": ""}
+            )
     return result
 
 
@@ -183,9 +193,11 @@ async def list_harnesses() -> list[dict[str, str]]:
 # Helpers — filesystem / registry resolution
 # ---------------------------------------------------------------------------
 
+
 def _find_project_root() -> Path:
     """Find the aos-engine project root."""
     from aos.__main__ import find_project_root
+
     return find_project_root()
 
 
@@ -248,7 +260,8 @@ def _build_infra(
     memory_store: MemoryStore | None = None
     if bundle.memory:
         memory_store = build_memory_from_manifest(
-            bundle.memory.model_dump(), venture_root=venture_root,
+            bundle.memory.model_dump(),
+            venture_root=venture_root,
         )
 
     # Tool gateway
@@ -287,7 +300,6 @@ def _build_initial_state(
     )
 
 
-
 @app.get("/api/entity-index")
 async def entity_index_summary() -> dict:
     """Return summary of registered AOS entities."""
@@ -309,6 +321,7 @@ async def event_log() -> dict:
 # ---------------------------------------------------------------------------
 # WebSocket — harness execution
 # ---------------------------------------------------------------------------
+
 
 @app.websocket("/ws/harness/{harness_name}")
 async def harness_ws(
@@ -346,33 +359,40 @@ async def harness_ws(
     # Connection limiting — cap concurrent WebSocket sessions
     conn_id = f"{harness_name}:{uuid.uuid4().hex[:12]}"
     if not _ws_limiter.try_acquire(conn_id):
-        await websocket.send_json({
-            "event": "error",
-            "message": "Connection limit reached. Try again later.",
-        })
+        await websocket.send_json(
+            {
+                "event": "error",
+                "message": "Connection limit reached. Try again later.",
+            }
+        )
         await websocket.close(code=4029)
         return
 
     try:
         # --- Resolve bundle ---
         bundle, venture_id, harness_id = _resolve_bundle(
-            harness_name, venture_name=venture,
+            harness_name,
+            venture_name=venture,
         )
 
         if bundle is None:
-            await websocket.send_json({
-                "event": "error",
-                "message": f"Harness '{harness_name}' not found.",
-            })
+            await websocket.send_json(
+                {
+                    "event": "error",
+                    "message": f"Harness '{harness_name}' not found.",
+                }
+            )
             await websocket.close()
             return
 
         # --- Connected ack ---
-        await websocket.send_json({
-            "event": "connected",
-            "harness": harness_name,
-            "venture": venture_id,
-        })
+        await websocket.send_json(
+            {
+                "event": "connected",
+                "harness": harness_name,
+                "venture": venture_id,
+            }
+        )
 
         # --- Build infrastructure (live LLM — gated by harness manifest) ---
         # Derive venture root from first harness artifact if available
@@ -384,7 +404,8 @@ async def harness_ws(
                     break
 
         llm, gateway, memory_store, usage_tracker = _build_infra(
-            bundle, venture_root=venture_root,
+            bundle,
+            venture_root=venture_root,
         )
 
         # --- Build graph ---
@@ -424,14 +445,16 @@ async def harness_ws(
             await websocket.send_json(update)
 
         # --- Completed ---
-        await websocket.send_json({
-            "event": "completed",
-            "state_summary": {
-                "venture_id": venture_id,
-                "harness_id": harness_id,
-                "cycle_id": initial_state.get("cycle_id", ""),
-            },
-        })
+        await websocket.send_json(
+            {
+                "event": "completed",
+                "state_summary": {
+                    "venture_id": venture_id,
+                    "harness_id": harness_id,
+                    "cycle_id": initial_state.get("cycle_id", ""),
+                },
+            }
+        )
 
     except WebSocketDisconnect:
         # Client disconnected mid-execution — no cleanup needed.
@@ -443,10 +466,12 @@ async def harness_ws(
     except Exception as exc:
         logger.exception("WebSocket error in /ws/harness/%s", harness_name)
         try:
-            await websocket.send_json({
-                "event": "error",
-                "message": str(exc),
-            })
+            await websocket.send_json(
+                {
+                    "event": "error",
+                    "message": str(exc),
+                }
+            )
         except Exception:
             pass  # Socket already closed
     finally:
@@ -461,6 +486,7 @@ async def harness_ws(
 # REST — WebSocket stats
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/ws/stats")
 async def ws_stats() -> dict[str, int]:
     """Return current WebSocket connection stats."""
@@ -474,6 +500,7 @@ async def ws_stats() -> dict[str, int]:
 # REST — Dashboard summary
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/summary")
 async def dashboard_summary() -> dict[str, object]:
     """Return high-level KPIs for the dashboard frontend."""
@@ -484,7 +511,8 @@ async def dashboard_summary() -> dict[str, object]:
     harness_count = 0
     if harnesses_dir.exists():
         harness_count = sum(
-            1 for d in harnesses_dir.iterdir()
+            1
+            for d in harnesses_dir.iterdir()
             if d.is_dir() and (d / "harness.yml").exists()
         )
 
@@ -508,12 +536,10 @@ async def dashboard_summary() -> dict[str, object]:
     }
 
 
-
-
-
 # ---------------------------------------------------------------------------
 # REST — Pipeline status
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/pipeline/status")
 async def pipeline_status() -> dict[str, object]:
@@ -531,6 +557,7 @@ async def pipeline_history() -> list[dict[str, object]]:
 # ---------------------------------------------------------------------------
 # REST — Approvals
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/approvals")
 async def list_approvals() -> list[dict[str, object]]:
@@ -558,6 +585,7 @@ async def reject_approval(
 # REST — Memory
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/memory/summary")
 async def memory_summary() -> dict[str, object]:
     """Return memory store summary."""
@@ -568,6 +596,7 @@ async def memory_summary() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 # REST — Sales
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/sales/status")
 async def sales_status() -> dict[str, object]:
@@ -580,6 +609,7 @@ async def sales_status() -> dict[str, object]:
 # REST — System status
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/system/status")
 async def system_status() -> dict[str, object]:
     """Return system status with health score."""
@@ -590,6 +620,7 @@ async def system_status() -> dict[str, object]:
 # ---------------------------------------------------------------------------
 # REST — Agents
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/agents")
 async def agents_status() -> dict[str, object]:
@@ -602,6 +633,7 @@ async def agents_status() -> dict[str, object]:
 # REST — Dashboard aggregate endpoint
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/dashboard")
 async def dashboard() -> dict[str, object]:
     """Return all KPIs in a single response for the Mission Control Dashboard."""
@@ -613,7 +645,8 @@ async def dashboard() -> dict[str, object]:
     harness_count = 0
     if harnesses_dir.exists():
         harness_count = sum(
-            1 for d in harnesses_dir.iterdir()
+            1
+            for d in harnesses_dir.iterdir()
             if d.is_dir() and (d / "harness.yml").exists()
         )
 

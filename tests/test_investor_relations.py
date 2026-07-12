@@ -195,8 +195,17 @@ class TestFundraisingTracker:
 class TestCLIInvestorRelations:
     def test_cli_run_ir_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "run", "--harness", "investor_relations", "--dry-run"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "run",
+                "--harness",
+                "investor_relations",
+                "--dry-run",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
@@ -206,8 +215,16 @@ class TestCLIInvestorRelations:
 
     def test_cli_validate_ir_harness(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "validate", "--harness", "investor_relations"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "validate",
+                "--harness",
+                "investor_relations",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),

@@ -49,6 +49,7 @@ def wrap_node_with_tracing(
     Returns:
         Wrapped function that emits trace events
     """
+
     def traced_node(state: CycleState) -> dict:
         from langgraph.config import get_config
 
@@ -207,7 +208,9 @@ def run_traced_cycle(
     memory_store = None
     if bundle.memory:
         memory_data = bundle.memory.model_dump()
-        memory_store = build_memory_from_manifest(memory_data, venture_root=venture_root)
+        memory_store = build_memory_from_manifest(
+            memory_data, venture_root=venture_root
+        )
 
     gateway = ToolGateway(venture_root=venture_root, memory_store=memory_store)
     if bundle.tools:
@@ -246,9 +249,7 @@ def run_traced_cycle(
         "venture_id": venture_id,
         "harness_id": harness_id,
         "cycle_id": cycle_id,
-        "venture_artifacts": {
-            k: str(v) for k, v in (venture_artifacts or {}).items()
-        },
+        "venture_artifacts": {k: str(v) for k, v in (venture_artifacts or {}).items()},
         "inputs": {},
         "step_results": [],
         "approval_queue": [],

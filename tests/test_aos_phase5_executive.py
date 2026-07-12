@@ -3,6 +3,7 @@
 Validates that all new AOS platform components wire together correctly
 against the Executive Harness manifests — without making real LLM calls.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -44,49 +45,76 @@ class TestEventBus:
         bus = EventBus()
         received = []
         bus.on(EventType.TASK_CREATED, received.append)
-        bus.emit(AOSEvent(
-            type=EventType.TASK_CREATED,
-            source_harness="HAR-EXEC-001",
-            source_agent="AGT-EXEC-PLAN",
-        ))
+        bus.emit(
+            AOSEvent(
+                type=EventType.TASK_CREATED,
+                source_harness="HAR-EXEC-001",
+                source_agent="AGT-EXEC-PLAN",
+            )
+        )
         assert len(received) == 1
 
     def test_handler_error_does_not_crash_bus(self):
         bus = EventBus()
-        def bad_handler(_): raise RuntimeError("boom")
+
+        def bad_handler(_):
+            raise RuntimeError("boom")
+
         bus.on(EventType.ALERT_TRIGGERED, bad_handler)
-        bus.emit(AOSEvent(
-            type=EventType.ALERT_TRIGGERED,
-            source_harness="HAR-EXEC-001",
-            source_agent="AGT-EXEC-RSK",
-        ))
+        bus.emit(
+            AOSEvent(
+                type=EventType.ALERT_TRIGGERED,
+                source_harness="HAR-EXEC-001",
+                source_agent="AGT-EXEC-RSK",
+            )
+        )
         assert len(bus.log()) == 1  # event still logged
 
     def test_summary_counts(self):
         bus = EventBus()
         for _ in range(3):
-            bus.emit(AOSEvent(type=EventType.TASK_CREATED,
-                              source_harness="H", source_agent="A"))
-        bus.emit(AOSEvent(type=EventType.APPROVAL_REQUESTED,
-                          source_harness="H", source_agent="A"))
+            bus.emit(
+                AOSEvent(
+                    type=EventType.TASK_CREATED, source_harness="H", source_agent="A"
+                )
+            )
+        bus.emit(
+            AOSEvent(
+                type=EventType.APPROVAL_REQUESTED, source_harness="H", source_agent="A"
+            )
+        )
         s = bus.summary()
         assert s[EventType.TASK_CREATED] == 3
         assert s[EventType.APPROVAL_REQUESTED] == 1
 
     def test_log_for_harness_filters(self):
         bus = EventBus()
-        bus.emit(AOSEvent(type=EventType.TASK_CREATED,
-                          source_harness="HAR-EXEC-001", source_agent="A"))
-        bus.emit(AOSEvent(type=EventType.TASK_CREATED,
-                          source_harness="HAR-FIN-001", source_agent="B"))
+        bus.emit(
+            AOSEvent(
+                type=EventType.TASK_CREATED,
+                source_harness="HAR-EXEC-001",
+                source_agent="A",
+            )
+        )
+        bus.emit(
+            AOSEvent(
+                type=EventType.TASK_CREATED,
+                source_harness="HAR-FIN-001",
+                source_agent="B",
+            )
+        )
         assert len(bus.log_for_harness("HAR-EXEC-001")) == 1
 
 
 class TestEntityIndex:
     def test_register_and_get(self):
         idx = EntityIndex()
-        e = Entity.create(EntityType.PROJECT, "Lhoist 450kW", "VEN-NETSO-001",
-                          created_by="AGT-EXEC-COO")
+        e = Entity.create(
+            EntityType.PROJECT,
+            "Lhoist 450kW",
+            "VEN-NETSO-001",
+            created_by="AGT-EXEC-COO",
+        )
         idx.register(e)
         assert idx.get(e.id) is not None
         assert idx.get(e.id).name == "Lhoist 450kW"
@@ -119,8 +147,13 @@ class TestEntityIndex:
 
 class TestSystemHealth:
     def test_health_with_no_providers(self, monkeypatch):
-        for var in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN",
-                    "AOS_LLM_BASE_URL", "TAZOS_LLM_BASE_URL", "NVIDIA_NIM_API_KEY"):
+        for var in (
+            "ANTHROPIC_API_KEY",
+            "ANTHROPIC_AUTH_TOKEN",
+            "AOS_LLM_BASE_URL",
+            "TAZOS_LLM_BASE_URL",
+            "NVIDIA_NIM_API_KEY",
+        ):
             monkeypatch.delenv(var, raising=False)
         h = check_system_health()
         assert h.status in ("ok", "degraded", "down")  # graceful even with no providers

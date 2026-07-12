@@ -26,6 +26,7 @@ from typing import Any
 # Memory entry types
 # ---------------------------------------------------------------------------
 
+
 class Decision(Enum):
     STORE = "store"
     REJECT = "reject"
@@ -45,9 +46,10 @@ class Classification(Enum):
 @dataclass(frozen=True)
 class MemoryEntry:
     """Immutable memory entry. Use object.__setattr__ for replaced_by."""
+
     id: str
-    layer: str           # long_term, episodic, semantic
-    domain: str          # e.g. company_facts, daily_dashboard, pricing_model
+    layer: str  # long_term, episodic, semantic
+    domain: str  # e.g. company_facts, daily_dashboard, pricing_model
     key: str | None = None
     value: str | None = None
     ref: str | None = None
@@ -68,8 +70,9 @@ class MemoryEntry:
 @dataclass(frozen=True)
 class AuditRecord:
     """Immutable audit record for a memory operation."""
+
     id: str
-    operation: str       # store, reject, summarize, merge, version
+    operation: str  # store, reject, summarize, merge, version
     entry_id: str | None = None
     agent_id: str = ""
     domain: str = ""
@@ -82,6 +85,7 @@ class AuditRecord:
 @dataclass
 class MemoryCandidate:
     """Submitted by an agent, pending reflection engine review."""
+
     id: str
     agent_id: str
     layer: str
@@ -97,6 +101,7 @@ class MemoryCandidate:
 @dataclass
 class ProceduralMemoryEntry:
     """Procedural memory entry — skills, SOPs, instructions."""
+
     id: str
     name: str
     description: str
@@ -112,6 +117,7 @@ class ProceduralMemoryEntry:
 # ---------------------------------------------------------------------------
 # Procedural Memory Store
 # ---------------------------------------------------------------------------
+
 
 class ProceduralMemory:
     """Procedural memory — skills, SOPs, and instructions.
@@ -252,6 +258,7 @@ class ProceduralMemory:
 # ---------------------------------------------------------------------------
 # Memory Store
 # ---------------------------------------------------------------------------
+
 
 class MemoryStore:
     """Three-layer memory with permissions, candidates, and audit trail.
@@ -516,7 +523,9 @@ class MemoryStore:
                 for entry in self.layers[layer][domain]:
                     if entry.replaced_by:
                         continue
-                    searchable = f"{entry.key or ''} {entry.value or ''} {entry.content}".lower()
+                    searchable = (
+                        f"{entry.key or ''} {entry.value or ''} {entry.content}".lower()
+                    )
                     if query_lower in searchable:
                         results[layer].append(entry)
 
@@ -815,20 +824,22 @@ CONTENT: <the fact/pattern/rule>
         # REJECT and SUMMARIZE just log
 
         # Record audit
-        self.audit_trail.append(AuditRecord(
-            id=self._next_id("AUD"),
-            operation=decision.value,
-            entry_id=entry.id if entry else None,
-            agent_id=candidate.agent_id,
-            domain=candidate.domain,
-            decision=decision.value,
-            reason=reason or f"Candidate {candidate.id} → {decision.value}",
-            previous_entry_id=entry.replaced_by if entry else None,
-        ))
+        self.audit_trail.append(
+            AuditRecord(
+                id=self._next_id("AUD"),
+                operation=decision.value,
+                entry_id=entry.id if entry else None,
+                agent_id=candidate.agent_id,
+                domain=candidate.domain,
+                decision=decision.value,
+                reason=reason or f"Candidate {candidate.id} → {decision.value}",
+                previous_entry_id=entry.replaced_by if entry else None,
+            )
+        )
 
         # Enforce audit trail cap — keep most recent entries
         if len(self.audit_trail) > self._max_audit_records:
-            self.audit_trail = self.audit_trail[-self._max_audit_records:]
+            self.audit_trail = self.audit_trail[-self._max_audit_records :]
 
         # Mark candidate processed
         candidate.status = decision.value
@@ -874,7 +885,7 @@ CONTENT: <the fact/pattern/rule>
 
         # Mark old entry as superseded (frozen dataclass bypass)
         if old_entry:
-            object.__setattr__(old_entry, 'replaced_by', new_entry.id)
+            object.__setattr__(old_entry, "replaced_by", new_entry.id)
 
         self.layers[candidate.layer][candidate.domain].append(new_entry)
         return new_entry
@@ -904,7 +915,7 @@ CONTENT: <the fact/pattern/rule>
                 source_agent=candidate.agent_id,
                 version=old_entry.version + 1,
             )
-            object.__setattr__(old_entry, 'replaced_by', new_entry.id)
+            object.__setattr__(old_entry, "replaced_by", new_entry.id)
             self.layers[candidate.layer][candidate.domain].append(new_entry)
             return new_entry
 
@@ -925,8 +936,12 @@ CONTENT: <the fact/pattern/rule>
                     key=item.get("key") if isinstance(item, dict) else None,
                     value=item.get("value") if isinstance(item, dict) else None,
                     ref=item.get("ref") if isinstance(item, dict) else None,
-                    content=item.get("description", "") if isinstance(item, dict) else str(item),
-                    classification=item.get("classification", "internal") if isinstance(item, dict) else "internal",
+                    content=item.get("description", "")
+                    if isinstance(item, dict)
+                    else str(item),
+                    classification=item.get("classification", "internal")
+                    if isinstance(item, dict)
+                    else "internal",
                     source_agent="system_seed",
                 )
                 self.layers[layer][domain].append(entry)
@@ -974,8 +989,12 @@ CONTENT: <the fact/pattern/rule>
 
             if auto_store:
                 # Auto-store: if domain has existing entries, version; else store
-                existing = self.layers.get(candidate.layer, {}).get(candidate.domain, [])
-                active = [e for e in existing if not e.replaced_by and e.key == candidate.key]
+                existing = self.layers.get(candidate.layer, {}).get(
+                    candidate.domain, []
+                )
+                active = [
+                    e for e in existing if not e.replaced_by and e.key == candidate.key
+                ]
                 if active:
                     decision = Decision.VERSION
                     entry = self._version_entry(candidate)
@@ -984,19 +1003,21 @@ CONTENT: <the fact/pattern/rule>
                     entry = self._store_entry(candidate)
 
                 candidate.status = decision.value
-                self.audit_trail.append(AuditRecord(
-                    id=self._next_id("AUD"),
-                    operation=decision.value,
-                    entry_id=entry.id,
-                    agent_id=candidate.agent_id,
-                    domain=candidate.domain,
-                    decision=decision.value,
-                    reason=f"Auto-reviewed: {candidate.id} → {decision.value}",
-                ))
+                self.audit_trail.append(
+                    AuditRecord(
+                        id=self._next_id("AUD"),
+                        operation=decision.value,
+                        entry_id=entry.id,
+                        agent_id=candidate.agent_id,
+                        domain=candidate.domain,
+                        decision=decision.value,
+                        reason=f"Auto-reviewed: {candidate.id} → {decision.value}",
+                    )
+                )
 
                 # Enforce audit trail cap
                 if len(self.audit_trail) > self._max_audit_records:
-                    self.audit_trail = self.audit_trail[-self._max_audit_records:]
+                    self.audit_trail = self.audit_trail[-self._max_audit_records :]
                 results.append(self.audit_trail[-1])
             else:
                 candidate.status = "reviewed"
@@ -1135,17 +1156,22 @@ CONTENT: <the fact/pattern/rule>
         # Append new audit records since last persist
         with open(audit_path, "a") as f:
             for rec in self.audit_trail:
-                f.write(json.dumps({
-                    "id": rec.id,
-                    "operation": rec.operation,
-                    "entry_id": rec.entry_id,
-                    "agent_id": rec.agent_id,
-                    "domain": rec.domain,
-                    "decision": rec.decision,
-                    "reason": rec.reason,
-                    "timestamp": rec.timestamp,
-                    "cycle_id": cycle_id,
-                }) + "\n")
+                f.write(
+                    json.dumps(
+                        {
+                            "id": rec.id,
+                            "operation": rec.operation,
+                            "entry_id": rec.entry_id,
+                            "agent_id": rec.agent_id,
+                            "domain": rec.domain,
+                            "decision": rec.decision,
+                            "reason": rec.reason,
+                            "timestamp": rec.timestamp,
+                            "cycle_id": cycle_id,
+                        }
+                    )
+                    + "\n"
+                )
         written["audit_log"] = str(audit_path)
 
         # Write human-readable memory snapshot
@@ -1211,10 +1237,13 @@ CONTENT: <the fact/pattern/rule>
         lines = ["Memory Store:"]
         for layer in ["long_term", "episodic", "semantic"]:
             domains = self.layers[layer]
-            active = sum(1 for entries in domains.values()
-                        for e in entries if not e.replaced_by)
+            active = sum(
+                1 for entries in domains.values() for e in entries if not e.replaced_by
+            )
             lines.append(f"  {layer}: {len(domains)} domains, {active} entries")
-        lines.append(f"  Candidates: {len(self.candidates)} ({sum(1 for c in self.candidates if c.status == 'pending')} pending)")
+        lines.append(
+            f"  Candidates: {len(self.candidates)} ({sum(1 for c in self.candidates if c.status == 'pending')} pending)"
+        )
         lines.append(f"  Audit records: {len(self.audit_trail)}")
         lines.append(f"  Procedural: {len(self.procedural.entries)} procedures")
         if self._last_consolidation:
@@ -1227,6 +1256,7 @@ CONTENT: <the fact/pattern/rule>
 # ---------------------------------------------------------------------------
 # Factory: build MemoryStore from memory.yml
 # ---------------------------------------------------------------------------
+
 
 def build_memory_from_manifest(
     manifest: dict[str, Any],

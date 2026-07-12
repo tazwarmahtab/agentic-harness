@@ -104,16 +104,16 @@ class GateManager:
             risk_assessment="low" if gate == Gate.SPEC else "medium",
         )
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  GATE: {gate.value.upper()} — approval required")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  Item:  {item.id}")
         print(f"  {summary}")
         print(f"  Risk:  {item.risk_assessment}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"  Run:   python -m aos approvals approve {item.id}  # or reject")
         print("  Or:    python -m aos approvals list")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         return GateResult(
             gate=gate,
@@ -131,7 +131,9 @@ class GateManager:
                 approved = item.decision == ApprovalDecision.APPROVE.value
                 return GateResult(
                     gate=gate,
-                    decision=GateDecision.APPROVED if approved else GateDecision.REJECTED,
+                    decision=GateDecision.APPROVED
+                    if approved
+                    else GateDecision.REJECTED,
                     item_id=item.id,
                     founder_note=item.founder_note,
                     decided_at=item.decided_at,
@@ -163,7 +165,9 @@ class GateManager:
         Returns GateResult with APPROVED/REJECTED if decided, SKIPPED on timeout.
         """
         deadline = time.monotonic() + timeout_s
-        print(f"\n  ⏳ Waiting for founder decision on {gate.value} gate ({item_id})...")
+        print(
+            f"\n  ⏳ Waiting for founder decision on {gate.value} gate ({item_id})..."
+        )
         print(f"     Run: python -m aos approvals approve {item_id}")
         print(f"     Or:  python -m aos approvals reject {item_id}")
         print(f"     Timeout: {timeout_s:.0f}s\n")
@@ -173,7 +177,9 @@ class GateManager:
             for item in resolved:
                 if item.id == item_id and item.status == "decided":
                     approved = item.decision == ApprovalDecision.APPROVE.value
-                    decision = GateDecision.APPROVED if approved else GateDecision.REJECTED
+                    decision = (
+                        GateDecision.APPROVED if approved else GateDecision.REJECTED
+                    )
                     print(f"  ✓ Gate {gate.value} {decision.value} by founder.")
                     return GateResult(
                         gate=gate,
@@ -184,15 +190,17 @@ class GateManager:
                     )
             time.sleep(poll_interval)
 
-        print(f"  ⏰ Gate {gate.value} timed out after {timeout_s:.0f}s. Pipeline stopping.")
+        print(
+            f"  ⏰ Gate {gate.value} timed out after {timeout_s:.0f}s. Pipeline stopping."
+        )
         return GateResult(gate=gate, decision=GateDecision.SKIPPED, item_id=item_id)
 
     def _print_pending(self, item: ApprovalItem) -> None:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"  PENDING approval: {item.id}")
         print(f"  {item.action}")
         print(f"  Rationale: {item.rationale[:120]}...")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
     def _prompt_decision(self, item_id: str) -> ApprovalDecision:
         """Block and wait for a terminal decision on the item."""

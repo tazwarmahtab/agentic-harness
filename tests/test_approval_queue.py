@@ -58,7 +58,9 @@ class TestApprovalQueue:
             rationale="test",
             risk_assessment="low",
         )
-        decision = queue.decide(item.id, ApprovalDecision.APPROVE, founder_note="Go ahead")
+        decision = queue.decide(
+            item.id, ApprovalDecision.APPROVE, founder_note="Go ahead"
+        )
         assert decision.approved is True
         assert decision.item_id == item.id
         assert len(queue.pending()) == 0
@@ -71,7 +73,9 @@ class TestApprovalQueue:
             rationale="test",
             risk_assessment="low",
         )
-        decision = queue.decide(item.id, ApprovalDecision.REJECT, founder_note="Not now")
+        decision = queue.decide(
+            item.id, ApprovalDecision.REJECT, founder_note="Not now"
+        )
         assert decision.approved is False
         assert len(queue.pending()) == 0
 
@@ -101,7 +105,9 @@ class TestApprovalQueue:
     def test_pending_returns_only_pending(self) -> None:
         queue = ApprovalQueue()
         queue.add(agent_id="A", action="task1", rationale="r", risk_assessment="low")
-        item2 = queue.add(agent_id="B", action="task2", rationale="r", risk_assessment="low")
+        item2 = queue.add(
+            agent_id="B", action="task2", rationale="r", risk_assessment="low"
+        )
         queue.decide(item2.id, ApprovalDecision.APPROVE)
         assert len(queue.pending()) == 1
 
@@ -118,9 +124,15 @@ class TestApprovalPersistence:
     def test_save_and_load(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             queue = ApprovalQueue(Path(tmpdir) / "approvals.jsonl")
-            queue.add(agent_id="A", action="task1", rationale="r", risk_assessment="low")
-            queue.add(agent_id="B", action="task2", rationale="r", risk_assessment="low")
-            queue.decide(queue.pending()[0].id, ApprovalDecision.APPROVE, founder_note="ok")
+            queue.add(
+                agent_id="A", action="task1", rationale="r", risk_assessment="low"
+            )
+            queue.add(
+                agent_id="B", action="task2", rationale="r", risk_assessment="low"
+            )
+            queue.decide(
+                queue.pending()[0].id, ApprovalDecision.APPROVE, founder_note="ok"
+            )
 
             # Load new queue from same file
             queue2 = ApprovalQueue(Path(tmpdir) / "approvals.jsonl")
@@ -131,7 +143,9 @@ class TestApprovalPersistence:
         with tempfile.TemporaryDirectory() as tmpdir:
             log_path = Path(tmpdir) / "decisions.jsonl"
             queue = ApprovalQueue(decision_log_path=log_path)
-            item = queue.add(agent_id="A", action="task1", rationale="r", risk_assessment="low")
+            item = queue.add(
+                agent_id="A", action="task1", rationale="r", risk_assessment="low"
+            )
             queue.decide(item.id, ApprovalDecision.APPROVE, founder_note="go")
 
             # Check decision log exists and has entry
@@ -146,6 +160,7 @@ class TestApprovalPersistence:
 class TestCLIApprovalCommands:
     def test_cli_has_approvals_command(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "approvals"],
             capture_output=True,
@@ -156,6 +171,7 @@ class TestCLIApprovalCommands:
 
     def test_cli_approvals_list(self) -> None:
         import subprocess
+
         result = subprocess.run(
             [sys.executable, "-m", "aos", "approvals", "list"],
             capture_output=True,
@@ -166,8 +182,17 @@ class TestCLIApprovalCommands:
 
     def test_cli_approvals_approve_all(self) -> None:
         import subprocess
+
         result = subprocess.run(
-            [sys.executable, "-m", "aos", "approvals", "approve-all", "--note", "batch approve"],
+            [
+                sys.executable,
+                "-m",
+                "aos",
+                "approvals",
+                "approve-all",
+                "--note",
+                "batch approve",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).parent.parent),
