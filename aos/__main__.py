@@ -12,21 +12,22 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import logging
 from datetime import datetime
 import sys
 from pathlib import Path
 from typing import Optional
 
-from aos.orchestrate.gates import GateManager, Gate, GateDecision
+from aos.orchestrate.gates import GateManager
 from aos.orchestrate.pipeline import (
-    OrchestratePipeline,
-    PipelineContext,
-    Phase,
-    Status,
+  OrchestratePipeline,
+  PipelineContext,
 )
 from aos.registry import load_registry
 from aos.validator import validate_all
 from aos.discover import discover_ventures, find_venture
+
+logger = logging.getLogger(__name__)
 
 
 def find_project_root() -> Path:

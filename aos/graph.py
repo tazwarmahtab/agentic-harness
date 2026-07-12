@@ -27,7 +27,6 @@ import logging
 import operator
 import re
 import time
-import warnings
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path

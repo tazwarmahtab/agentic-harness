@@ -20,13 +20,16 @@ paid Claude endpoints during parallel fan-out.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import urllib.request
 import urllib.error
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Protocol
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Model routing table — mirrors CLAUDE.md / 9router config

@@ -12,11 +12,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from aos.constants import (
-    NETSO_FINANCIAL,
     DSCR_ALERT_FLOOR,
     NEM_EXPORT_RATE,
     CAPEX_PER_KW_SCENARIO_A,
-    TRUE_VARIABLE_RATE,
 )
 
 
@@ -110,9 +108,9 @@ def _check_blended_rate(flat: str, result: ValidationResult) -> None:
     for pattern in _BLENDED_PATTERNS:
         if pattern.search(flat):
             result.fail(
-                f"Blended rate (14.81) detected in output. "
-                f"Must use True Variable Rate (12.98) for savings. "
-                f"Hard-fail rule: blended_rate_used_for_savings"
+                "Blended rate (14.81) detected in output. "
+                "Must use True Variable Rate (12.98) for savings. "
+                "Hard-fail rule: blended_rate_used_for_savings"
             )
             return
 
@@ -154,9 +152,9 @@ def _check_scenario_b(output: dict, flat: str, result: ValidationResult) -> None
     for pattern in _SCENARIO_B_PATTERNS:
         if pattern.search(flat):
             result.fail(
-                f"Scenario B referenced in output without founder approval. "
-                f"Default to Scenario A (55,000 BDT/kW). "
-                f"Hard-fail rule: scenario_b_without_nbr_confirmation"
+                "Scenario B referenced in output without founder approval. "
+                "Default to Scenario A (55,000 BDT/kW). "
+                "Hard-fail rule: scenario_b_without_nbr_confirmation"
             )
             return
 
@@ -203,9 +201,9 @@ def _check_true_variable_rate(output: dict, flat: str, result: ValidationResult)
         )
         if blended_near_savings:
             result.fail(
-                f"Blended rate (14.81) used near savings context. "
-                f"Must use True Variable Rate (12.98) for savings calculations. "
-                f"Hard-fail rule: blended_rate_near_savings"
+                "Blended rate (14.81) used near savings context. "
+                "Must use True Variable Rate (12.98) for savings calculations. "
+                "Hard-fail rule: blended_rate_near_savings"
             )
 
 

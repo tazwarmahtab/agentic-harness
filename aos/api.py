@@ -29,9 +29,9 @@ from aos.memory import build_memory_from_manifest, MemoryStore
 from aos.registry import HarnessBundle, load_registry
 from aos.tools import ToolGateway
 from aos.usage import UsageTracker
-from aos.health import check_system_health, SystemHealth
-from aos.entity_index import EntityIndex, default_index
-from aos.event_bus import EventBus, default_bus
+from aos.health import check_system_health
+from aos.entity_index import default_index
+from aos.event_bus import default_bus
 from aos.services.pipeline import get_pipeline_status, get_pipeline_history
 from aos.services.approvals import get_pending_approvals, approve_request, reject_request
 from aos.services.memory import get_memory_summary
@@ -209,7 +209,6 @@ def _resolve_bundle(
         logger.warning("Path traversal attempt blocked: %r", harness_name)
         return None, venture_name or "unknown", harness_name
 
-    root = _find_project_root()
     harness_dir = Path(__file__).parent / "harnesses" / harness_name
 
     if not harness_dir.exists():

@@ -14,13 +14,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Callable
+from typing import Any
 
 
 # ---------------------------------------------------------------------------
@@ -395,7 +394,7 @@ class MemoryStore:
         if self._embedding_provider is None:
             return None
 
-        from aos.vector_store import VectorIndex, build_vector_index_from_memory
+        from aos.vector_store import build_vector_index_from_memory
 
         self._vector_index = build_vector_index_from_memory(
             store=self,
@@ -440,8 +439,6 @@ class MemoryStore:
             for domain_name in self.layers[layer_name]:
                 if self.can_read(agent_id, domain_name):
                     accessible_domains.add(domain_name)
-
-        from aos.vector_store import SearchResult
 
         results = index.search(
             query=query,
@@ -1223,7 +1220,7 @@ CONTENT: <the fact/pattern/rule>
         if self._last_consolidation:
             lines.append(f"  Last consolidation: {self._last_consolidation}")
         if self.check_consolidation_needed():
-            lines.append(f"  ⚠ Consolidation recommended")
+            lines.append("  ⚠ Consolidation recommended")
         return "\n".join(lines)
 
 

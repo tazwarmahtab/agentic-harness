@@ -9,15 +9,11 @@ at .claude/skills/orchestrate/SKILL.md provides the agent-facing interface.
 
 from __future__ import annotations
 
-import json
 import re
-import subprocess
 
-# Used in GateManager integration; imported at module level because Gate,
-# GateDecision, and GateResult are referenced in method signatures inside
-# OrchestratePipeline methods defined at class body scope.
-from aos.orchestrate.gates import Gate, GateDecision, GateManager
-import sys
+# Used in pipeline gate checks; imported at module level because Gate and
+# GateDecision are referenced in method bodies across OrchestratePipeline.
+from aos.orchestrate.gates import Gate, GateDecision
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -228,7 +224,7 @@ class OrchestratePipeline:
         result = PhaseResult(phase=Phase.SPEC, status=Status.RUNNING)
         result.started_at = datetime.now().isoformat()
         print("─" * 40)
-        print(f"  PHASE 1: /spec — Define the problem")
+        print("  PHASE 1: /spec — Define the problem")
         print("─" * 40)
 
         if not self.ctx.one_liner:
@@ -249,7 +245,7 @@ class OrchestratePipeline:
         # Build the /spec command
         cmd = self._build_spec_command()
         print(f"  Command: {cmd[:120]}...")
-        print(f"  /spec writes the issue, runs quality gate, and optionally spawns an agent.")
+        print("  /spec writes the issue, runs quality gate, and optionally spawns an agent.")
         print()
 
         if self.ctx.dry_run:
@@ -280,7 +276,7 @@ class OrchestratePipeline:
         result = PhaseResult(phase=Phase.AUTOPLAN, status=Status.RUNNING)
         result.started_at = datetime.now().isoformat()
         print("─" * 40)
-        print(f"  PHASE 2: /autoplan — Strategy → Design → Eng → DX review")
+        print("  PHASE 2: /autoplan — Strategy → Design → Eng → DX review")
         print("─" * 40)
 
         if not self.ctx.plan_path or not self.ctx.plan_path.exists():
@@ -292,7 +288,7 @@ class OrchestratePipeline:
 
         cmd = f"/autoplan {self.ctx.plan_path}"
         print(f"  Command: {cmd}")
-        print(f"  /autoplan runs CEO, Design, Eng, DX reviews with dual voices.")
+        print("  /autoplan runs CEO, Design, Eng, DX reviews with dual voices.")
         print()
 
         if self.ctx.dry_run:
@@ -322,7 +318,7 @@ class OrchestratePipeline:
         result = PhaseResult(phase=Phase.IMPLEMENT, status=Status.RUNNING)
         result.started_at = datetime.now().isoformat()
         print("─" * 40)
-        print(f"  PHASE 3: /implement — Decompose → Execute agent chains")
+        print("  PHASE 3: /implement — Decompose → Execute agent chains")
         print("─" * 40)
 
         if not self.ctx.plan_path or not self.ctx.plan_path.exists():
@@ -333,7 +329,7 @@ class OrchestratePipeline:
             return False
 
         print(f"  Plan:   {self.ctx.plan_path}")
-        print(f"  Reading plan, decomposing steps, picking agent chains...")
+        print("  Reading plan, decomposing steps, picking agent chains...")
         print()
 
         if self.ctx.dry_run:
@@ -372,7 +368,7 @@ class OrchestratePipeline:
                     self.ctx.record(result)
                     return False
                 # Continue with remaining steps
-                print(f"    → Continuing with remaining steps...")
+                print("    → Continuing with remaining steps...")
             else:
                 print(f"    ✓ Step {step['id']} passed")
                 steps_passed += 1
@@ -396,7 +392,7 @@ class OrchestratePipeline:
         result = PhaseResult(phase=Phase.REVIEWLOOP, status=Status.RUNNING)
         result.started_at = datetime.now().isoformat()
         print("─" * 40)
-        print(f"  PHASE 4: /reviewloop — Review → Fix → Re-review")
+        print("  PHASE 4: /reviewloop — Review → Fix → Re-review")
         print("─" * 40)
 
         print(f"  Max iterations: {self.ctx.max_review_iterations}")
@@ -439,11 +435,11 @@ class OrchestratePipeline:
                 if fix_rc != 0:
                     print(f"  ⚠ /implement exited with code {fix_rc} during auto-fix")
                 else:
-                    print(f"  ✓ Auto-fix applied, re-reviewing...")
+                    print("  ✓ Auto-fix applied, re-reviewing...")
 
             # Check exit criteria: 0 CRITICAL, 0 HIGH
             if iteration_findings["critical"] == 0 and iteration_findings["high"] == 0:
-                print(f"  ✓ Exit criteria met: 0 CRITICAL, 0 HIGH")
+                print("  ✓ Exit criteria met: 0 CRITICAL, 0 HIGH")
                 result.status = Status.PASSED
                 result.finished_at = datetime.now().isoformat()
                 result.duration_s = self._duration(result)
@@ -458,7 +454,7 @@ class OrchestratePipeline:
 
             print(f"  Findings: {iteration_findings}")
             if iteration < self.ctx.max_review_iterations:
-                print(f"  → Fixing and re-reviewing...")
+                print("  → Fixing and re-reviewing...")
 
         # Max iterations reached
         print(f"  ⚠ Max iterations ({self.ctx.max_review_iterations}) reached.")
@@ -476,10 +472,10 @@ class OrchestratePipeline:
         result = PhaseResult(phase=Phase.SHIP, status=Status.RUNNING)
         result.started_at = datetime.now().isoformat()
         print("─" * 40)
-        print(f"  PHASE 5: /ship — Test → Version → Commit → Push → PR")
+        print("  PHASE 5: /ship — Test → Version → Commit → Push → PR")
         print("─" * 40)
 
-        print(f"  Base branch: main")
+        print("  Base branch: main")
         issue_num = self.ctx.issue_number or "N/A"
         print(f"  Close issue: #{issue_num}")
         print()
@@ -807,7 +803,7 @@ class OrchestratePipeline:
         if failed:
             print(f"\n  STATUS: DONE_WITH_CONCERNS (failed phases: {', '.join(p.value for p in failed)})")
         else:
-            print(f"\n  STATUS: DONE")
+            print("\n  STATUS: DONE")
 
         print("=" * 60)
 
