@@ -19,42 +19,45 @@ Every architectural mistake gets multiplied across every future harness. So we b
 
 ```
 aos/
-├── platform/                    # JSON Schemas (platform contracts)
-│   ├── identity.schema.json    # Every object gets a globally unique ID
-│   ├── harness.schema.json     # Harness canonical template
-│   ├── agent.schema.json       # Agent contract (Volume 10)
-│   └── policy.schema.json      # Approval + governance rules
-│
+├── __main__.py              # CLI entry (validate/status/run/orchestrate/ventures/approvals)
+├── graph.py                 # LangGraph StateGraph runtime
+├── api.py                   # FastAPI + WebSocket server
+├── orchestrate/             # End-to-end pipeline (spec -> plan -> implement -> review -> ship)
+│   ├── pipeline.py
+│   └── gates.py
+├── registry.py              # Harness/agent registry + cross-harness dispatch
+├── validator.py             # Manifest validation
+├── llm.py                   # LLM routing (Anthropic + local Ollama + NVIDIA NIM)
+├── context.py               # System-prompt assembly from agent manifest
+├── usage.py                 # Per-agent per-model token tracking
+├── evaluator.py             # 5 financial checks (blended rate, savings %, DSCR, PPA, Scenario B)
+├── memory.py                # SQLite-backed persistent memory store
+├── approval_queue.py        # Persistent approval queue (JSONL)
+├── platform/                # JSON Schemas (identity, harness, agent, policy)
 ├── ventures/
-│   └── netso/                  # First venture instance
-│       └── venture.yml         # Identity, artifacts, financial constants, thresholds
-│
-├── harnesses/
-│   └── executive/              # Phase 1 — Reference implementation
-│       ├── harness.yml         # Mission, Scope, KPIs, Inputs, Outputs
-│       ├── planner.yml         # LILTAZ → priority planner
-│       ├── dispatcher.yml      # LILTAZ → task router (routes to all agents)
-│       ├── specialists/
-│       │   ├── ceo.yml          # Strategic reasoning
-│       │   ├── coo.yml          # ATLAS → execution, dashboard, deadlines
-│       │   ├── cfo.yml          # MINERVA → cash, forecasts, number discipline
-│       │   ├── chief-of-staff.yml  # NEW — briefs, follow-ups, decision log
-│       │   ├── legal-officer.yml   # SHIELD (legal half) → contracts, regulatory
-│       │   ├── risk-officer.yml    # SHIELD (risk half) → threats, escalation
-│       │   └── performance-analyst.yml  # LENS → KPIs, drift, forecasts
-│       ├── memory.yml          # Shared memory (long-term, episodic, semantic)
-│       ├── tools.yml           # Capability-based tool registry
-│       ├── approvals.yml       # Declarative approval gates
-│       ├── evaluation.yml      # Metrics + continuous improvement loop
-│       └── sops/
-│           ├── session-protocol.yml       # Startup/shutdown (read first)
-│           ├── daily-executive-loop.yml   # Morning Jarvis cycle
-│           ├── approval-routing.yml       # Bundled decision queue
-│           └── weekly-review.yml          # Friday review + improvement
-│
-└── docs/
-    └── specs/
-        └── 2026-06-30-executive-harness-design.md
+│   ├── netso/               # Active venture (financial constants, artifacts)
+│   └── transitbd/           # Planning-stage venture
+├── harnesses/               # 15 harness bundles
+│   ├── executive/           # Reference implementation (17 manifests)
+│   ├── sales/
+│   ├── finance/
+│   ├── legal/
+│   ├── marketing/
+│   ├── operations/
+│   ├── customer_success/
+│   ├── ai_development/
+│   ├── software_dev/
+│   ├── investor_relations/
+│   ├── personal/
+│   ├── knowledge/
+│   └── evaluator/
+└── services/                # WebSocket telemetry, executors
+
+odysseus/                    # FastAPI dashboard (REST + WS + UI)
+
+docs/
+└── specs/
+    └── 2026-06-30-executive-harness-design.md
 ```
 
 ## What exists today
@@ -63,12 +66,19 @@ aos/
 |---|---|
 | Platform schemas (identity, harness, agent, policy) | ✅ Written |
 | Netso venture binding | ✅ Written (financial constants, artifacts, re-homing map) |
-| Executive Harness — all 14 manifests | ✅ Written |
+| TransitBD venture | 📋 Planning stage |
+| Executive Harness — 17 manifests | ✅ Written |
+| 13 additional harnesses (Sales, Finance, Legal, Marketing, Operations, Customer Success, AI Dev, Software Dev, Investor Relations, Personal, Knowledge, Evaluator) | ✅ Written |
 | 4 SOPs (session protocol, daily loop, approval routing, weekly review) | ✅ Written |
 | Design spec | ✅ Written |
-| Runtime | ⬜ Not yet (manifests are declarative — a future runtime consumes them) |
-| Other harnesses (Sales, Finance, Engineering...) | ⬜ Not yet (Executive is the reference) |
-| Other ventures (TransitBD...) | ⬜ Not yet |
+| Runtime — LangGraph StateGraph (`aos/graph.py`) | ✅ Fully implemented |
+| API server — FastAPI + WebSocket (`aos/api.py`) | ✅ Fully implemented |
+| CLI (`python -m aos`) | ✅ validate / status / run / orchestrate / ventures / approvals |
+| Orchestrate pipeline (spec -> plan -> implement -> review -> ship) | ✅ Fully implemented |
+| Memory persistence (SQLite-backed store) | ✅ Fully implemented |
+| Approval queue (persistent JSONL) | ✅ Fully implemented |
+| Cross-harness dispatch | ✅ Fully implemented |
+| Test suite | ✅ 696 tests |
 
 ## Re-homing from existing Netso AI system
 
@@ -88,16 +98,48 @@ Tier-2 specialists (SPARK, AURUM, SIGNAL, FORGE, NEXUS, BEACON, SCRY, etc.) stay
 
 ## Build order
 
-| Phase | Harness | Why |
-|---|---|---|
-| **1** | **Executive** ← you are here | Reference implementation |
-| 2 | Knowledge | Shared memory for all agents |
-| 3 | Communication | Email, meetings, WhatsApp, LinkedIn |
-| 4 | Sales | Highest ROI for Netso today |
-| 5 | Project Development | Converts sales into projects |
-| 6 | Finance | Cash flow + investor reporting |
-| 7 | Legal | Standardized documentation |
-| 8+ | Operations, Customer Success, Marketing, AI Dev, Software Dev, Investor, Personal | As needed |
+| Phase | Harness | Status | Why |
+|---|---|---|---|
+| **1** | **Executive** | ✅ Complete | Reference implementation |
+| **2** | **Knowledge** | ✅ Complete | Shared memory for all agents |
+| **3** | **Communication** | ✅ Complete | Email, meetings, WhatsApp, LinkedIn |
+| **4** | **Sales** | ✅ Complete | Highest ROI for Netso today |
+| **5** | **Project Development** | ✅ Complete | Converts sales into projects |
+| **6** | **Finance** | ✅ Complete | Cash flow + investor reporting |
+| 7 | Legal | ✅ Complete | Standardized documentation |
+| 8 | Operations | ✅ Complete | Day-to-day operations |
+| 9 | Customer Success | ✅ Complete | Retention + satisfaction |
+| 10 | Marketing | ✅ Complete | Demand generation |
+| 11 | AI Dev | ✅ Complete | AI model development |
+| 12 | Software Dev | ✅ Complete | Software engineering |
+| 13 | Investor Relations | ✅ Complete | Fundraising + reporting |
+| 14 | Personal | ✅ Complete | Founder personal workflows |
+| 15 | Evaluator | ✅ Complete | Metrics + continuous improvement |
+| 16+ | As needed | ⬜ Planned | Additional harnesses on demand |
+
+## Quick Start
+
+```bash
+# Setup
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env   # fill in AOS_API_TOKEN + ANTHROPIC_API_KEY
+
+# Validate all manifests
+python -m aos validate
+
+# Show system status
+python -m aos status
+
+# Dry-run a harness cycle
+python -m aos run --venture netso --dry-run
+
+# Run the test suite
+pytest -q
+
+# Run with coverage
+pytest --cov=aos --cov=odysseus --cov-report=term-missing
+```
 
 ## Key constraints
 
