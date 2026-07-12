@@ -1,4 +1,4 @@
-"""Manifest validator — validates all TAZ OS manifests against JSON schemas.
+"""Manifest validator — validates all AOS manifests against JSON schemas.
 
 Custom validation rules:
 - Financial constants match ground truth

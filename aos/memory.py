@@ -1190,7 +1190,7 @@ CONTENT: <the fact/pattern/rule>
 
     def to_markdown(self, agent_id: str | None = None) -> str:
         """Export accessible memory as markdown."""
-        lines = ["# TAZ OS Memory Store", ""]
+        lines = ["# AOS Memory Store", ""]
 
         for layer in ["long_term", "episodic", "semantic"]:
             lines.append(f"## {layer.replace('_', ' ').title()} Layer")

@@ -24,13 +24,13 @@ def build_prompt(
     """Build the complete system prompt for an agent from its manifest.
 
     This is the SINGLE source of prompt construction. Every agent in
-    TAZ OS goes through this function. No agent builds its own prompt.
+    AOS goes through this function. No agent builds its own prompt.
     """
     parts: list[str] = []
 
     # --- Identity ---
     parts.append(f"You are {agent.name} ({agent.id}).")
-    parts.append("You operate within the TAZ OS Executive Harness.")
+    parts.append("You operate within the AOS Executive Harness.")
     parts.append("")
 
     # --- Mission ---

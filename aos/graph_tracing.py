@@ -125,7 +125,7 @@ def build_traced_graph(
     usage_tracker: UsageTracker | None = None,
     tracer: Tracer | None = None,
 ) -> CompiledStateGraph:
-    """Build a traced version of the TAZ OS graph.
+    """Build a traced version of the AOS graph.
 
     This function wraps the standard build_graph with tracing instrumentation.
     Every node execution is logged with timing, status, and output metadata.

@@ -1,4 +1,4 @@
-"""LangGraph-based event-driven orchestrator for TAZ OS.
+"""LangGraph-based event-driven orchestrator for AOS.
 
 Migrates the linear 8-phase cycle (runtime.py) to a StateGraph with:
   - Typed state shared between nodes
@@ -1869,7 +1869,7 @@ def build_graph(
     usage_tracker: UsageTracker | None = None,
     approval_queue: Any = None,
 ) -> CompiledStateGraph:
-    """Build and compile the TAZ OS LangGraph StateGraph.
+    """Build and compile the AOS LangGraph StateGraph.
 
     Returns a compiled graph ready for ``.invoke()`` or ``.stream()``.
 

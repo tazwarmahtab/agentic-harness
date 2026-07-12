@@ -1,4 +1,4 @@
-"""Usage examples for enhanced TAZ OS memory system.
+"""Usage examples for enhanced AOS memory system.
 
 Demonstrates:
 1. Procedural Memory (skills/SOPs)

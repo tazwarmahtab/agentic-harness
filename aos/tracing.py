@@ -1,4 +1,4 @@
-"""LLM Ops tracing system for TAZ OS — observability for agent runs.
+"""LLM Ops tracing system for AOS — observability for agent runs.
 
 Captures the full event tree per cycle:
   - Node execution (agent runs, duration, status)
