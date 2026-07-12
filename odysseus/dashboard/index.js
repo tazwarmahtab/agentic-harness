@@ -15,6 +15,7 @@
 import store from './stores/dashboard.js';
 import ws from './services/websocket.js';
 import { renderLayout, getContentEl, highlightNav } from './layouts/dashboard-layout.js';
+import { initKeyboardShortcuts, destroyKeyboardShortcuts } from './services/keyboard.js';
 
 import * as overviewPage from './pages/overview.js';
 import * as harnessesPage from './pages/harnesses.js';
@@ -101,6 +102,16 @@ export function openPanel() {
   // Start auto-refresh
   store.startAutoRefresh(30000);
   store.loadDashboard();
+
+  // Keyboard shortcuts (Cmd+K palette, number keys)
+  initKeyboardShortcuts();
+
+  // Skip-to-content link (WCAG 2.4.1)
+  const skipLink = document.createElement('a');
+  skipLink.href = '#aos-content';
+  skipLink.className = 'aos-skip-link';
+  skipLink.textContent = 'Skip to content';
+  document.body.appendChild(skipLink);
 }
 
 export function closePanel() {
@@ -112,6 +123,11 @@ export function closePanel() {
 
   ws.disconnect();
   store.stopAutoRefresh();
+  destroyKeyboardShortcuts();
+
+  // Remove skip link
+  const skipLink = document.querySelector('.aos-skip-link');
+  if (skipLink) skipLink.remove();
 
   const modal = document.getElementById('aos-dashboard-modal');
   if (modal) modal.classList.add('hidden');
