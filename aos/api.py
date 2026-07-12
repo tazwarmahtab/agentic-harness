@@ -32,6 +32,12 @@ from aos.usage import UsageTracker
 from aos.health import check_system_health, SystemHealth
 from aos.entity_index import EntityIndex, default_index
 from aos.event_bus import EventBus, default_bus
+from aos.services.pipeline import get_pipeline_status, get_pipeline_history
+from aos.services.approvals import get_pending_approvals, approve_request, reject_request
+from aos.services.memory import get_memory_summary
+from aos.services.sales import get_sales_status
+from aos.services.system import get_system_status
+from aos.services.agents import get_agents_status
 
 logger = logging.getLogger("aos.api")
 
@@ -500,6 +506,161 @@ async def dashboard_summary() -> dict[str, object]:
         "tests": test_count,
         "memory_domains": memory_count,
         "financial_accuracy": None,  # populated after first evaluator run
+    }
+
+
+
+
+
+# ---------------------------------------------------------------------------
+# REST — Pipeline status
+# ---------------------------------------------------------------------------
+
+@app.get("/api/pipeline/status")
+async def pipeline_status() -> dict[str, object]:
+    """Return pipeline execution status."""
+    status = get_pipeline_status()
+    return status.to_dict()
+
+
+@app.get("/api/pipeline/history")
+async def pipeline_history() -> list[dict[str, object]]:
+    """Return pipeline execution history."""
+    return get_pipeline_history()
+
+
+# ---------------------------------------------------------------------------
+# REST — Approvals
+# ---------------------------------------------------------------------------
+
+@app.get("/api/approvals")
+async def list_approvals() -> list[dict[str, object]]:
+    """Return pending approvals."""
+    approvals = get_pending_approvals()
+    return [a.to_dict() for a in approvals]
+
+
+@app.post("/api/approvals/{approval_id}/approve")
+async def approve_approval(approval_id: str) -> dict[str, object]:
+    """Approve a pending request."""
+    return approve_request(approval_id)
+
+
+@app.post("/api/approvals/{approval_id}/reject")
+async def reject_approval(
+    approval_id: str,
+    reason: str = "",
+) -> dict[str, object]:
+    """Reject a pending request."""
+    return reject_request(approval_id, reason)
+
+
+# ---------------------------------------------------------------------------
+# REST — Memory
+# ---------------------------------------------------------------------------
+
+@app.get("/api/memory/summary")
+async def memory_summary() -> dict[str, object]:
+    """Return memory store summary."""
+    summary = get_memory_summary()
+    return summary.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# REST — Sales
+# ---------------------------------------------------------------------------
+
+@app.get("/api/sales/status")
+async def sales_status() -> dict[str, object]:
+    """Return sales graph status."""
+    status = get_sales_status()
+    return status.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# REST — System status
+# ---------------------------------------------------------------------------
+
+@app.get("/api/system/status")
+async def system_status() -> dict[str, object]:
+    """Return system status with health score."""
+    status = get_system_status()
+    return status.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# REST — Agents
+# ---------------------------------------------------------------------------
+
+@app.get("/api/agents")
+async def agents_status() -> dict[str, object]:
+    """Return agents status summary."""
+    status = get_agents_status()
+    return status.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# REST — Dashboard aggregate endpoint
+# ---------------------------------------------------------------------------
+
+@app.get("/api/dashboard")
+async def dashboard() -> dict[str, object]:
+    """Return all KPIs in a single response for the Mission Control Dashboard."""
+    # Get basic counts
+    root = _find_project_root()
+    harnesses_dir = Path(__file__).parent / "harnesses"
+
+    # Count harnesses
+    harness_count = 0
+    if harnesses_dir.exists():
+        harness_count = sum(
+            1 for d in harnesses_dir.iterdir()
+            if d.is_dir() and (d / "harness.yml").exists()
+        )
+
+    # Count test files
+    test_count = 0
+    tests_dir = root / "tests"
+    if tests_dir.exists():
+        test_count = sum(1 for _ in tests_dir.rglob("test_*.py"))
+
+    # Memory domains
+    memory_count = 0
+    memory_dir = Path(__file__).parent / "memory"
+    if memory_dir.exists():
+        memory_count = sum(1 for _ in memory_dir.glob("*.yml"))
+
+    # Entity count
+    entity_count = len(default_index)
+
+    # Event count
+    event_count = len(default_bus.log())
+
+    # Pipeline status
+    pipeline = get_pipeline_status()
+
+    # Approvals
+    approvals = get_pending_approvals()
+
+    # WebSocket connections
+    ws_stats = {
+        "active_connections": _ws_limiter.active_count,
+        "max_connections": _ws_limiter.max_connections,
+    }
+
+    # System health
+    system = get_system_status()
+
+    return {
+        "harnesses": harness_count,
+        "tests": test_count,
+        "memory_domains": memory_count,
+        "entity_count": entity_count,
+        "event_count": event_count,
+        "pipeline": pipeline.to_dict(),
+        "approval_count": len(approvals),
+        "ws_connections": ws_stats,
+        "health_score": system.health_score,
     }
 
 
