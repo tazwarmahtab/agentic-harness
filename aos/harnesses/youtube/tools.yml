@@ -1,0 +1,72 @@
+# YouTube Harness — Tool Registry
+
+id: TOOLS-YTU-001
+name: YouTube Content Tools
+harness: HAR-YTU-001
+version: 1.0.0
+
+tools:
+  - id: TOOL-YTU-SCOUT
+    name: scout_trending
+    description: "Search YouTube for trending videos in target niches"
+    permission: read
+    risk: low
+
+  - id: TOOL-YTU-TRANSCRIPT
+    name: fetch_transcript
+    description: "Extract transcript from a YouTube video"
+    permission: read
+    risk: low
+
+  - id: TOOL-YTU-SCORE
+    name: score_viral_potential
+    description: "Score a clip's viral potential using Gemini AI"
+    permission: read
+    risk: low
+
+  - id: TOOL-YTU-STRATEGY
+    name: generate_strategy
+    description: "Generate title, caption, thumbnail concept for a clip"
+    permission: read
+    risk: low
+
+  - id: TOOL-YTU-CROP
+    name: crop_clip
+    description: "Crop video to 9:16 vertical format using ffmpeg"
+    permission: execute
+    risk: medium
+
+  - id: TOOL-YTU-CAPTION
+    name: burn_captions
+    description: "Burn captions into video using ffmpeg"
+    permission: execute
+    risk: medium
+
+  - id: TOOL-YTU-THUMBNAIL
+    name: generate_thumbnail
+    description: "Generate thumbnail using Higgsfield AI"
+    permission: execute
+    risk: medium
+
+  - id: TOOL-YTU-UPLOAD
+    name: upload_to_youtube
+    description: "Upload clip to YouTube Shorts via OAuth"
+    permission: request_approval
+    risk: high
+
+  - id: TOOL-YTU-READ
+    name: read_memory
+    description: "Read memory entries by ID, layer, or query"
+    permission: read
+    risk: low
+
+  - id: TOOL-YTU-WRITE
+    name: write_memory
+    description: "Submit memory candidates (requires curator approval)"
+    permission: request_approval
+    risk: medium
+
+policy:
+  require_approval_for_upload: true
+  max_uploads_per_day: 3
+  rate_limit_per_agent: "10 actions per cycle"

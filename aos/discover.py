@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
+from aos.hardening import sanitize_path
 from aos.loader import load_venture
 from aos.schemas.venture import Venture
+
+logger = logging.getLogger(__name__)
 
 
 def discover_ventures(ventures_dir: Path | None = None) -> list[tuple[Path, Venture]]:
@@ -15,6 +19,11 @@ def discover_ventures(ventures_dir: Path | None = None) -> list[tuple[Path, Vent
     """
     if ventures_dir is None:
         ventures_dir = Path(__file__).parent / "ventures"
+
+    # Reject traversal in user-supplied directories
+    if sanitize_path(str(ventures_dir)) is None and ".." in ventures_dir.parts:
+        logger.warning("Rejected ventures directory with traversal: %s", ventures_dir)
+        return []
 
     if not ventures_dir.exists():
         return []

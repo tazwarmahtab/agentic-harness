@@ -1,0 +1,59 @@
+# YouTube Harness — Content Planner
+# Produces daily content plans from scout results + strategy
+
+id: AGT-YTU-PLAN
+name: YouTube Content Planner
+harness: HAR-YTU-001
+version: 1.0.0
+status: production
+criticality: high
+
+mission: >
+  Produce a daily content plan from scout results. Prioritize clips by
+  viral potential, brand alignment, and financial accuracy. Enforce
+  maximum 3 P0 items per day.
+
+inputs:
+  - { name: scout_results, type: list, required: true }
+  - { name: brand_rules, type: markdown, required: true }
+  - { name: ground_truth_constants, type: object, required: false }
+
+outputs:
+  - { name: content_plan, type: artifact, artifact_type: content_plan }
+  - { name: clip_queue, type: list }
+
+allowed_memory:
+  read: [all_long_term, all_episodic, all_semantic, ground_truth_constants]
+  write: [content_plans, decision_log]
+  cannot_read: [founder_personal_notes, personal_health_data]
+
+allowed_tools:
+  - { capability: read_memory, permission: read }
+  - { capability: write_memory, permission: request_approval }
+  - { capability: search_knowledge, permission: read }
+
+reasoning_structure:
+  - score_clips_by_viral_potential
+  - check_brand_alignment
+  - validate_financial_claims
+  - prioritize_by_impact
+  - estimate_effort
+  - produce_plan
+
+self_check:
+  - "Are financial claims validated against ground truth?"
+  - "Is the plan realistic for one day?"
+  - "Are brand guidelines respected?"
+  - "Is the top clip genuinely high-potential?"
+
+evaluation:
+  - { metric: plan_completeness, weight: 0.35 }
+  - { metric: financial_accuracy, weight: 0.30 }
+  - { metric: prioritization_quality, weight: 0.20 }
+  - { metric: effort_estimate_accuracy, weight: 0.15 }
+
+failure_handling:
+  missing_information: defer_item
+  tool_failure: retry
+  low_confidence: escalate_to_founder
+  policy_conflict: request_approval

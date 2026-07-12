@@ -1,0 +1,39 @@
+# YouTube Harness — Evaluation Criteria
+
+id: Eval-HAR-YTU-001
+name: YouTube Content Evaluation Criteria
+harness: HAR-YTU-001
+version: 1.0.0
+
+checks:
+  - id: Eval-YTU-001
+    name: Financial accuracy in content
+    description: >
+      Any content referencing financial figures (savings rates, DSCR, PPA,
+      CAPEX) must match GROUND_TRUTH_CONSTANTS.md exactly.
+    severity: critical
+    test: |
+      Scan generated titles, captions, and descriptions for financial
+      keywords (savings, DSCR, PPA, CAPEX, BDT, rate). Cross-reference
+      each number against ground_truth_constants. Fail on any mismatch.
+
+  - id: Eval-YTU-002
+    name: Brand safety compliance
+    description: >
+      Content must not contain competitor mentions, negative claims about
+      competitors, or misleading statements about Netso capabilities.
+    severity: high
+    test: |
+      Run content through brand safety classifier. Check for competitor
+      names, absolute claims (guaranteed, 100%, never), and unverifiable
+      statistics. Fail if any violation found.
+
+  - id: Eval-YTU-003
+    name: Clip quality threshold
+    description: >
+      Viral potential score must exceed 60/100 before packaging begins.
+      Clips below threshold should be discarded, not packaged.
+    severity: medium
+    test: |
+      Check viral_score field in clip metadata. If score < 60 and clip
+      was packaged anyway, flag as quality gate violation.

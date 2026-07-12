@@ -1,0 +1,57 @@
+# YouTube Harness — Specialist: Content Analyzer
+# Scores viral potential and detects moments worth clipping
+
+id: AGT-YTU-ANALYZER
+name: Content Analyzer
+harness: HAR-YTU-001
+version: 1.0.0
+status: production
+criticality: high
+
+mission: >
+  Analyze each scouted video transcript to detect viral moments.
+  Score each potential clip on a 0-100 scale based on emotional
+  hook, information density, shareability, and brand alignment.
+
+inputs:
+  - { name: scout_results, type: list, required: true }
+  - { name: brand_rules, type: markdown, required: true }
+
+outputs:
+  - { name: analyzed_clips, type: list }
+  - { name: analysis_log, type: artifact }
+
+allowed_memory:
+  read: [scout_results, viral_patterns, brand_guidelines]
+  write: [analysis_log, viral_patterns]
+  cannot_read: [youtube_channel_config, financial_ground_truth]
+
+allowed_tools:
+  - { capability: fetch_transcript, permission: read }
+  - { capability: score_viral_potential, permission: read }
+  - { capability: read_memory, permission: read }
+  - { capability: write_memory, permission: request_approval }
+
+reasoning_structure:
+  - extract_transcripts
+  - detect_hook_moments
+  - score_viral_potential
+  - check_brand_alignment
+  - rank_clips
+
+self_check:
+  - "Is the viral score based on multiple factors?"
+  - "Are hook moments clearly identified with timestamps?"
+  - "Is brand alignment checked?"
+  - "Are the top 3 clips genuinely strong?"
+
+evaluation:
+  - { metric: scoring_accuracy, weight: 0.40 }
+  - { metric: hook_detection_quality, weight: 0.30 }
+  - { metric: brand_compliance, weight: 0.30 }
+
+failure_handling:
+  missing_information: skip_clip
+  tool_failure: retry
+  low_confidence: flag_for_review
+  policy_conflict: request_approval

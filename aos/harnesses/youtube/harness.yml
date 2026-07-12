@@ -1,0 +1,77 @@
+# YouTube Content Harness — Faceless YouTube Shorts pipeline
+# Automates content lifecycle: scout → analyze → strategize → package → upload
+
+id: HAR-YTU-001
+name: YouTube Content Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+criticality: high
+mission: >
+  Run the faceless YouTube Shorts content pipeline end-to-end: discover
+  trending videos, detect viral moments, generate content strategy, crop
+  clips to 9:16, burn captions, and upload to YouTube — all gated behind
+  approval checkpoints to protect brand and financial accuracy.
+
+scope:
+  in_scope:
+    - trending_video_discovery
+    - viral_moment_detection
+    - content_strategy_generation
+    - clip_cropping_and_captioning
+    - youtube_shorts_upload
+    - performance_tracking
+    - financial_content_validation
+  out_of_scope:
+    - channel_management
+    - ad_revenue_optimization
+    - audience_engagement
+    - long-form_content
+
+kpis:
+  - { name: clips_uploaded_per_week, target: ">=5" }
+  - { name: approval_gate_pass_rate, target: ">90%" }
+  - { name: financial_accuracy_rate, target: "100%" }
+  - { name: viral_score_average, target: ">75" }
+  - { name: upload_success_rate, target: ">95%" }
+
+inputs:
+  - { source: founder_context, items: [priority_list, handoffs] }
+  - { source: knowledge, items: [content_guidelines, brand_rules] }
+  - { source: venture_artifact, ref: ground_truth_constants }
+
+outputs:
+  - { name: content_plan, type: artifact }
+  - { name: packaged_clips, type: artifact }
+  - { name: upload_queue, type: memory_write }
+  - { name: performance_reports, type: artifact }
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+  name: YouTube Content Pipeline
+  trigger: daily_09:00_BDT
+  steps:
+    - action: scout
+      target: content_scout
+    - action: analyze
+      target: content_analyzer
+    - action: plan
+      target: planner
+    - action: strategize
+      target: content_strategist
+    - action: package
+      target: clip_packager
+    - action: validate
+      target: evaluator
+    - action: upload
+      target: upload_manager
+    - action: log
+      target: decision_log

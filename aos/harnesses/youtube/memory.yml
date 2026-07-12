@@ -1,0 +1,89 @@
+# YouTube Harness — Shared Memory
+# Tracks content pipeline state, performance, and brand rules.
+
+id: MEM-YTU-001
+name: YouTube Content Harness Memory
+harness: HAR-YTU-001
+version: 1.0.0
+
+layers:
+  long_term:
+    brand_guidelines:
+      description: "Netso brand voice, visual identity, content no-go zones"
+      classification: confidential
+    financial_ground_truth:
+      ref: ground_truth_constants
+      description: "All financial numbers from core_economics.py"
+      classification: confidential
+    content_strategy:
+      description: "Target niches, posting schedule, growth targets"
+      classification: internal
+    youtube_channel_config:
+      description: "Channel ID, OAuth tokens, upload settings"
+      classification: restricted
+
+  episodic:
+    daily_content_log:
+      description: "Each day's content pipeline execution log"
+      write_access: [AGT-YTU-DISPATCH]
+      classification: internal
+    upload_history:
+      description: "All uploaded clips with metadata and performance"
+      write_access: [AGT-YTU-UPLOADER]
+      classification: internal
+    scout_results:
+      description: "Raw trending video data from each scout run"
+      write_access: [AGT-YTU-SCOUT]
+      classification: internal
+    approval_decisions:
+      description: "Founder approval/rejection of content before upload"
+      write_access: [HUM-000001]
+      classification: founder_only
+
+  semantic:
+    viral_patterns:
+      description: "What makes content go viral — patterns learned from data"
+      classification: internal
+    financial_validation_rules:
+      description: "How to check content against ground truth constants"
+      classification: internal
+    caption_style_guide:
+      description: "Font, color, positioning for burned-in captions"
+      classification: internal
+
+permissions:
+  AGT-YTU-PLAN:
+    read: [all_long_term, all_episodic, all_semantic, ground_truth_constants]
+    write: [content_plans, daily_content_log]
+    cannot_read: [youtube_channel_config, founder_personal_notes]
+
+  AGT-YTU-SCOUT:
+    read: [brand_guidelines, content_strategy]
+    write: [scout_results]
+    cannot_read: [financial_ground_truth, youtube_channel_config]
+
+  AGT-YTU-ANALYZER:
+    read: [scout_results, viral_patterns, brand_guidelines]
+    write: [daily_content_log]
+    cannot_read: [youtube_channel_config]
+
+  AGT-YTU-STRATEGIST:
+    read: [all_long_term, all_episodic, all_semantic, ground_truth_constants]
+    write: [content_plans, daily_content_log]
+    cannot_read: [youtube_channel_config]
+
+  AGT-YTU-PACKAGER:
+    read: [content_plans, caption_style_guide, brand_guidelines]
+    write: [daily_content_log]
+    cannot_read: [financial_ground_truth, youtube_channel_config]
+
+  AGT-YTU-UPLOADER:
+    read: [content_plans, youtube_channel_config, upload_history]
+    write: [upload_history, daily_content_log]
+    cannot_read: [founder_personal_notes, financial_ground_truth]
+
+update_rules:
+  agents_submit_memory_candidates: true
+  reflection_engine_decides: [store, reject, summarize, merge, version]
+  purpose: "Prevent content pollution. No agent can write arbitrary memory."
+  audit: "Every memory write creates immutable audit record."

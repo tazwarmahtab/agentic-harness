@@ -1,0 +1,90 @@
+# SOP — YouTube Content Pipeline Loop
+# Owner: AGT-YTU-DISPATCH (composition) + all specialists
+# Frequency: Daily at 09:00 BDT
+
+id: SOP-YTU-001
+name: YouTube Content Pipeline Loop
+owner: AGT-YTU-DISPATCH
+version: 1.0.0
+trigger: daily_09:00_BDT
+
+phase_1_scout:
+  owner: AGT-YTU-SCOUT
+  actions:
+    - search: "trending videos in finance + motivation niches"
+    - filter: "last 48 hours, engagement ratio > average"
+    - produce: scout_results (minimum 5 candidates)
+
+phase_2_analyze:
+  owner: AGT-YTU-ANALYZER
+  actions:
+    - fetch: transcripts for each scout result
+    - detect: viral hook moments with timestamps
+    - score: viral potential (0-100) using Gemini AI
+    - check: brand alignment
+    - produce: analyzed_clips (ranked by score)
+
+phase_3_plan:
+  owner: AGT-YTU-PLAN
+  actions:
+    - read: [scout_results, brand_rules, ground_truth_constants]
+    - prioritize: top 3 clips by viral potential
+    - validate: all financial claims against ground truth
+    - produce: content_plan + clip_queue
+
+phase_4_strategize:
+  owner: AGT-YTU-STRATEGIST
+  actions:
+    - generate: SEO-optimized titles
+    - write: engagement-focused captions
+    - design: thumbnail concepts
+    - validate: financial accuracy
+    - produce: content_plan (final)
+
+phase_5_package:
+  owner: AGT-YTU-PACKAGER
+  actions:
+    - download: source videos
+    - crop: to 9:16 vertical format
+    - generate: captions from transcript
+    - burn: captions into video
+    - generate: thumbnail
+    - assemble: upload metadata
+    - produce: packaged_clips
+
+phase_6_validate:
+  owner: AGT-YTU-EVAL
+  actions:
+    - check: financial accuracy (Eval-YTU-001)
+    - check: brand safety (Eval-YTU-002)
+    - check: clip quality threshold (Eval-YTU-003)
+    - gate: route to approval queue
+
+phase_7_founder_review:
+  owner: HUM-000001
+  actions:
+    - review: packaged clips with metadata
+    - approve: clips for upload
+    - reject: clips that don't meet standards
+    - provide: feedback for improvement
+
+phase_8_upload:
+  owner: AGT-YTU-UPLOADER
+  actions:
+    - verify: approval status
+    - check: daily upload cap (max 3)
+    - upload: approved clips to YouTube Shorts
+    - record: upload results in history
+    - update: daily content log
+
+escalation_rules:
+  financial_accuracy_failure: block_and_alert_founder
+  brand_safety_violation: block_and_alert_founder
+  upload_failure: retry_then_alert
+  daily_cap_exceeded: defer_to_next_day
+
+exit_criteria:
+  - all_clips_processed
+  - all_uploads_approved_or_rejected
+  - upload_history_updated
+  - daily_content_log_updated

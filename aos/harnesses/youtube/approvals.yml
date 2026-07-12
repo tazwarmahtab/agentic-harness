@@ -1,0 +1,61 @@
+# YouTube Harness — Approval Gates
+# All uploads require founder approval. Financial content requires validation.
+
+id: POL-YTU-001
+name: YouTube Content Approval Gates
+harness: HAR-YTU-001
+version: 1.0.0
+status: production
+
+rules:
+  - id: POL-YTU-UPLOAD-001
+    name: YouTube Upload Gate
+    category: compliance
+    rule:
+      if:
+        action: upload_to_youtube
+      then: "Require founder approval before upload"
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 24
+
+  - id: POL-YTU-FIN-001
+    name: Financial Content Validation
+    category: financial
+    rule:
+      if:
+        action: generate_strategy
+        contains_financial_claims: true
+      then: "Validate against ground truth constants before publishing"
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 48
+
+  - id: POL-YTU-BRAND-001
+    name: Brand Safety Gate
+    category: compliance
+    rule:
+      if:
+        action: generate_strategy
+        brand_risk_score: { greater_than: 0.7 }
+      then: "Block and require manual review"
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 24
+
+  - id: POL-YTU-VOL-001
+    name: Daily Upload Volume Cap
+    category: operations
+    rule:
+      if:
+        action: upload_to_youtube
+        daily_uploads: { greater_than: 3 }
+      then: "Block. Maximum 3 uploads per day."
+    action: deny
+
+auto_actions:
+  - scout_trending
+  - fetch_transcript
+  - score_viral_potential
+  - read_memory
+  - log_content_decision

@@ -1,0 +1,61 @@
+# YouTube Harness — Specialist: Clip Packager
+# Crops, captions, and packages clips for upload
+
+id: AGT-YTU-PACKAGER
+name: Clip Packager
+harness: HAR-YTU-001
+version: 1.0.0
+status: production
+criticality: high
+
+mission: >
+  Take approved content plans and produce upload-ready packages:
+  crop video to 9:16 vertical, burn in captions, generate thumbnail,
+  and assemble metadata. Output is a self-contained package ready
+  for the upload manager.
+
+inputs:
+  - { name: content_plan, type: artifact, required: true }
+  - { name: caption_style, type: object, required: false }
+
+outputs:
+  - { name: packaged_clips, type: list }
+  - { name: packaging_log, type: artifact }
+
+allowed_memory:
+  read: [content_plans, caption_style_guide, brand_guidelines]
+  write: [packaging_log]
+  cannot_read: [financial_ground_truth, youtube_channel_config, founder_personal_notes]
+
+allowed_tools:
+  - { capability: crop_clip, permission: execute }
+  - { capability: burn_captions, permission: execute }
+  - { capability: generate_thumbnail, permission: execute }
+  - { capability: read_memory, permission: read }
+  - { capability: write_memory, permission: request_approval }
+
+reasoning_structure:
+  - download_source_video
+  - crop_to_vertical
+  - generate_captions
+  - burn_captions
+  - generate_thumbnail
+  - assemble_metadata
+  - validate_package
+
+self_check:
+  - "Is the output exactly 9:16 aspect ratio?"
+  - "Are captions readable at mobile resolution?"
+  - "Is the thumbnail compliant with YouTube specs?"
+  - "Is the metadata complete (title, description, tags)?"
+
+evaluation:
+  - { metric: output_quality, weight: 0.40 }
+  - { metric: processing_reliability, weight: 0.30 }
+  - { metric: metadata_completeness, weight: 0.30 }
+
+failure_handling:
+  missing_information: skip_clip
+  tool_failure: retry_once
+  low_confidence: flag_for_review
+  policy_conflict: request_approval

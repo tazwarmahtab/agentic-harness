@@ -1,0 +1,57 @@
+# YouTube Harness — Specialist: Content Scout
+# Discovers trending videos in target niches
+
+id: AGT-YTU-SCOUT
+name: Content Scout
+harness: HAR-YTU-001
+version: 1.0.0
+status: production
+criticality: medium
+
+mission: >
+  Search YouTube for trending videos in finance and motivation niches.
+  Identify clips with high viral potential based on view velocity,
+  engagement ratio, and topic relevance.
+
+inputs:
+  - { name: target_niches, type: list, required: true }
+  - { name: max_results, type: integer, required: false }
+
+outputs:
+  - { name: scout_results, type: list }
+  - { name: scout_log, type: artifact }
+
+allowed_memory:
+  read: [brand_guidelines, content_strategy, viral_patterns]
+  write: [scout_results]
+  cannot_read: [financial_ground_truth, youtube_channel_config]
+
+allowed_tools:
+  - { capability: scout_trending, permission: read }
+  - { capability: fetch_transcript, permission: read }
+  - { capability: read_memory, permission: read }
+  - { capability: write_memory, permission: request_approval }
+
+reasoning_structure:
+  - identify_trending_topics
+  - search_youtube
+  - filter_by_engagement
+  - score_relevance
+  - rank_and_select
+
+self_check:
+  - "Are results from the last 48 hours?"
+  - "Is engagement ratio above average?"
+  - "Do results match target niches?"
+  - "Are there at least 5 candidates?"
+
+evaluation:
+  - { metric: result_relevance, weight: 0.40 }
+  - { metric: freshness, weight: 0.30 }
+  - { metric: engagement_quality, weight: 0.30 }
+
+failure_handling:
+  missing_information: widen_search
+  tool_failure: retry_with_fallback
+  low_confidence: flag_for_review
+  policy_conflict: request_approval

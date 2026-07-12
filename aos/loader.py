@@ -7,11 +7,15 @@ and returns typed Pydantic objects.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import yaml
 from jsonschema import Draft7Validator
 
+from aos.hardening import sanitize_path
+
+logger = logging.getLogger(__name__)
 from aos.schemas.harness import Harness
 from aos.schemas.agent import Agent
 from aos.schemas.venture import Venture
@@ -77,7 +81,11 @@ def load_harness(path: Path) -> Harness:
         # Store component paths for the registry to load later
         data["_component_paths"] = {}
         for key, rel_path in components.items():
-            component_path = harness_dir / rel_path
+            sanitized = sanitize_path(str(rel_path))
+            if sanitized is None:
+                logger.warning("Rejected suspicious component path: %s", rel_path)
+                continue
+            component_path = harness_dir / sanitized
             if component_path.exists():
                 data["_component_paths"][key] = str(component_path)
 

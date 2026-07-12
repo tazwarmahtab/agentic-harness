@@ -9,6 +9,7 @@ Custom validation rules:
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -16,7 +17,10 @@ import yaml
 from jsonschema import Draft7Validator
 
 from aos.constants import NETSO_FINANCIAL
+from aos.hardening import sanitize_path
 from aos.loader import PLATFORM_DIR, _load_schema, detect_manifest_type
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -151,6 +155,11 @@ def validate_manifest(path: Path, known_ids: set[str] | None = None) -> list[Val
     """Validate a single manifest file."""
     errors = []
 
+    # Reject traversal in user-supplied path
+    if sanitize_path(str(path)) is None and ".." in path.parts:
+        errors.append(ValidationError(str(path), "(path)", "Path traversal detected"))
+        return errors
+
     # Load YAML
     try:
         with open(path) as f:
@@ -192,6 +201,14 @@ def validate_all(
 ) -> ValidationResult:
     """Validate all manifests in a harness directory."""
     result = ValidationResult()
+
+    # Reject traversal in user-supplied paths
+    if sanitize_path(str(harness_dir)) is None and ".." in harness_dir.parts:
+        result.errors.append(ValidationError(str(harness_dir), "(path)", "Path traversal detected"))
+        return result
+    if venture_path is not None and sanitize_path(str(venture_path)) is None and ".." in venture_path.parts:
+        result.errors.append(ValidationError(str(venture_path), "(path)", "Path traversal detected"))
+        return result
 
     # First pass: collect all known IDs
     known_ids: set[str] = set()
