@@ -30,14 +30,14 @@ aos/
 ├── llm.py                   # LLM routing (Anthropic + local Ollama + NVIDIA NIM)
 ├── context.py               # System-prompt assembly from agent manifest
 ├── usage.py                 # Per-agent per-model token tracking
-├── evaluator.py             # 5 financial checks (blended rate, savings %, DSCR, PPA, Scenario B)
+├── evaluator.py             # 8 financial checks (blended rate, savings %, DSCR, PPA, Scenario B, NEM export, CAPEX A, true variable rate)
 ├── memory.py                # SQLite-backed persistent memory store
 ├── approval_queue.py        # Persistent approval queue (JSONL)
 ├── platform/                # JSON Schemas (identity, harness, agent, policy)
 ├── ventures/
 │   ├── netso/               # Active venture (financial constants, artifacts)
 │   └── transitbd/           # Planning-stage venture
-├── harnesses/               # 15 harness bundles
+├── harnesses/               # 13 harness bundles
 │   ├── executive/           # Reference implementation (17 manifests)
 │   ├── sales/
 │   ├── finance/
@@ -68,7 +68,7 @@ docs/
 | Netso venture binding | ✅ Written (financial constants, artifacts, re-homing map) |
 | TransitBD venture | 📋 Planning stage |
 | Executive Harness — 17 manifests | ✅ Written |
-| 13 additional harnesses (Sales, Finance, Legal, Marketing, Operations, Customer Success, AI Dev, Software Dev, Investor Relations, Personal, Knowledge, Evaluator) | ✅ Written |
+| 12 additional harnesses (Sales, Finance, Legal, Marketing, Operations, Customer Success, AI Development, Software Dev, Investor Relations, Personal, Knowledge, Evaluator) | ✅ Written |
 | 4 SOPs (session protocol, daily loop, approval routing, weekly review) | ✅ Written |
 | Design spec | ✅ Written |
 | Runtime — LangGraph StateGraph (`aos/graph.py`) | ✅ Fully implemented |
@@ -102,9 +102,7 @@ Tier-2 specialists (SPARK, AURUM, SIGNAL, FORGE, NEXUS, BEACON, SCRY, etc.) stay
 |---|---|---|---|
 | **1** | **Executive** | ✅ Complete | Reference implementation |
 | **2** | **Knowledge** | ✅ Complete | Shared memory for all agents |
-| **3** | **Communication** | ✅ Complete | Email, meetings, WhatsApp, LinkedIn |
 | **4** | **Sales** | ✅ Complete | Highest ROI for Netso today |
-| **5** | **Project Development** | ✅ Complete | Converts sales into projects |
 | **6** | **Finance** | ✅ Complete | Cash flow + investor reporting |
 | 7 | Legal | ✅ Complete | Standardized documentation |
 | 8 | Operations | ✅ Complete | Day-to-day operations |
