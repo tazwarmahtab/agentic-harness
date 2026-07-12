@@ -2,14 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
-import tempfile
-from pathlib import Path
 
-import pytest
 
 from aos.memory import MemoryStore
-from aos.registry import HarnessBundle
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +35,6 @@ class TestRateLimiter:
 
     def test_window_expiry_resets(self) -> None:
         from aos.hardening import RateLimiter
-        import time
         limiter = RateLimiter(max_requests=2, window_seconds=0)
         # Window of 0 means always expired
         for _ in range(10):
@@ -82,7 +76,6 @@ class TestHealthCheck:
 
     def test_health_llm_degraded(self) -> None:
         from aos.hardening import health_check
-        from aos.llm import DryRunLLMClient
 
         class BrokenLLM:
             def complete(self, **kwargs):
@@ -129,7 +122,6 @@ class TestInputValidation:
 
 class TestAuditTrailCap:
     def test_audit_trail_capped(self) -> None:
-        from aos.memory import AuditRecord
 
         store = MemoryStore()
         # Submit many candidates to build up audit trail
@@ -143,7 +135,7 @@ class TestAuditTrailCap:
             )
             # Auto-review to generate audit records
             if store.candidates:
-                cid = store.candidates[-1].id
+                store.candidates[-1].id
                 store.review_pending(auto_store=True)
 
         # Audit trail should be capped at 200

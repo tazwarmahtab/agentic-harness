@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from aos.hardening import sanitize_path
 from aos.loader import load_venture
 from aos.schemas.venture import Venture
 

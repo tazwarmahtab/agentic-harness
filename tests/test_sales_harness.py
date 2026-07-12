@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 from aos.sales_graph import (
     SalesCycleState,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class ToolCategory(str, Enum):

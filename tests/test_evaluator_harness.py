@@ -1,9 +1,7 @@
 """Tests for baseline evaluation harness."""
 from __future__ import annotations
 
-import pytest
 from aos.constants import NETSO_FINANCIAL
-from aos.evaluator import validate_output
 from aos.harnesses.evaluator.evaluator_harness import BaselineEvaluator, EvalResult
 
 

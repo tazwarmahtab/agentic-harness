@@ -9,15 +9,11 @@ Tests end-to-end task dispatch from executive harness to other harnesses:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from aos.registry import Registry, load_registry
-from aos.graph import CycleState, build_graph
-from aos.llm import LLMClient
 
 
 def _build_multi_harness_registry() -> Registry:
@@ -242,7 +238,6 @@ class TestEndToEndCrossHarnessDispatch:
         registry = _build_multi_harness_registry()
         
         # 1. Executive planner identifies need for financial modeling
-        task_type = "unit_economics_detail"
         target_agent_id = "AGT-FIN-UNIT"
         
         # 2. Executive dispatcher resolves target agent
@@ -262,7 +257,6 @@ class TestEndToEndCrossHarnessDispatch:
         """Full flow: Executive → sales harness for proposal package."""
         registry = _build_multi_harness_registry()
         
-        task_type = "proposal_package"
         target_agent_id = "AGT-SAL-PROP"
         
         result = registry.resolve_agent(target_agent_id)
@@ -276,7 +270,6 @@ class TestEndToEndCrossHarnessDispatch:
         """Full flow: Executive → operations harness for procurement."""
         registry = _build_multi_harness_registry()
         
-        task_type = "procurement_quote"
         target_agent_id = "AGT-OPS-PROC"
         
         result = registry.resolve_agent(target_agent_id)

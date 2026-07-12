@@ -45,6 +45,7 @@ from aos.llm import LLMClient, create_llm_client, resolve_model
 from aos.memory import MemoryStore, build_memory_from_manifest
 from aos.registry import HarnessBundle, Registry
 from aos.schemas.agent import Agent
+from aos.schemas.harness import AgentTeam, TeamMember
 from aos.schemas.venture import Venture
 from aos.tools import ToolGateway
 from aos.usage import UsageTracker
@@ -1095,7 +1096,7 @@ def specialists_node(state: CycleState) -> dict:
                 for m in team_members_in_assignments:
                     team_member_ids.add(m.agent_id)
 
-    solo_assignments = [
+    [
         a for a in assignments
         if (a.get("agent_id") or a.get("route_to")) not in team_member_ids
     ]

@@ -1,7 +1,6 @@
 """Tests for venture discovery module."""
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
 
 from aos.discover import discover_ventures, find_venture

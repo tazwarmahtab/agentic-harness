@@ -95,7 +95,7 @@ class TestJSONTracerInstantiation:
 
     def test_creates_output_dir_if_missing(self, tmp_path: Any) -> None:
         nested = tmp_path / "deep" / "traces"
-        tracer = JSONTracer(output_dir=nested)
+        JSONTracer(output_dir=nested)
         assert nested.exists()
 
     def test_starts_with_no_events(self, tmp_path: Any) -> None:
@@ -295,7 +295,7 @@ class TestWrapNodeWithTracing:
         wrapped = wrap_node_with_tracing(self._traced_fn, "review")
         state = _make_state()
         with patch("langgraph.config.get_config", return_value=config):
-            result = wrapped(state)
+            wrapped(state)
         mock_tracer.log_node.assert_called_once()
         call_kwargs = mock_tracer.log_node.call_args
         assert call_kwargs.kwargs["node_name"] == "review"

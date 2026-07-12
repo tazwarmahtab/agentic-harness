@@ -9,15 +9,12 @@ Tests error scenarios that should be caught before production:
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch
 import pytest
 
-from aos.registry import Registry, load_registry
-from aos.memory import MemoryStore, MemoryEntry
+from aos.registry import Registry
+from aos.memory import MemoryStore
 from aos.tools import ToolResult
-from aos.llm import LLMClient
 
 
 class TestMemoryRetrievalFailures:
@@ -223,7 +220,7 @@ class TestExceptionHandling:
     def test_file_not_found_handling(self):
         """Missing file should raise FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
-            with open('/nonexistent/path/file.txt', 'r') as f:
+            with open('/nonexistent/path/file.txt', 'r'):
                 pass
     
     def test_attribute_error_handling(self):

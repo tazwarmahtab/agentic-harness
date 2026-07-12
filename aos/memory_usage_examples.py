@@ -178,7 +178,7 @@ def example_memory_health():
         print(f"    Active entries: {stats['active_entries']}")
         print(f"    Superseded entries: {stats['superseded_entries']}")
 
-    print(f"\n  PROCEDURAL:")
+    print("\n  PROCEDURAL:")
     print(f"    Total procedures: {metrics['procedural']['total_procedures']}")
     print(f"    Average usage: {metrics['procedural']['avg_usage']:.2f}")
 

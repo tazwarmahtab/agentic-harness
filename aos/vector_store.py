@@ -70,7 +70,6 @@ class TfidfEmbeddingProvider(EmbeddingProvider):
 
     def fit(self, texts: list[str]) -> None:
         """Fit IDF weights from a corpus."""
-        import re
 
         doc_count = len(texts)
         term_doc_freq: dict[str, int] = {}
@@ -182,7 +181,6 @@ class NumpyEmbeddingProvider(EmbeddingProvider):
     def embed(self, text: str) -> list[float]:
         """Embed using sentence-transformers or TF-IDF fallback."""
         if self._model is not None:
-            import numpy as np
             embedding = self._model.encode([text])[0]
             return embedding.tolist()
         else:

@@ -6,7 +6,7 @@ import re
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class VentureStatus(str, Enum):

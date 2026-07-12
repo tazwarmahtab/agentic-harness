@@ -12,10 +12,8 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from aos.registry import Registry, HarnessBundle, load_registry
-from aos.schemas.agent import Agent, AgentStatus, AgentCriticality, AllowedMemory
 
 
 def _build_registry() -> Registry:
@@ -239,6 +237,6 @@ class TestSpecialistsNodeAgentDropWarning:
 
         with patch("aos.graph.get_config", return_value=config):
             with caplog.at_level("WARNING", logger="aos.graph"):
-                result = specialists_node(state)
+                specialists_node(state)
 
         assert any("AGT-FAKE-NONEXISTENT" in r.message for r in caplog.records)

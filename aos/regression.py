@@ -7,10 +7,9 @@ regressions across releases. Persists snapshots as JSON files.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path

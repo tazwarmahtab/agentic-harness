@@ -8,7 +8,6 @@ Wraps the existing ApprovalQueue to provide phase-level gating:
 
 from __future__ import annotations
 
-import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -113,7 +112,7 @@ class GateManager:
         print(f"  Risk:  {item.risk_assessment}")
         print(f"{'='*60}")
         print(f"  Run:   python -m aos approvals approve {item.id}  # or reject")
-        print(f"  Or:    python -m aos approvals list")
+        print("  Or:    python -m aos approvals list")
         print(f"{'='*60}\n")
 
         return GateResult(

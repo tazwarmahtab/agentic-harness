@@ -6,7 +6,6 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from aos.hardening import sanitize_path
 from aos.schemas.harness import Harness, AgentTeam
 from aos.schemas.agent import Agent
 from aos.schemas.venture import Venture

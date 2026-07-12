@@ -9,10 +9,7 @@ from pathlib import Path
 import pytest
 
 from aos.memory import (
-    AuditRecord,
     Decision,
-    MemoryCandidate,
-    MemoryEntry,
     MemoryStore,
     build_memory_from_manifest,
 )
@@ -398,7 +395,7 @@ class TestPersistence:
             )
             store.review_pending(auto_store=True)
 
-            result = store.persist_to_disk(root, cycle_id="test-cycle")
+            store.persist_to_disk(root, cycle_id="test-cycle")
 
             # Audit log should exist
             audit_path = root / "ai_system" / "System" / "AOS_AUDIT.log"
@@ -416,7 +413,7 @@ class TestPersistence:
                 {"key": "entity", "value": "Netso"},
             ])
 
-            result = store.persist_to_disk(root)
+            store.persist_to_disk(root)
 
             memory_path = root / "ai_system" / "System" / "AOS_MEMORY.md"
             assert memory_path.exists()

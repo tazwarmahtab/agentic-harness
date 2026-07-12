@@ -3,15 +3,12 @@
 from __future__ import annotations
 import sys
 
-import tempfile
 from pathlib import Path
 
 import pytest
-import yaml
 
-from aos.registry import load_registry, Registry
+from aos.registry import load_registry
 from aos.loader import load_venture
-from aos.schemas.venture import Venture
 
 
 # ---------------------------------------------------------------------------

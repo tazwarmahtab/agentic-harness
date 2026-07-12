@@ -8,7 +8,6 @@ Custom validation rules:
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -18,7 +17,7 @@ from jsonschema import Draft7Validator
 
 from aos.constants import NETSO_FINANCIAL
 from aos.hardening import sanitize_path
-from aos.loader import PLATFORM_DIR, _load_schema, detect_manifest_type
+from aos.loader import _load_schema, detect_manifest_type
 
 logger = logging.getLogger(__name__)
 

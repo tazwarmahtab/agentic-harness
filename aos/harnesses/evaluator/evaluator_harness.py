@@ -18,8 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from aos.evaluator import validate_output
-from aos.llm import create_llm_client, resolve_model
-from aos.registry import HarnessBundle, load_registry
+from aos.llm import create_llm_client
 from aos.memory import MemoryStore
 from aos.usage import UsageTracker
 

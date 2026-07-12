@@ -65,7 +65,6 @@ class WorkflowRun:
     def duration_s(self) -> float | None:
         if self.started_at and self.completed_at:
             from datetime import datetime
-            fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
             try:
                 s = datetime.fromisoformat(self.started_at)
                 e = datetime.fromisoformat(self.completed_at)

@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 import pytest
 from starlette.testclient import TestClient
 
-from aos.api import AOS_API_TOKEN, TAZOS_API_TOKEN, app
+from aos.api import app
 
 
 class TestTokenAuth:
@@ -30,7 +30,8 @@ class TestTokenAuth:
         """When TAZOS_API_TOKEN is unset, it defaults to empty string."""
         with patch.dict(os.environ, {}, clear=True):
             # Remove the key entirely
-            os.environ.pop("AOS_API_TOKEN", None); os.environ.pop("TAZOS_API_TOKEN", None)
+            os.environ.pop("AOS_API_TOKEN", None)
+            os.environ.pop("TAZOS_API_TOKEN", None)
             import importlib
             import aos.api
             importlib.reload(aos.api)

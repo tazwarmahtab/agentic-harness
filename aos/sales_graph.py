@@ -25,7 +25,6 @@ from aos.llm import LLMClient, create_llm_client
 from aos.memory import MemoryStore
 from aos.registry import HarnessBundle
 from aos.tools import ToolGateway
-from aos.usage import UsageTracker
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +95,7 @@ async def qualify_node(state: SalesCycleState, config: Any = None) -> SalesCycle
     bundle = config.get("bundle")
 
     # Get the lead qualifier agent
-    qualifier = bundle.specialists.get("AGT-SAL-LEAD") if bundle else None
+    bundle.specialists.get("AGT-SAL-LEAD") if bundle else None
 
     prompt = f"""You are the Lead Qualifier for Netso Energy (HAR-SAL-001).
 
@@ -177,7 +176,7 @@ async def outreach_node(state: SalesCycleState, config: Any = None) -> SalesCycl
     llm = config.get("llm")
     bundle = config.get("bundle")
 
-    outreach_agent = bundle.specialists.get("AGT-SAL-OUT") if bundle else None
+    bundle.specialists.get("AGT-SAL-OUT") if bundle else None
 
     prompt = f"""You are the Outreach Specialist for Netso Energy (HAR-SAL-001).
 
@@ -247,7 +246,7 @@ async def propose_node(state: SalesCycleState, config: Any = None) -> SalesCycle
     llm = config.get("llm")
     bundle = config.get("bundle")
 
-    proposal_agent = bundle.specialists.get("AGT-SAL-PROP") if bundle else None
+    bundle.specialists.get("AGT-SAL-PROP") if bundle else None
 
     prompt = f"""You are the Proposal Writer for Netso Energy (HAR-SAL-001).
 
@@ -332,7 +331,7 @@ async def negotiate_node(state: SalesCycleState, config: Any = None) -> SalesCyc
     llm = config.get("llm")
     bundle = config.get("bundle")
 
-    qualifier = bundle.specialists.get("AGT-SAL-LEAD") if bundle else None
+    bundle.specialists.get("AGT-SAL-LEAD") if bundle else None
 
     prompt = f"""You are handling negotiation for Netso Energy (HAR-SAL-001).
 

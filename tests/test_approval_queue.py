@@ -7,7 +7,6 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from aos.approval_queue import ApprovalQueue, ApprovalItem, ApprovalDecision
 

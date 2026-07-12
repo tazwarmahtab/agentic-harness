@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import json
-import re
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from aos.orchestrate.gates import (
     ApprovalDecision,
@@ -105,7 +103,7 @@ class TestGateManager:
             gm = GateManager(persistence_path=queue_path)
 
             spec_result = gm.check(Gate.SPEC, "spec", {})
-            plan_result = gm.check(Gate.PLAN, "plan", {})
+            gm.check(Gate.PLAN, "plan", {})
 
             gm._queue.decide(spec_result.item_id, ApprovalDecision.APPROVE)
 

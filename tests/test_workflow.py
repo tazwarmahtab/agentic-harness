@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock
 
-from aos.workflow import WorkflowEngine, WorkflowRun, WorkflowStatus, WorkflowStep
+from aos.workflow import WorkflowEngine, WorkflowRun, WorkflowStatus
 from aos.event_bus import EventBus
 
 

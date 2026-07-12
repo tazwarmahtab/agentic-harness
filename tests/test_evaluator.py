@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
 from aos.constants import NETSO_FINANCIAL
-from aos.evaluator import validate_output, ValidationResult
+from aos.evaluator import validate_output
 
 
 class TestValidateOutput:

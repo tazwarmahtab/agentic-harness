@@ -76,7 +76,7 @@ class TestFinanceTools:
 
     def test_has_financial_model_tool(self, harness_dir):
         t = load_tool_registry(harness_dir / "tools.yml")
-        tool_ids = [tool.id for tool in t.tools]
+        [tool.id for tool in t.tools]
         assert len(t.tools) >= 5
 
 
