@@ -4,7 +4,7 @@
 
 **Goal:** Fix the 6 critical runtime gaps identified in the expert review so that TAZ OS agents produce accurate, validated, parallelized output with full context. Transform the runtime from a 2/10 engine to a 7/10+ production system.
 
-**Architecture:** Extend the existing `tazos/` package without breaking the manifest layer. All changes are in the runtime Python code. New modules: `context.py` (prompt construction + memory retrieval), `evaluator.py` (output validation), `parallel.py` (async specialist execution), `usage.py` (cost tracking). Modified modules: `runtime.py`, `llm.py`, `memory.py`.
+**Architecture:** Extend the existing `aos/` package without breaking the manifest layer. All changes are in the runtime Python code. New modules: `context.py` (prompt construction + memory retrieval), `evaluator.py` (output validation), `parallel.py` (async specialist execution), `usage.py` (cost tracking). Modified modules: `runtime.py`, `llm.py`, `memory.py`.
 
 **Tech Stack:** Python 3.12, asyncio, Pydantic, pytest, 9router (localhost:20128), dataclasses
 
@@ -28,13 +28,13 @@
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `tazos/context.py` | CREATE | Prompt builder — assembles full system prompt from manifest + constants + memory |
-| `tazos/evaluator.py` | CREATE | Output validator — checks LLM output against financial ground truth |
-| `tazos/parallel.py` | CREATE | Async specialist runner with concurrency control |
-| `tazos/usage.py` | CREATE | Token/cost tracker per agent per cycle |
-| `tazos/runtime.py` | MODIFY | Wire context builder, evaluator, parallel runner, usage tracker |
-| `tazos/llm.py` | MODIFY | Fix model routing table to use different tiers; add streaming stub |
-| `tazos/memory.py` | MODIFY | Add `retrieve_for_agent()` convenience method + thread lock |
+| `aos/context.py` | CREATE | Prompt builder — assembles full system prompt from manifest + constants + memory |
+| `aos/evaluator.py` | CREATE | Output validator — checks LLM output against financial ground truth |
+| `aos/parallel.py` | CREATE | Async specialist runner with concurrency control |
+| `aos/usage.py` | CREATE | Token/cost tracker per agent per cycle |
+| `aos/runtime.py` | MODIFY | Wire context builder, evaluator, parallel runner, usage tracker |
+| `aos/llm.py` | MODIFY | Fix model routing table to use different tiers; add streaming stub |
+| `aos/memory.py` | MODIFY | Add `retrieve_for_agent()` convenience method + thread lock |
 | `tests/test_context.py` | CREATE | Tests for prompt construction |
 | `tests/test_evaluator.py` | CREATE | Tests for output validation |
 | `tests/test_parallel.py` | CREATE | Tests for parallel execution |
@@ -47,9 +47,9 @@
 The single most critical fix. Currently `_build_agent_system_prompt` (runtime.py:99-143) reads only 7 fields. The CFO's `financial_rules` never reach the prompt. Memory is never retrieved. Evaluation rules are invisible. This task replaces the prompt builder entirely.
 
 **Files:**
-- Create: `tazos/context.py`
+- Create: `aos/context.py`
 - Create: `tests/test_context.py`
-- Modify: `tazos/runtime.py:99-143` — replace `_build_agent_system_prompt` with `context.build_prompt`
+- Modify: `aos/runtime.py:99-143` — replace `_build_agent_system_prompt` with `context.build_prompt`
 
 **Interfaces:**
 - Consumes: `Agent` (Pydantic model), `HarnessBundle`, `MemoryStore`, `NETSO_FINANCIAL` dict
@@ -64,8 +64,8 @@ The single most critical fix. Currently `_build_agent_system_prompt` (runtime.py
 from __future__ import annotations
 
 import pytest
-from tazos.context import build_prompt
-from tazos.schemas.agent import Agent, AllowedMemory, AgentStatus, AgentCriticality
+from aos.context import build_prompt
+from aos.schemas.agent import Agent, AllowedMemory, AgentStatus, AgentCriticality
 
 
 @pytest.fixture
@@ -150,20 +150,20 @@ class TestBuildPrompt:
         assert "reasoning" in prompt.lower() or "process" in prompt.lower()
 
     def test_cfo_gets_financial_constants(self, cfo_agent: Agent) -> None:
-        from tazos.constants import NETSO_FINANCIAL
+        from aos.constants import NETSO_FINANCIAL
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "12.98" in prompt  # true_variable_rate
         assert "14.81" in prompt  # blended_rate
         assert "10.00" in prompt  # ppa_rate
 
     def test_cfo_gets_hard_fail_rules(self, cfo_agent: Agent) -> None:
-        from tazos.constants import NETSO_FINANCIAL
+        from aos.constants import NETSO_FINANCIAL
         prompt = build_prompt(cfo_agent, netso_financial=NETSO_FINANCIAL)
         assert "HARD FAIL" in prompt
         assert "blended" in prompt.lower()
 
     def test_coo_does_not_get_financial_constants(self, minimal_agent: Agent) -> None:
-        from tazos.constants import NETSO_FINANCIAL
+        from aos.constants import NETSO_FINANCIAL
         prompt = build_prompt(minimal_agent, netso_financial=NETSO_FINANCIAL)
         # COO should NOT see the full constants block
         assert "HARD FAIL" not in prompt
@@ -186,7 +186,7 @@ class TestBuildPrompt:
         assert "Dashboard shows 3 blockers" in prompt
 
     def test_dispatcher_gets_routing_table(self) -> None:
-        from tazos.schemas.agent import RoutingTable, RoutingEntry
+        from aos.schemas.agent import RoutingTable, RoutingEntry
         dispatcher = Agent(
             id="AGT-EXEC-DISPATCH",
             name="Dispatcher",
@@ -209,12 +209,12 @@ class TestBuildPrompt:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && python -m pytest tests/test_context.py -v`
-Expected: FAIL — `ModuleNotFoundError: No module named 'tazos.context'`
+Expected: FAIL — `ModuleNotFoundError: No module named 'aos.context'`
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```python
-# tazos/context.py
+# aos/context.py
 """Context builder — assembles full system prompt from agent manifest.
 
 Replaces _build_agent_system_prompt which only read 7 fields.
@@ -230,7 +230,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tazos.schemas.agent import Agent
+from aos.schemas.agent import Agent
 
 
 def build_prompt(
@@ -428,7 +428,7 @@ Expected: All 15 tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/context.py tests/test_context.py && git commit -m "feat: context builder — full prompt construction from agent manifest"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/context.py tests/test_context.py && git commit -m "feat: context builder — full prompt construction from agent manifest"
 ```
 
 ---
@@ -438,8 +438,8 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 Replace the old `_build_agent_system_prompt` with the new `context.build_prompt`. This is the moment ground truth actually reaches the LLM.
 
 **Files:**
-- Modify: `tazos/runtime.py:99-143` — replace `_build_agent_system_prompt` body
-- Modify: `tazos/runtime.py:247-304` — `_run_agent` uses context builder
+- Modify: `aos/runtime.py:99-143` — replace `_build_agent_system_prompt` body
+- Modify: `aos/runtime.py:247-304` — `_run_agent` uses context builder
 - Modify: `tests/test_context.py` — add integration test
 
 **Interfaces:**
@@ -454,9 +454,9 @@ Add to `tests/test_context.py`:
 class TestRuntimeIntegration:
     def test_run_cycle_builds_real_prompts(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Verify that run_cycle uses the new context builder."""
-        from tazos.runtime import _build_agent_system_prompt
-        from tazos.registry import HarnessBundle
-        from tazos.schemas.harness import Harness
+        from aos.runtime import _build_agent_system_prompt
+        from aos.registry import HarnessBundle
+        from aos.schemas.harness import Harness
 
         # Create minimal bundle
         harness = Harness(
@@ -485,7 +485,7 @@ Expected: FAIL — old `_build_agent_system_prompt` doesn't produce enough conte
 
 - [ ] **Step 3: Replace `_build_agent_system_prompt` in runtime.py**
 
-Replace the function body at `tazos/runtime.py:99-143`:
+Replace the function body at `aos/runtime.py:99-143`:
 
 ```python
 def _build_agent_system_prompt(agent: Agent, bundle: HarnessBundle) -> str:
@@ -494,8 +494,8 @@ def _build_agent_system_prompt(agent: Agent, bundle: HarnessBundle) -> str:
     Uses context.build_prompt for full contract serialization.
     Financial constants injected for CFO. Memory context retrieved at call site.
     """
-    from tazos.context import build_prompt
-    from tazos.constants import NETSO_FINANCIAL
+    from aos.context import build_prompt
+    from aos.constants import NETSO_FINANCIAL
 
     # Only inject financial constants for agents that need them
     netso_financial = None
@@ -527,7 +527,7 @@ Expected: All tests PASS (existing 31 + new 15 + 1 integration = 47)
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/runtime.py tests/test_context.py && git commit -m "feat: wire context builder into runtime — ground truth reaches LLM"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/runtime.py tests/test_context.py && git commit -m "feat: wire context builder into runtime — ground truth reaches LLM"
 ```
 
 ---
@@ -537,9 +537,9 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 The memory store has `read`, `read_all`, `search` — but none are called during agent execution. Add a `retrieve_for_agent` method and wire it in.
 
 **Files:**
-- Modify: `tazos/memory.py:178-212` — add `retrieve_for_agent` method
+- Modify: `aos/memory.py:178-212` — add `retrieve_for_agent` method
 - Modify: `tests/test_memory.py` — add retrieval tests
-- Modify: `tazos/runtime.py` — already done in Task 2
+- Modify: `aos/runtime.py` — already done in Task 2
 
 **Interfaces:**
 - Consumes: `agent_id: str`, `domain_hint: str | None`
@@ -593,7 +593,7 @@ Expected: FAIL — `AttributeError: 'MemoryStore' object has no attribute 'retri
 
 - [ ] **Step 3: Implement `retrieve_for_agent`**
 
-Add to `tazos/memory.py` after the `search` method (around line 212):
+Add to `aos/memory.py` after the `search` method (around line 212):
 
 ```python
     def retrieve_for_agent(
@@ -657,7 +657,7 @@ Expected: All memory tests PASS (existing 24 + new 5 = 29)
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/memory.py tests/test_memory.py && git commit -m "feat: memory retrieval for agents — prompt injection from 3-layer store"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/memory.py tests/test_memory.py && git commit -m "feat: memory retrieval for agents — prompt injection from 3-layer store"
 ```
 
 ---
@@ -667,9 +667,9 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 The CFO could output "savings of 14% based on BDT 14.81" and nothing catches it. Add post-validation that checks output against `NETSO_FINANCIAL` constants.
 
 **Files:**
-- Create: `tazos/evaluator.py`
+- Create: `aos/evaluator.py`
 - Create: `tests/test_evaluator.py`
-- Modify: `tazos/runtime.py` — call evaluator after each agent completes
+- Modify: `aos/runtime.py` — call evaluator after each agent completes
 
 **Interfaces:**
 - Consumes: `agent_output: dict`, `agent: Agent`, `netso_financial: dict`
@@ -684,7 +684,7 @@ The CFO could output "savings of 14% based on BDT 14.81" and nothing catches it.
 from __future__ import annotations
 
 import pytest
-from tazos.evaluator import validate_output, ValidationResult
+from aos.evaluator import validate_output, ValidationResult
 
 
 class TestValidateOutput:
@@ -752,12 +752,12 @@ class TestValidateOutput:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && python -m pytest tests/test_evaluator.py -v`
-Expected: FAIL — `ModuleNotFoundError: No module named 'tazos.evaluator'`
+Expected: FAIL — `ModuleNotFoundError: No module named 'aos.evaluator'`
 
 - [ ] **Step 3: Implement the evaluator**
 
 ```python
-# tazos/evaluator.py
+# aos/evaluator.py
 """Output evaluator — validates agent output against financial ground truth.
 
 Post-validates every agent output against NETSO_FINANCIAL constants.
@@ -771,7 +771,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from tazos.constants import NETSO_FINANCIAL, DSCR_ALERT_FLOOR
+from aos.constants import NETSO_FINANCIAL, DSCR_ALERT_FLOOR
 
 
 @dataclass
@@ -932,7 +932,7 @@ Expected: All 10 tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/evaluator.py tests/test_evaluator.py && git commit -m "feat: output evaluator — enforce financial ground truth on agent output"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/evaluator.py tests/test_evaluator.py && git commit -m "feat: output evaluator — enforce financial ground truth on agent output"
 ```
 
 ---
@@ -942,11 +942,11 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 Call the evaluator after each agent completes. Hard-fail violations get logged and can trigger re-execution or escalation.
 
 **Files:**
-- Modify: `tazos/runtime.py:247-304` — `_run_agent` calls evaluator after LLM response
+- Modify: `aos/runtime.py:247-304` — `_run_agent` calls evaluator after LLM response
 - Modify: `tests/test_context.py` — add evaluator integration test
 
 **Interfaces:**
-- Consumes: `validate_output` from `tazos/evaluator.py`
+- Consumes: `validate_output` from `aos/evaluator.py`
 - Produces: `StepResult` with validation info in output
 
 - [ ] **Step 1: Write the integration test**
@@ -956,7 +956,7 @@ Add to `tests/test_context.py`:
 ```python
 class TestEvaluatorIntegration:
     def test_evaluator_called_after_agent(self) -> None:
-        from tazos.evaluator import validate_output
+        from aos.evaluator import validate_output
         # CFO output with wrong savings should fail
         output = {"savings_pct": 14.0, "rate_used": 14.81}
         result = validate_output(output, "AGT-EXEC-CFO")
@@ -975,7 +975,7 @@ Add after the JSON extraction block (around line 280):
 
 ```python
         # Validate output against ground truth
-        from tazos.evaluator import validate_output
+        from aos.evaluator import validate_output
         validation = validate_output(output, agent.id)
 
         # Log violations but don't block (yet) — escalation handles it
@@ -999,7 +999,7 @@ Expected: All tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/runtime.py tests/test_context.py && git commit -m "feat: wire evaluator into runtime — post-validation of all agent outputs"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/runtime.py tests/test_context.py && git commit -m "feat: wire evaluator into runtime — post-validation of all agent outputs"
 ```
 
 ---
@@ -1009,9 +1009,9 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 Track token usage per agent per cycle. Zero cost today, but essential for when you scale.
 
 **Files:**
-- Create: `tazos/usage.py`
+- Create: `aos/usage.py`
 - Create: `tests/test_usage.py`
-- Modify: `tazos/runtime.py` — accumulate usage in CycleContext
+- Modify: `aos/runtime.py` — accumulate usage in CycleContext
 
 **Interfaces:**
 - Consumes: `LLMResponse.usage` (dict with prompt_tokens, completion_tokens)
@@ -1026,7 +1026,7 @@ Track token usage per agent per cycle. Zero cost today, but essential for when y
 from __future__ import annotations
 
 import pytest
-from tazos.usage import UsageTracker
+from aos.usage import UsageTracker
 
 
 class TestUsageTracker:
@@ -1081,12 +1081,12 @@ class TestUsageTracker:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && python -m pytest tests/test_usage.py -v`
-Expected: FAIL — `ModuleNotFoundError: No module named 'tazos.usage'`
+Expected: FAIL — `ModuleNotFoundError: No module named 'aos.usage'`
 
 - [ ] **Step 3: Implement the usage tracker**
 
 ```python
-# tazos/usage.py
+# aos/usage.py
 """Usage tracker — captures token usage per agent per cycle.
 
 Every LLMResponse already carries usage dict. This module accumulates
@@ -1169,7 +1169,7 @@ Expected: All 6 tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/usage.py tests/test_usage.py && git commit -m "feat: usage tracker — per-agent, per-model token visibility"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/usage.py tests/test_usage.py && git commit -m "feat: usage tracker — per-agent, per-model token visibility"
 ```
 
 ---
@@ -1179,20 +1179,20 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 Add usage tracker to CycleContext, record usage after every LLM call, include in cycle summary.
 
 **Files:**
-- Modify: `tazos/runtime.py:29-55` — add UsageTracker to CycleContext
-- Modify: `tazos/runtime.py:247-304` — record usage in `_run_agent`
-- Modify: `tazos/runtime.py:591-651` — init tracker in `run_cycle`, report in summary
+- Modify: `aos/runtime.py:29-55` — add UsageTracker to CycleContext
+- Modify: `aos/runtime.py:247-304` — record usage in `_run_agent`
+- Modify: `aos/runtime.py:591-651` — init tracker in `run_cycle`, report in summary
 
 **Interfaces:**
-- Consumes: `UsageTracker` from `tazos/usage.py`
+- Consumes: `UsageTracker` from `aos/usage.py`
 - Produces: usage data in `CycleContext.summary()`
 
 - [ ] **Step 1: Add tracker to CycleContext**
 
-In `tazos/runtime.py`, add import at top:
+In `aos/runtime.py`, add import at top:
 
 ```python
-from tazos.usage import UsageTracker
+from aos.usage import UsageTracker
 ```
 
 Add field to `CycleContext` (around line 55):
@@ -1251,7 +1251,7 @@ Expected: All tests PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/runtime.py && git commit -m "feat: wire usage tracker into runtime — per-cycle cost visibility"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/runtime.py && git commit -m "feat: wire usage tracker into runtime — per-cycle cost visibility"
 ```
 
 ---
@@ -1261,8 +1261,8 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 All three tiers (default, fast, subagent) currently map to `ag/claude-sonnet-4-6`. Fix to use actual task-fit routing with your 9router setup.
 
 **Files:**
-- Modify: `tazos/llm.py:29-34` — fix MODEL_TABLE
-- Modify: `tazos/llm.py:45-50` — fix CRITICALITY_TO_MODEL
+- Modify: `aos/llm.py:29-34` — fix MODEL_TABLE
+- Modify: `aos/llm.py:45-50` — fix CRITICALITY_TO_MODEL
 
 **Interfaces:**
 - Consumes: existing `resolve_model` function
@@ -1302,7 +1302,7 @@ Expected: All tests PASS
 - [ ] **Step 4: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/llm.py && git commit -m "fix: model routing — task-fit with haiku for fast/subagent tiers"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/llm.py && git commit -m "fix: model routing — task-fit with haiku for fast/subagent tiers"
 ```
 
 ---
@@ -1312,8 +1312,8 @@ cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/
 The specialist loop (runtime.py:427-449) is sequential. 5 specialists × 15s = 75s serial. Parallel: ~15s. Add `asyncio.gather` with concurrency limit.
 
 **Files:**
-- Modify: `tazos/runtime.py:386-459` — `step_run_specialists` uses asyncio
-- Modify: `tazos/runtime.py:591-651` — `run_cycle` uses asyncio.run
+- Modify: `aos/runtime.py:386-459` — `step_run_specialists` uses asyncio
+- Modify: `aos/runtime.py:591-651` — `run_cycle` uses asyncio.run
 
 **Interfaces:**
 - Consumes: existing specialist execution logic
@@ -1327,10 +1327,10 @@ Add to `tests/test_context.py`:
 class TestParallelSpecialists:
     def test_specialists_run_concurrently(self) -> None:
         """Verify that step_run_specialists produces results from all assigned agents."""
-        from tazos.runtime import step_run_specialists, CycleContext
-        from tazos.registry import HarnessBundle, Registry
-        from tazos.schemas.harness import Harness
-        from tazos.schemas.agent import Agent, AllowedMemory, AgentStatus, AgentCriticality
+        from aos.runtime import step_run_specialists, CycleContext
+        from aos.registry import HarnessBundle, Registry
+        from aos.schemas.harness import Harness
+        from aos.schemas.agent import Agent, AllowedMemory, AgentStatus, AgentCriticality
 
         # Create bundle with two mock specialists
         harness = Harness(id="HAR-EXEC-001", name="Exec", version="1.0.0", mission="Run")
@@ -1369,7 +1369,7 @@ class TestParallelSpecialists:
             }
         })())
 
-        from tazos.llm import DryRunLLMClient
+        from aos.llm import DryRunLLMClient
         result = step_run_specialists(ctx, bundle, DryRunLLMClient())
         assert result.status == "success"
         assert len(result.output["specialist_results"]) == 2
@@ -1476,7 +1476,7 @@ Expected: All tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add tazos/runtime.py && git commit -m "feat: parallel specialist execution — 5x latency improvement"
+cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && git add aos/runtime.py && git commit -m "feat: parallel specialist execution — 5x latency improvement"
 ```
 
 ---
@@ -1494,12 +1494,12 @@ Verify everything works end-to-end: context builder + memory retrieval + output 
 
 - [ ] **Step 1: Run dry-run cycle**
 
-Run: `cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && python -m tazos run --dry-run --verbose`
+Run: `cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && python -m aos run --dry-run --verbose`
 Expected: Full cycle completes, shows usage report, no errors
 
 - [ ] **Step 2: Run live cycle with 9router**
 
-Run: `cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && python -m tazos run --verbose`
+Run: `cd "/Users/tazwarmahtab/Documents/10-Projects/Agentic Harness" && python -m aos run --verbose`
 Expected: Full cycle with real LLM calls, ground truth in CFO prompt, validation active, parallel specialists, usage report
 
 - [ ] **Step 3: Verify CFO prompt contains financial constants**

@@ -29,20 +29,20 @@
 LANGFUSE_PUBLIC_KEY
 LANGFUSE_SECRET_KEY
 LANGFUSE_HOST
-TAZOS_TRACING
-TAZOS_TRACING_BACKEND
+AOS_TRACING
+AOS_TRACING_BACKEND
 
 # Authentication
-TAZOS_API_TOKEN
+AOS_API_TOKEN
 
 # LLM Providers
 ANTHROPIC_API_KEY
 ANTHROPIC_AUTH_TOKEN
 ANTHROPIC_BASE_URL
-TAZOS_LLM_BASE_URL
-TAZOS_LLM_API_KEY
+AOS_LLM_BASE_URL
+AOS_LLM_API_KEY
 NVIDIA_NIM_API_KEY
-TAZOS_PAID_TIER
+AOS_PAID_TIER
 ```
 
 **Recommendation:** Create `.env.example` with all required variables and defaults.
@@ -59,8 +59,8 @@ TAZOS_PAID_TIER
 - Ratio: 10.8:1 (should be reversed)
 
 **Problem Areas:**
-- `tazos/__main__.py` (CLI output)
-- `tazos/api.py` (API handlers)
+- `aos/__main__.py` (CLI output)
+- `aos/api.py` (API handlers)
 - Graph/orchestration files
 
 **Issues:**

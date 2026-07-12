@@ -11,7 +11,7 @@
 
 ### Core Infrastructure (Production Ready ✅)
 ```
-tazos/
+aos/
 ├── Platform Layer
 │   ├── api.py                    FastAPI + WebSocket server
 │   ├── graph.py                  LangGraph state machine orchestrator

@@ -44,20 +44,20 @@ All P1 (HIGH priority) and P2 (MEDIUM priority) issues from the comprehensive au
 **Environment Variables Documented:**
 ```
 Authentication:
-- TAZOS_API_TOKEN
+- AOS_API_TOKEN
 
 LLM Providers:
 - ANTHROPIC_API_KEY
 - ANTHROPIC_AUTH_TOKEN
 - ANTHROPIC_BASE_URL
-- TAZOS_LLM_BASE_URL
-- TAZOS_LLM_API_KEY
+- AOS_LLM_BASE_URL
+- AOS_LLM_API_KEY
 - NVIDIA_NIM_API_KEY
-- TAZOS_PAID_TIER
+- AOS_PAID_TIER
 
 Tracing:
-- TAZOS_TRACING
-- TAZOS_TRACING_BACKEND
+- AOS_TRACING
+- AOS_TRACING_BACKEND
 - LANGFUSE_PUBLIC_KEY
 - LANGFUSE_SECRET_KEY
 - LANGFUSE_HOST
@@ -68,7 +68,7 @@ Tracing:
 ### 2. Add Startup Health Check for LLM Providers
 
 **Status:** ✅ DONE  
-**File:** `tazos/api.py` (+70 lines)  
+**File:** `aos/api.py` (+70 lines)  
 **Impact:** Early detection of configuration issues, fail-fast validation
 
 **What Was Done:**
@@ -81,7 +81,7 @@ Tracing:
 **New Features:**
 - ✅ Startup validation logs warnings if LLM providers not configured
 - ✅ Checks all 3 provider types (Anthropic, local router, NVIDIA NIM)
-- ✅ Validates required environment variables (TAZOS_API_TOKEN)
+- ✅ Validates required environment variables (AOS_API_TOKEN)
 - ✅ New endpoint: `GET /health/ready` with detailed status
 
 **Usage:**
@@ -153,7 +153,7 @@ curl http://localhost:8000/health/ready
 ### 1. Refactor Logging Strategy
 
 **Status:** ✅ DONE (Partial - Critical Messages)  
-**Files Modified:** `tazos/llm.py`, `tazos/__main__.py`  
+**Files Modified:** `aos/llm.py`, `aos/__main__.py`  
 **Impact:** Better structured logging for production environments
 
 **What Was Done:**
@@ -172,7 +172,7 @@ logger.info(f"Using local router backend: {router_base}")
 logger.error(f"Harness not found: {harness_dir}")
 ```
 
-**Note:** Most print() statements in this codebase are INTENTIONAL for CLI user experience (tazos/__main__.py, orchestrate/pipeline.py, orchestrate/gates.py). These were preserved.
+**Note:** Most print() statements in this codebase are INTENTIONAL for CLI user experience (aos/__main__.py, orchestrate/pipeline.py, orchestrate/gates.py). These were preserved.
 
 ---
 
@@ -299,9 +299,9 @@ logger.error(f"Harness not found: {harness_dir}")
 5. `docs/RATE_LIMITING.md` (268 lines)
 
 ### Files Modified
-1. `tazos/api.py` (+70 lines for health checks)
-2. `tazos/llm.py` (4 print→logger conversions)
-3. `tazos/__main__.py` (6 ERROR print→logger conversions)
+1. `aos/api.py` (+70 lines for health checks)
+2. `aos/llm.py` (4 print→logger conversions)
+3. `aos/__main__.py` (6 ERROR print→logger conversions)
 
 ### Lines of Code Added
 - New test code: 522 lines
@@ -365,7 +365,7 @@ python3 -m pytest tests/test_error_paths.py -v
 curl http://localhost:8000/health/ready
 
 # Validate manifests
-python3 -m tazos validate --venture netso
+python -m aos validate --venture netso
 ```
 
 ---
