@@ -46,8 +46,21 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-
-execution_cycle:
+ame: Legal Operations Loop
+trigger: event_driven
+steps:
+  - action: review
+    target: [contracts_pending, regulatory_deadlines, compliance_checks]
+  - action: plan
+    target: planner
+  - action: delegate
+    target: dispatcher
+  - action: execute
+    target: specialists
+  - action: escalate
+    target: approval_gates
+  - action: log
+    target: decision_log
 name: Legal Operations Loop
 trigger: event_driven
 steps:
@@ -57,3 +70,20 @@ steps:
   - execute: specialists
   - escalate: approval_gates
   - log: decision_log
+
+execution_cycle:
+  name: Legal Operations Loop
+  trigger: event_driven
+  steps:
+    - action: review
+      target: [contracts_pending, regulatory_deadlines, compliance_checks]
+    - action: plan
+      target: planner
+    - action: delegate
+      target: dispatcher
+    - action: execute
+      target: specialists
+    - action: escalate
+      target: approval_gates
+    - action: log
+      target: decision_log

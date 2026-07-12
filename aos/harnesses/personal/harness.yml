@@ -42,8 +42,17 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-
-execution_cycle:
+ame: Personal Productivity Loop
+trigger: daily_06:00_BDT
+steps:
+  - action: review
+    target: [calendar, tasks, health_metrics, goals]
+  - action: plan
+    target: planner
+  - action: execute
+    target: specialists
+  - action: log
+    target: decision_log
 name: Personal Productivity Loop
 trigger: daily_06:00_BDT
 steps:
@@ -51,3 +60,16 @@ steps:
   - plan: planner
   - execute: specialists
   - log: decision_log
+
+execution_cycle:
+  name: Personal Productivity Loop
+  trigger: daily_06:00_BDT
+  steps:
+    - action: review
+      target: [calendar, tasks, health_metrics, goals]
+    - action: plan
+      target: planner
+    - action: execute
+      target: specialists
+    - action: log
+      target: decision_log

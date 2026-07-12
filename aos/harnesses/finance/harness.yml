@@ -38,8 +38,21 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-
-execution_cycle:
+ame: Finance Loop
+trigger: daily_08:00_BDT
+steps:
+  - action: review
+    target: [cash_balance, receivables, payables, investor_updates]
+  - action: plan
+    target: planner
+  - action: delegate
+    target: dispatcher
+  - action: execute
+    target: specialists
+  - action: validate
+    target: evaluator
+  - action: log
+    target: decision_log
 name: Finance Loop
 trigger: daily_08:00_BDT
 steps:
@@ -49,3 +62,20 @@ steps:
   - execute: specialists
   - validate: evaluator
   - log: decision_log
+
+execution_cycle:
+  name: Finance Loop
+  trigger: daily_08:00_BDT
+  steps:
+    - action: review
+      target: [cash_balance, receivables, payables, investor_updates]
+    - action: plan
+      target: planner
+    - action: delegate
+      target: dispatcher
+    - action: execute
+      target: specialists
+    - action: validate
+      target: evaluator
+    - action: log
+      target: decision_log

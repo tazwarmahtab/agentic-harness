@@ -42,8 +42,21 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-
-execution_cycle:
+ame: Customer Success Loop
+trigger: daily_09:00_BDT
+steps:
+  - action: review
+    target: [installation_health, support_tickets, customer_feedback]
+  - action: prioritize
+    target: planner
+  - action: delegate
+    target: dispatcher
+  - action: execute
+    target: specialists
+  - action: escalate
+    target: approval_gates
+  - action: log
+    target: decision_log
 name: Customer Success Loop
 trigger: daily_09:00_BDT
 steps:
@@ -53,3 +66,20 @@ steps:
   - execute: specialists
   - escalate: approval_gates
   - log: decision_log
+
+execution_cycle:
+  name: Customer Success Loop
+  trigger: daily_09:00_BDT
+  steps:
+    - action: review
+      target: [installation_health, support_tickets, customer_feedback]
+    - action: prioritize
+      target: planner
+    - action: delegate
+      target: dispatcher
+    - action: execute
+      target: specialists
+    - action: escalate
+      target: approval_gates
+    - action: log
+      target: decision_log

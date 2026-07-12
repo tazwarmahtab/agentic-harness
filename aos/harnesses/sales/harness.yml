@@ -39,8 +39,21 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-
-execution_cycle:
+ame: Sales Pipeline Loop
+trigger: daily_08:30_BDT
+steps:
+  - action: review
+    target: [pipeline, lead_stages, follow_ups, proposals_out]
+  - action: plan
+    target: planner
+  - action: delegate
+    target: dispatcher
+  - action: execute
+    target: specialists
+  - action: validate
+    target: evaluator
+  - action: log
+    target: decision_log
 name: Sales Pipeline Loop
 trigger: daily_08:30_BDT
 steps:
@@ -50,3 +63,20 @@ steps:
   - execute: specialists
   - validate: evaluator
   - log: decision_log
+
+execution_cycle:
+  name: Sales Pipeline Loop
+  trigger: daily_08:30_BDT
+  steps:
+    - action: review
+      target: [pipeline, lead_stages, follow_ups, proposals_out]
+    - action: plan
+      target: planner
+    - action: delegate
+      target: dispatcher
+    - action: execute
+      target: specialists
+    - action: validate
+      target: evaluator
+    - action: log
+      target: decision_log

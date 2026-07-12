@@ -41,8 +41,21 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-
-execution_cycle:
+ame: Software Development Loop
+trigger: event_driven
+steps:
+  - action: review
+    target: [product_backlog, code_reviews, deployment_status]
+  - action: plan
+    target: planner
+  - action: delegate
+    target: dispatcher
+  - action: execute
+    target: specialists
+  - action: review
+    target: evaluation
+  - action: log
+    target: decision_log
 name: Software Development Loop
 trigger: event_driven
 steps:
@@ -52,3 +65,20 @@ steps:
   - execute: specialists
   - review: evaluation
   - log: decision_log
+
+execution_cycle:
+  name: Software Development Loop
+  trigger: event_driven
+  steps:
+    - action: review
+      target: [product_backlog, code_reviews, deployment_status]
+    - action: plan
+      target: planner
+    - action: delegate
+      target: dispatcher
+    - action: execute
+      target: specialists
+    - action: review
+      target: evaluation
+    - action: log
+      target: decision_log

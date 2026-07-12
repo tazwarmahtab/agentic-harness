@@ -38,8 +38,21 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-
-execution_cycle:
+ame: Operations Loop
+trigger: daily_07:00_BDT
+steps:
+  - action: review
+    target: [site_assessments, procurement_status, installation_schedules, qa_results]
+  - action: plan
+    target: planner
+  - action: delegate
+    target: dispatcher
+  - action: execute
+    target: specialists
+  - action: escalate
+    target: approval_gates
+  - action: log
+    target: decision_log
 name: Operations Loop
 trigger: daily_07:00_BDT
 steps:
@@ -49,3 +62,20 @@ steps:
   - execute: specialists
   - escalate: approval_gates
   - log: decision_log
+
+execution_cycle:
+  name: Operations Loop
+  trigger: daily_07:00_BDT
+  steps:
+    - action: review
+      target: [site_assessments, procurement_status, installation_schedules, qa_results]
+    - action: plan
+      target: planner
+    - action: delegate
+      target: dispatcher
+    - action: execute
+      target: specialists
+    - action: escalate
+      target: approval_gates
+    - action: log
+      target: decision_log
