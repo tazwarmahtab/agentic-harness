@@ -1,7 +1,7 @@
 # AOS - Current System Mapping & Transformation Plan
 
 **Date:** 2026-07-10  
-**Current System:** TAZ OS (Agentic Harness)  
+**Current System:** AOS (Agentic Harness)  
 **Target System:** AOS (Agent Operating System)  
 **Base:** Odysseus UI Framework
 
@@ -56,12 +56,12 @@ aos/
 
 ## PART 2: TRANSFORMATION REQUIREMENTS
 
-### Rename: TAZ OS → AOS
+### Rename: AOS → AOS
 ```
 FIND:                           REPLACE WITH:
-- "TAZ OS"                   →  "AOS"
+- "AOS"                   →  "AOS"
 - "tazos"                    →  "aos"
-- "TAZOS_"                   →  "AOS_"
+- "AOS_"                   →  "AOS_"
 - "Agentic Harness"          →  "Agent Operating System"
 - Project folder name        →  Keep or rename?
 ```
@@ -108,7 +108,7 @@ Components Needed:
 Tasks:
 - [ ] Rename package: tazos → aos
 - [ ] Update all import statements
-- [ ] Update environment variables (TAZOS_ → AOS_)
+- [ ] Update environment variables (AOS_ → AOS_)
 - [ ] Update documentation
 - [ ] Update README.md
 - [ ] Update pyproject.toml

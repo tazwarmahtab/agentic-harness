@@ -1,16 +1,16 @@
-# TAZ OS — Executive Harness Design
+# AOS — Executive Harness Design
 
 - **Date:** 2026-06-30
 - **Status:** Approved (design); manifests in progress
 - **Venture instance:** Netso Energy
-- **Author:** Taz + TAZ OS architecture work
+- **Author:** Taz + AOS architecture work
 - **Supersedes (gradually):** `Netso_HQ/ai_system/` v0 (Nexus + PLAN/DO/CHECK/ACT)
 
 ---
 
 ## 1. Purpose
 
-The Executive Harness is the **reference implementation** of TAZ OS. It is the first harness built on the canonical template; every later harness (Sales, Finance, Engineering, Legal, Operations, Customer Success, Marketing, Research, Knowledge, Investor Relations, Personal) inherits this structure unchanged.
+The Executive Harness is the **reference implementation** of AOS. It is the first harness built on the canonical template; every later harness (Sales, Finance, Engineering, Legal, Operations, Customer Success, Marketing, Research, Knowledge, Investor Relations, Personal) inherits this structure unchanged.
 
 It operates Netso Energy as an autonomous executive team: continuously monitors the company, identifies priorities, coordinates specialist harnesses, and surfaces only high-leverage decisions requiring founder approval.
 

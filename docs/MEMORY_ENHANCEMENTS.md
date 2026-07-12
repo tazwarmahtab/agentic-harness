@@ -1,4 +1,4 @@
-# TAZ OS Memory System Enhancements
+# AOS Memory System Enhancements
 
 **Date**: 2026-07-02  
 **Status**: ✅ Complete  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-Enhanced TAZ OS memory system with harness engineering concepts from video transcripts, adding procedural memory, memory consolidation, dual retrieval strategies, and health metrics.
+Enhanced AOS memory system with harness engineering concepts from video transcripts, adding procedural memory, memory consolidation, dual retrieval strategies, and health metrics.
 
 ---
 
@@ -369,7 +369,7 @@ def memory_health():
 
 ## Summary
 
-Enhanced TAZ OS memory system with:
+Enhanced AOS memory system with:
 - ✅ Procedural memory for skills/SOPs (130 lines)
 - ✅ Memory consolidation (episodic → semantic) (120 lines)
 - ✅ Dual retrieval strategy (RAG + SQL) (70 lines)

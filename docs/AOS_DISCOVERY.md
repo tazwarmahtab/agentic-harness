@@ -1,7 +1,7 @@
 # AOS (Agent Operating System) - Discovery Phase
 
 **Date:** 2026-07-10  
-**Goal:** Build comprehensive personalized OS based on existing TAZ OS foundation
+**Goal:** Build comprehensive personalized OS based on existing AOS foundation
 
 ---
 
@@ -97,7 +97,7 @@
   - [ ] Other: _____________
 
 ### 7. CURRENT PAIN POINTS
-- **Q7.1:** What frustrates you most about current TAZ OS?
+- **Q7.1:** What frustrates you most about current AOS?
 - **Q7.2:** What features are missing that you need?
 - **Q7.3:** What's working well that should be preserved?
 

@@ -1,8 +1,8 @@
-# TAZ OS Phase 7 — Runtime Hardening & Context Engineering
+# AOS Phase 7 — Runtime Hardening & Context Engineering
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Fix the 6 critical runtime gaps identified in the expert review so that TAZ OS agents produce accurate, validated, parallelized output with full context. Transform the runtime from a 2/10 engine to a 7/10+ production system.
+**Goal:** Fix the 6 critical runtime gaps identified in the expert review so that AOS agents produce accurate, validated, parallelized output with full context. Transform the runtime from a 2/10 engine to a 7/10+ production system.
 
 **Architecture:** Extend the existing `aos/` package without breaking the manifest layer. All changes are in the runtime Python code. New modules: `context.py` (prompt construction + memory retrieval), `evaluator.py` (output validation), `parallel.py` (async specialist execution), `usage.py` (cost tracking). Modified modules: `runtime.py`, `llm.py`, `memory.py`.
 
@@ -59,7 +59,7 @@ The single most critical fix. Currently `_build_agent_system_prompt` (runtime.py
 
 ```python
 # tests/test_context.py
-"""Tests for TAZ OS context builder — full prompt construction."""
+"""Tests for AOS context builder — full prompt construction."""
 
 from __future__ import annotations
 
@@ -242,13 +242,13 @@ def build_prompt(
     """Build the complete system prompt for an agent from its manifest.
 
     This is the SINGLE source of prompt construction. Every agent in
-    TAZ OS goes through this function. No agent builds its own prompt.
+    AOS goes through this function. No agent builds its own prompt.
     """
     parts: list[str] = []
 
     # --- Identity ---
     parts.append(f"You are {agent.name} ({agent.id}).")
-    parts.append(f"You operate within the TAZ OS Executive Harness.")
+    parts.append(f"You operate within the AOS Executive Harness.")
     parts.append("")
 
     # --- Mission ---
@@ -679,7 +679,7 @@ The CFO could output "savings of 14% based on BDT 14.81" and nothing catches it.
 
 ```python
 # tests/test_evaluator.py
-"""Tests for TAZ OS output evaluator — validates agent output against ground truth."""
+"""Tests for AOS output evaluator — validates agent output against ground truth."""
 
 from __future__ import annotations
 
@@ -1021,7 +1021,7 @@ Track token usage per agent per cycle. Zero cost today, but essential for when y
 
 ```python
 # tests/test_usage.py
-"""Tests for TAZ OS usage tracker — cost visibility."""
+"""Tests for AOS usage tracker — cost visibility."""
 
 from __future__ import annotations
 

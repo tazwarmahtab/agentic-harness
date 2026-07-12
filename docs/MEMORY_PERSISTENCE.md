@@ -1,4 +1,4 @@
-# TAZ OS Memory Persistence Schema
+# AOS Memory Persistence Schema
 
 **Last Updated:** 2026-07-11  
 **Version:** 1.0  

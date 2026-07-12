@@ -32,12 +32,12 @@ tazos.orchestrate           →  aos.orchestrate
 
 ### Environment Variables to Rename:
 ```
-TAZOS_API_TOKEN             →  AOS_API_TOKEN
-TAZOS_TRACING               →  AOS_TRACING
-TAZOS_TRACING_BACKEND       →  AOS_TRACING_BACKEND
-TAZOS_LLM_BASE_URL          →  AOS_LLM_BASE_URL
-TAZOS_LLM_API_KEY           →  AOS_LLM_API_KEY
-TAZOS_PAID_TIER             →  AOS_PAID_TIER
+AOS_API_TOKEN             →  AOS_API_TOKEN
+AOS_TRACING               →  AOS_TRACING
+AOS_TRACING_BACKEND       →  AOS_TRACING_BACKEND
+AOS_LLM_BASE_URL          →  AOS_LLM_BASE_URL
+AOS_LLM_API_KEY           →  AOS_LLM_API_KEY
+AOS_PAID_TIER             →  AOS_PAID_TIER
 ```
 
 ---

@@ -1,11 +1,11 @@
-# TAZ OS Rate Limiting Configuration
+# AOS Rate Limiting Configuration
 
 **Last Updated:** 2026-07-11  
 **Version:** 1.0
 
 ## Overview
 
-TAZ OS implements two types of rate limiting to protect system resources and ensure fair usage:
+AOS implements two types of rate limiting to protect system resources and ensure fair usage:
 1. **ConnectionLimiter** — Caps concurrent WebSocket connections
 2. **RateLimiter** — Token-bucket rate limiting for API/tool calls
 

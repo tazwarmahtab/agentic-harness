@@ -1,4 +1,4 @@
-# TAZ OS — Session Preview Dashboard
+# AOS — Session Preview Dashboard
 
 **Session Date:** 2026-07-10  
 **Time Context:** 20:32:04 UTC  
@@ -10,7 +10,7 @@
 
 ```
 ╔═══════════════════════════════════════════════════════════╗
-║              TAZ OS PROJECT HEALTH DASHBOARD               ║
+║              AOS PROJECT HEALTH DASHBOARD               ║
 ╠═══════════════════════════════════════════════════════════╣
 ║ Tests:          605 → 637 (+32)         ✅ 100% PASSING   ║
 ║ Issues:         10 → 4 remaining       ✅ 6 RESOLVED     ║

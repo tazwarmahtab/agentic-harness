@@ -1,4 +1,4 @@
-# TAZ OS — Issues Status Update (2026-07-11)
+# AOS — Issues Status Update (2026-07-11)
 
 ## ✅ P1 COMPLETED (Do This Week)
 
@@ -9,16 +9,16 @@
 
 **Environment Variables Documented (13 total):**
 ```bash
-TAZOS_API_TOKEN                    # WebSocket authentication
+AOS_API_TOKEN                    # WebSocket authentication
 ANTHROPIC_API_KEY                  # Primary LLM provider
 ANTHROPIC_AUTH_TOKEN              # Alternative auth
 ANTHROPIC_BASE_URL                # Custom API endpoint
-TAZOS_LLM_BASE_URL                # Local LLM router
-TAZOS_LLM_API_KEY                 # Router auth
+AOS_LLM_BASE_URL                # Local LLM router
+AOS_LLM_API_KEY                 # Router auth
 NVIDIA_NIM_API_KEY                # NVIDIA GPU inference
-TAZOS_PAID_TIER                   # Paid tier flag
-TAZOS_TRACING                     # Tracing enable/disable
-TAZOS_TRACING_BACKEND             # Tracing backend
+AOS_PAID_TIER                   # Paid tier flag
+AOS_TRACING                     # Tracing enable/disable
+AOS_TRACING_BACKEND             # Tracing backend
 LANGFUSE_PUBLIC_KEY               # Langfuse tracing
 LANGFUSE_SECRET_KEY               # Langfuse tracing
 LANGFUSE_HOST                     # Langfuse endpoint
@@ -35,7 +35,7 @@ LANGFUSE_HOST                     # Langfuse endpoint
 - ✅ Startup validation logs warnings if no LLM providers configured
 - ✅ New `/health/ready` endpoint with detailed provider status
 - ✅ Checks all LLM providers (Anthropic, local router, NVIDIA NIM)
-- ✅ Validates required environment variables (TAZOS_API_TOKEN)
+- ✅ Validates required environment variables (AOS_API_TOKEN)
 - ✅ Status: `"healthy"` (all config present) or `"degraded"` (missing config)
 
 **Usage:**
