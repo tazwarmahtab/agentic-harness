@@ -28,16 +28,16 @@ logger = logging.getLogger(__name__)
 # Structured errors
 # ---------------------------------------------------------------------------
 
-class TazosError(Exception):
+class AOSError(Exception):
     """Base error with code for structured responses."""
 
-    code: str = "TAZOS_ERROR"
+    code: str = "AOS_ERROR"
 
     def to_dict(self) -> dict[str, str]:
         return {"code": self.code, "message": str(self)}
 
 
-class HarnessNotFoundError(TazosError):
+class HarnessNotFoundError(AOSError):
     """Raised when a harness name is not found."""
 
     code = "HARNESS_NOT_FOUND"
@@ -47,7 +47,7 @@ class HarnessNotFoundError(TazosError):
         self.name = name
 
 
-class RateLimitError(TazosError):
+class RateLimitError(AOSError):
     """Raised when rate limit is exceeded."""
 
     code = "RATE_LIMIT_EXCEEDED"
@@ -57,7 +57,7 @@ class RateLimitError(TazosError):
         self.key = key
 
 
-class ValidationError(TazosError):
+class ValidationError(AOSError):
     """Raised when input validation fails."""
 
     code = "VALIDATION_ERROR"

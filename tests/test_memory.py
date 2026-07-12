@@ -401,7 +401,7 @@ class TestPersistence:
             result = store.persist_to_disk(root, cycle_id="test-cycle")
 
             # Audit log should exist
-            audit_path = root / "ai_system" / "System" / "TAZOS_AUDIT.log"
+            audit_path = root / "ai_system" / "System" / "AOS_AUDIT.log"
             assert audit_path.exists()
             lines = audit_path.read_text().strip().split("\n")
             assert len(lines) >= 1
@@ -418,7 +418,7 @@ class TestPersistence:
 
             result = store.persist_to_disk(root)
 
-            memory_path = root / "ai_system" / "System" / "TAZOS_MEMORY.md"
+            memory_path = root / "ai_system" / "System" / "AOS_MEMORY.md"
             assert memory_path.exists()
             content = memory_path.read_text()
             assert "Netso" in content
@@ -450,7 +450,7 @@ class TestPersistence:
             store.review_pending(auto_store=True)
             store.persist_to_disk(root, cycle_id="cycle-2")
 
-            audit_path = root / "ai_system" / "System" / "TAZOS_AUDIT.log"
+            audit_path = root / "ai_system" / "System" / "AOS_AUDIT.log"
             lines = audit_path.read_text().strip().split("\n")
             assert len(lines) >= 2  # Both cycles recorded
 

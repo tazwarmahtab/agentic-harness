@@ -11,7 +11,7 @@ Model routing table mirrors CLAUDE.md / 9router config.
 Free-tier subagent dispatch:
 - CRITICALITY_TO_MODEL maps low/medium criticality agents to the "fast"
 tier by default.
-- When MODE=TAZOS_FREE_TIER is set in the environment, those agents are
+- When AOS_FREE_TIER is set in the environment, those agents are
 redirected to the "free" tier which rotates across a pool of verified
 OpenRouter free models (via 9router) — this avoids rate-limiting on
 paid Claude endpoints during parallel fan-out.
@@ -73,6 +73,10 @@ CRITICALITY_TO_MODEL: dict[str, str] = {
 # Round-robin counter (thread-safe via lock)
 _free_model_lock = threading.Lock()
 _free_model_idx = 0
+
+# Free-tier env var: AOS_FREE_TIER is the canonical name.
+# TAZOS_FREE_TIER (deprecated) is accepted as a fallback for backward compat.
+AOS_FREE_TIER = os.getenv("AOS_FREE_TIER") or os.getenv("TAZOS_FREE_TIER")
 
 
 def _next_free_model() -> str:
@@ -575,7 +579,7 @@ def resolve_model(
 ) -> str:
     """Resolve model ID from agent criticality or explicit override.
 
-    In free-tier mode (TAZOS_FREE_TIER=1), medium and low criticality
+    In free-tier mode (AOS_FREE_TIER=1), medium and low criticality
     agents are routed across the FREE_MODEL_POOL round-robin to spread
     load and avoid per-endpoint rate limits during parallel fan-out.
     """

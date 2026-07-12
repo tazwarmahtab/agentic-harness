@@ -203,11 +203,11 @@ class TestConnectionLimiter:
 
 class TestStructuredErrors:
     def test_error_hierarchy(self) -> None:
-        from aos.hardening import TazosError, HarnessNotFoundError, RateLimitError, ValidationError
+        from aos.hardening import AOSError, HarnessNotFoundError, RateLimitError, ValidationError
 
-        assert issubclass(HarnessNotFoundError, TazosError)
-        assert issubclass(RateLimitError, TazosError)
-        assert issubclass(ValidationError, TazosError)
+        assert issubclass(HarnessNotFoundError, AOSError)
+        assert issubclass(RateLimitError, AOSError)
+        assert issubclass(ValidationError, AOSError)
 
     def test_error_has_code_and_message(self) -> None:
         from aos.hardening import HarnessNotFoundError

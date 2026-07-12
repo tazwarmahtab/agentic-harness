@@ -36,38 +36,37 @@ class TestAOSHealthProxy:
     """Tests for AOS health check proxy endpoint."""
 
     def test_health_check_returns_dict(self, client: TestClient) -> None:
-        """GET /api/aos/health should return health status."""
+        """GET /api/aos/health returns 502 when AOS engine is not running."""
         response = client.get("/api/aos/health")
-        assert response.status_code == 200
+        assert response.status_code == 502
         body = response.json()
-        assert "status" in body
+        assert "error" in body
 
     def test_health_check_handles_unavailable(self, client: TestClient) -> None:
-        """Health check should handle AOS engine unavailable."""
+        """Health check returns 502 with engine-unavailable error body."""
         response = client.get("/api/aos/health")
-        assert response.status_code == 200
+        assert response.status_code == 502
         body = response.json()
-        # Should return unavailable or error status
-        assert body.get("status") in ["ok", "unavailable", "error"]
+        assert body["error"] == "AOS engine not running"
 
 
 class TestAOSStatusProxy:
     """Tests for AOS status proxy endpoint."""
 
     def test_status_returns_dict(self, client: TestClient) -> None:
-        """GET /api/aos/status should return AOS status."""
+        """GET /api/aos/status returns 502 when AOS engine is not running."""
         response = client.get("/api/aos/status")
-        assert response.status_code == 200
+        assert response.status_code == 502
         body = response.json()
         assert isinstance(body, dict)
+        assert "error" in body
 
     def test_status_handles_unavailable(self, client: TestClient) -> None:
-        """Status should handle AOS engine unavailable."""
+        """Status returns 502 with engine-unavailable error body."""
         response = client.get("/api/aos/status")
-        assert response.status_code == 200
+        assert response.status_code == 502
         body = response.json()
-        # Should return data or error status
-        assert isinstance(body, dict)
+        assert body["error"] == "AOS engine not running"
 
 
 class TestWebSocketProxy:

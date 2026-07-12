@@ -1123,13 +1123,13 @@ CONTENT: <the fact/pattern/rule>
 
         Writes:
           - audit.log (JSON-lines, append-only)
-          - TAZOS_MEMORY.md (human-readable memory snapshot)
+          - AOS_MEMORY.md (human-readable memory snapshot)
           - SQLite database (if db_path configured)
         """
         written: dict[str, str] = {}
 
         # Write audit log
-        audit_path = venture_root / "ai_system" / "System" / "TAZOS_AUDIT.log"
+        audit_path = venture_root / "ai_system" / "System" / "AOS_AUDIT.log"
         audit_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Append new audit records since last persist
@@ -1149,7 +1149,7 @@ CONTENT: <the fact/pattern/rule>
         written["audit_log"] = str(audit_path)
 
         # Write human-readable memory snapshot
-        memory_path = venture_root / "ai_system" / "System" / "TAZOS_MEMORY.md"
+        memory_path = venture_root / "ai_system" / "System" / "AOS_MEMORY.md"
         with open(memory_path, "w") as f:
             f.write(self.to_markdown())
         written["memory_snapshot"] = str(memory_path)
