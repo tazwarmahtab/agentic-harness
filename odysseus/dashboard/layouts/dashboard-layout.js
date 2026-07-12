@@ -19,29 +19,29 @@ const NAV_ITEMS = [
 
 export function renderLayout(container) {
   container.innerHTML = `
-    <div class="aos-dash">
-      <nav class="aos-sidebar" id="aos-sidebar">
+    <div class="aos-dash" role="application" aria-label="AOS Mission Control Dashboard">
+      <nav class="aos-sidebar" id="aos-sidebar" aria-label="Dashboard navigation">
         <div class="aos-sidebar-header">
-          <span class="aos-logo-icon">⚡</span>
+          <span class="aos-logo-icon" aria-hidden="true">⚡</span>
           <span class="aos-logo-text">AOS</span>
         </div>
-        <div class="aos-nav" id="aos-nav"></div>
+        <div class="aos-nav" id="aos-nav" role="menubar" aria-label="Pages"></div>
         <div class="aos-sidebar-footer">
-          <div class="aos-engine-badge" id="aos-engine-badge">
+          <div class="aos-engine-badge" id="aos-engine-badge" aria-live="polite">
             <span class="aos-dot"></span>
             <span class="aos-dot-label">Engine</span>
           </div>
         </div>
       </nav>
-      <main class="aos-main">
+      <main class="aos-main" id="aos-content" tabindex="-1">
         <header class="aos-header" id="aos-header">
           <h1 class="aos-page-title" id="aos-page-title">Overview</h1>
           <div class="aos-header-actions">
-            <span class="aos-status-text" id="aos-status-text"></span>
-            <button class="aos-btn aos-btn-ghost" id="aos-refresh-btn" title="Refresh">↻</button>
+            <span class="aos-status-text" id="aos-status-text" aria-live="polite"></span>
+            <button class="aos-btn aos-btn-ghost" id="aos-refresh-btn" title="Refresh" aria-label="Refresh data">↻</button>
           </div>
         </header>
-        <div class="aos-content" id="aos-content"></div>
+        <div class="aos-content" id="aos-page-content"></div>
       </main>
     </div>
   `;
@@ -52,8 +52,8 @@ export function renderLayout(container) {
 
 function renderNav(navEl) {
   navEl.innerHTML = NAV_ITEMS.map((item) => `
-    <button class="aos-nav-item" data-page="${item.id}">
-      <span class="aos-nav-icon">${item.icon}</span>
+    <button class="aos-nav-item" data-page="${item.id}" role="menuitem" aria-label="${item.label}" tabindex="0">
+      <span class="aos-nav-icon" aria-hidden="true">${item.icon}</span>
       <span class="aos-nav-label">${item.label}</span>
     </button>
   `).join('');
@@ -96,7 +96,7 @@ function bindEvents(container) {
 }
 
 export function getContentEl() {
-  return document.getElementById('aos-content');
+  return document.getElementById('aos-page-content');
 }
 
 export function highlightNav(page) {

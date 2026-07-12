@@ -121,6 +121,12 @@
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+  animation: aos-fade-in 0.2s ease-out;
+}
+
+@keyframes aos-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── KPI Strip ──────────────────────────────────────────────────────── */
@@ -139,6 +145,12 @@
   padding: 16px;
   backdrop-filter: blur(8px);
   text-align: center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.aos-kpi:hover {
+  border-color: color-mix(in srgb, var(--fg) 20%, transparent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .aos-kpi-accent {
@@ -192,6 +204,7 @@
 .aos-harness-card:hover {
   border-color: color-mix(in srgb, var(--fg) 25%, transparent);
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transform: translateY(-1px);
 }
 
 .aos-harness-card.aos-running {
