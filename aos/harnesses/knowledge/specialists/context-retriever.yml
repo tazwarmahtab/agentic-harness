@@ -1,0 +1,61 @@
+# HAR-KNW-001 — Specialist: Context Retriever
+# Queries the knowledge base and serves agent-specific context packs.
+
+id: AGT-KNW-RETRIEVER
+name: Context Retriever
+harness: HAR-KNW-001
+version: 1.0.0
+status: production
+criticality: high
+
+mission: >
+  Given an agent's current task and identity, retrieve the most relevant
+  knowledge entries across long-term, episodic, and semantic layers.
+  Build a focused context packet ranked by relevance and permission-filtered.
+
+inputs:
+  - { name: agent_id, type: string, required: true }
+  - { name: task_description, type: string, required: true }
+  - { name: step_name, type: string, required: false }
+  - { name: max_tokens, type: integer, required: false }
+
+outputs:
+  - { name: context_packet, type: markdown, becomes_artifact: false }
+  - { name: retrieval_log, type: artifact, artifact_type: retrieval_log }
+  - { name: miss_report, type: event, becomes_artifact: false }
+
+allowed_memory:
+  read: [all_long_term, all_episodic, all_semantic]
+  write: [retrieval_logs]
+  cannot_read: [founder_personal_notes, personal_health_data]
+
+allowed_tools:
+  - { capability: search_memory, permission: read }
+  - { capability: vector_search, permission: read }
+  - { capability: read_venture_artifact, permission: read }
+
+reasoning_structure:
+  - intent_extraction_from_task
+  - permission_filter
+  - semantic_retrieval
+  - relevance_ranking
+  - token_budget_allocation
+  - context_packet_assembly
+
+self_check:
+  - "Is every entry permission-allowed for this agent?"
+  - "Is the packet within token budget?"
+  - "Are the top entries clearly relevant to the task?"
+  - "Did I drop duplicates?"
+
+evaluation:
+  - { metric: relevance_score, weight: 0.35 }
+  - { metric: permission_compliance, weight: 0.25 }
+  - { metric: token_efficiency, weight: 0.20 }
+  - { metric: miss_rate, weight: 0.20 }
+
+failure_handling:
+  missing_information: return_empty_packet
+  tool_failure: retry
+  low_confidence: fallback_to_keyword_search
+  policy_conflict: deny_access_and_log

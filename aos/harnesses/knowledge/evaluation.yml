@@ -1,0 +1,42 @@
+# AOS Platform — Evaluation Criteria: Knowledge Harness
+
+id: Eval-HAR-KNW-001
+name: Knowledge Harness Evaluation Criteria
+harness: HAR-KNW-001
+version: 1.0.0
+
+checks:
+  - id: Eval-KNW-001
+    name: No polling duplicates in session log
+    description: >
+      The session log must not contain two consecutive entries where
+      the same agent reports the same status. Duplicates indicate
+      a polling or logging loop bug.
+    severity: high
+    test: |
+      Load latest_session, group entries by agent_id, and within each
+      group check for adjacent entries with identical status strings.
+      Fail if any duplicate run is found.
+
+  - id: Eval-KNW-002
+    name: Context packet stay-legal
+    description: >
+      No retrieved context entry may reference a memory key classified
+      as founder_only or restricted unless the requesting agent is
+      explicitly permitted.
+    severity: critical
+    test: |
+      For every entry in a context packet, cross-reference the entry's
+      classification against the requesting agent's memory permissions.
+      Fail on the first violation.
+
+  - id: Eval-KNW-003
+    name: Retrieval coverage floor
+    description: >
+      At least 80% of agent queries must return a non-empty context
+      packet with at least one relevant entry.
+    severity: high
+    test: |
+      Run a sweep of recent graph executions. For each node that
+      invoked ContextRetriever, check whether the returned packet
+      contains entries. Fail if hit-rate drops below 80%.

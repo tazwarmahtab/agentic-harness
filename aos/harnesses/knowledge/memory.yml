@@ -1,0 +1,76 @@
+# HAR-KNW-001 — Shared Memory
+# Aggregates institutional memory from all ventures and harnesses.
+
+id: MEM-KNW-001
+name: Knowledge Harness Shared Memory
+harness: HAR-KNW-001
+version: 1.0.0
+
+layers:
+  long_term:
+    schema_registry:
+      description: "Canonical JSON Schema definitions for all manifest types"
+      ref: platform/schemas/
+      classification: internal
+    financial_ground_truth:
+      ref: ground_truth_constants
+      description: "All financial numbers from core_economics.py"
+      classification: confidential
+    venture_registry:
+      description: "Known ventures, status, artifact roots"
+      classification: internal
+    policy_rules:
+      description: "Approval gates, escalation rules, AI safety constraints"
+      ref: approvals.yml
+      classification: internal
+    procedural_index:
+      description: "SOP map — what exists and where"
+      ref: sops/
+      classification: internal
+
+  episodic:
+    curation_log:
+      description: "Daily maintenance decisions: store, reject, merge, version"
+      write_access: [AGT-KNW-CURATOR]
+      classification: internal
+    quality_audits:
+      description: "Periodic audits of retrieval relevance and pollution rate"
+      write_access: [AGT-KNW-AUDITOR]
+      classification: internal
+    archival_log:
+      description: "Compacted entries moved to cold storage"
+      write_access: [AGT-KNW-CURATOR]
+      classification: internal
+
+  semantic:
+    retrieval_heuristics:
+      description: "What search strategy works best per domain"
+      classification: internal
+    classification_rules:
+      description: "When to tag public, internal, confidential, restricted"
+      classification: internal
+    memory_policies:
+      description: "Retention periods, consolidation triggers, archival rules"
+      classification: internal
+
+permissions:
+  AGT-KNW-CURATOR:
+    read: [all_long_term, all_episodic, all_semantic]
+    write: [curation_log, archival_log, semantic]
+    cannot_read: [founder_personal_notes, personal_health_data]
+
+  AGT-KNW-RETRIEVER:
+    read: [all_long_term, all_episodic, all_semantic]
+    write: [retrieval_logs]
+    cannot_read: [founder_personal_notes, personal_health_data, raw_payroll]
+
+  AGT-KNW-AUDITOR:
+    read: [all_long_term, all_episodic, all_semantic, quality_audits]
+    write: [quality_audits, decision_log]
+    cannot_read: [founder_personal_notes, personal_health_data]
+
+update_rules:
+  agents_submit_memory_candidates: true
+  reflection_engine_decides: [store, reject, summarize, merge, version]
+  purpose: "Centralized curation prevents memory pollution across all harnesses."
+  audit: "Every memory operation is logged with agent identity and rationale."

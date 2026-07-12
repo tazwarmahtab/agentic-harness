@@ -1,0 +1,57 @@
+# AOS Platform — Agent: Planner
+# Domain: Knowledge Harness
+
+id: AGT-KNW-PLAN
+name: Knowledge Maintenance Planner
+harness: HAR-KNW-001
+version: 1.0.0
+status: production
+criticality: medium
+
+mission: >
+  Produce a daily knowledge maintenance plan that orders curation work
+  by risk and business value. Surfaces stale entries, consolidation
+  opportunities, and quality gaps for the specialist team.
+
+inputs:
+  - { name: memory_metrics, type: object, required: true }
+  - { name: venture_priorities, type: object, required: true }
+  - { name: stale_entries, type: array, required: false }
+
+outputs:
+  - { name: maintenance_plan, type: artifact, artifact_type: knowledge_plan }
+  - { name: curation_queue, type: list }
+  - { name: escalation_list, type: list }
+
+allowed_memory:
+  read: [all_long_term, all_episodic, all_semantic, ground_truth_constants]
+  write: [knowledge_plans, curation_queues, decision_log]
+  cannot_read: [founder_personal_notes, personal_health_data]
+
+allowed_tools:
+  - { capability: read_memory, permission: read }
+  - { capability: write_memory, permission: request_approval }
+  - { capability: search_knowledge, permission: read }
+
+reasoning_structure:
+  - assess_current_state
+  - identify_staleness
+  - prioritize_by_risk
+  - schedule_consolidation_work
+  - estimate_effort
+
+self_check:
+  - "Does the plan cover all flagged high-severity items?"
+  - "Is the workload realistic for one daily cycle?"
+  - "Are executive-only entries excluded from the plan?"
+
+evaluation:
+  - { metric: plan_completeness, weight: 0.40 }
+  - { metric: prioritization_accuracy, weight: 0.35 }
+  - { metric: effort_estimate_accuracy, weight: 0.25 }
+
+failure_handling:
+  missing_information: defer_item
+  tool_failure: retry
+  low_confidence: escalate_to_curator
+  policy_conflict: request_approval

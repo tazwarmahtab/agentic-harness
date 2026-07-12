@@ -1,0 +1,52 @@
+# HAR-KNW-001 — Approval Gates
+# Memory writes and consolidation actions require approval.
+
+id: POL-KNW-001
+name: Knowledge Harness Approval Gates
+harness: HAR-KNW-001
+version: 1.0.0
+status: production
+
+rules:
+  - id: POL-KNW-WRITE-001
+    name: Memory Write Threshold
+    category: compliance
+    rule:
+      if:
+        action: write_memory
+        classification: [confidential, restricted]
+      then: "Require founder approval before persist"
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 48
+
+  - id: POL-KNW-WRITE-002
+    name: Bulk Memory Import
+    category: compliance
+    rule:
+      if:
+        action: write_memory
+        batch_size: { greater_than: 20 }
+      then: "Require curator + founder approval"
+    action: require_approval
+    approval_owner: AGT-KNW-CURATOR_plus_HUM-000001
+    approval_expires_hours: 24
+
+  - id: POL-KNW-CONSOL-001
+    name: Destructive Consolidation
+    category: compliance
+    rule:
+      if:
+        action: consolidate_memory
+        mode: [delete, merge]
+      then: "Require auditor sign-off"
+    action: require_approval
+    approval_owner: AGT-KNW-AUDITOR
+    approval_expires_hours: 48
+
+auto_actions:
+  - read_memory
+  - search_knowledge
+  - vector_search
+  - invoke_evaluator
+  - log_curation_decision

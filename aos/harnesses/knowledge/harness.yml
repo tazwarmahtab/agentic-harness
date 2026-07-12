@@ -1,0 +1,70 @@
+# Knowledge Harness — Shared intelligence for all AOS agents
+# Aggregates, structures, and serves institutional knowledge across ventures.
+
+id: HAR-KNW-001
+name: Knowledge Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+criticality: medium
+mission: >
+  Maintain Netso's institutional memory as a structured, queryable knowledge
+  base. Serve relevant context to all agents at runtime, enforce classification
+  rules, prevent memory pollution, and continuously improve retrieval quality.
+
+scope:
+  in_scope:
+    - memory_consolidation
+    - semantic_indexing
+    - cross_agent_context_retrieval
+    - procedural_memory
+    - knowledge_quality_control
+    - archival_and_compaction
+  out_of_scope:
+    - company_operations
+    - financial_modeling
+    - customer_outreach
+    - code_execution
+
+kpis:
+  - { name: retrieval_relevance_score, target: ">85%" }
+  - { name: memory_pollution_rate, target: "<2%" }
+  - { name: cross_harness_cache_hit_rate, target: ">70%" }
+  - { name: stale_entry_ratio, target: "<10%" }
+
+inputs:
+  - { source: founder_context, items: [priority_list, handoffs] }
+  - { source: knowledge, items: [institutional_memory, best_practices] }
+  - { source: venture_artifact, ref: ground_truth_constants }
+
+outputs:
+  - { name: context_packets, type: memory_write }
+  - { name: consolidation_reports, type: artifact }
+  - { name: stale_knowledge_alerts, type: event }
+  - { name: memory_audit_log, type: artifact }
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+
+execution_cycle:
+  name: Knowledge Maintenance Loop
+  trigger: daily_06:00_BDT
+  steps:
+    - action: review
+      target: [pending_candidates, stale_entries, quality_metrics]
+    - action: plan
+      target: planner
+    - action: execute
+      target: specialists
+    - action: consolidate
+      target: consolidation_agent
+    - action: validate
+      target: evaluator
+    - action: log
+      target: decision_log

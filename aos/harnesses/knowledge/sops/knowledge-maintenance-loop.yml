@@ -1,0 +1,61 @@
+id: SOP-KNW-001
+name: Knowledge Maintenance Loop
+owner: AGT-KNW-CURATOR
+version: 1.0.0
+trigger: daily_06:00_BDT
+
+phase_1_scan:
+  owner: AGT-KNW-CURATOR
+  actions:
+    - read: [pending_candidates, consolidation_queue, quality_metrics]
+    - scan: "knowledge base for entries matching stale criteria"
+    - produce: [candidate_queue, stale_list, consolidation_opportunities]
+
+phase_2_prioritize:
+  owner: AGT-KNW-PLAN
+  actions:
+    - read: [candidate_queue, stale_list, venture_priorities]
+    - apply: "curation priority rules: confidential > stale > bulk"
+    - produce: [maintenance_plan, escalation_list]
+
+phase_3_execute:
+  owner: AGT-KNW-DISPATCH
+  actions:
+    - route: "maintenance_plan items to appropriate specialist"
+    - execute: "[store, reject, summarize, merge, version] per candidate"
+    - handle: "retries and failures per failure_handling rules"
+    - log: "every decision with rationale to curation_log"
+
+phase_4_consolidate:
+  owner: AGT-KNW-CURATOR
+  actions:
+    - merge: "duplicate entries using content_hash matching"
+    - version: "superseded entries (preserve audit trail)"
+    - summarize: "long episodic entries exceeding token threshold"
+    - produce: consolidation_report
+
+phase_5_audit:
+  owner: AGT-KNW-AUDITOR
+  actions:
+    - sample: "10% of curated entries from phase_3 and phase_4"
+    - verify: "classification accuracy, permission compliance, relevance"
+    - produce: [audit_report, quality_score, remediation_tickets]
+    - escalate: "any critical findings to approval_gates"
+
+phase_6_log:
+  owner: AGT-KNW-CURATOR
+  actions:
+    - write: "daily summary to curation_log"
+    - update: "quality trend metrics"
+    - notify: "only on critical findings"
+
+escalation_rules:
+  pollution_rate_above_5_percent: escalate_to_founder
+  permission_leak_detected: immediate_block_and_alert
+  retrieval_relevance_below_70_percent: trigger_heuristic_review
+
+exit_criteria:
+  - all_pending_candidates_resolved
+  - no_critical_audit_findings
+  - consolidation_report_generated
+  - curation_log_updated

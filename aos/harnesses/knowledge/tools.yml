@@ -1,0 +1,55 @@
+# Knowledge Harness — Tool Registry
+# Declares capabilities available to all agents in this harness.
+
+id: TOOLS-KNW-001
+name: Knowledge Harness Tools
+harness: HAR-KNW-001
+version: 1.0.0
+
+tools:
+  - id: TOOL-KNW-READ
+    name: read_memory
+    description: Read memory entries by ID, layer, or query
+    permission: read
+    risk: low
+
+  - id: TOOL-KNW-SEARCH
+    name: search_knowledge
+    description: Semantic search across long-term, episodic, semantic layers
+    permission: read
+    risk: low
+
+  - id: TOOL-KNW-VECTOR
+    name: vector_search
+    description: Nearest-neighbor search on embedded memory vectors
+    permission: read
+    risk: low
+
+  - id: TOOL-KNW-WRITE
+    name: write_memory
+    description: Submit memory candidates (requires curator approval to persist)
+    permission: request_approval
+    risk: medium
+
+  - id: TOOL-KNW-CONSOLIDATE
+    name: consolidate_memory
+    description: Merge, version, or summarize existing memory entries
+    permission: request_approval
+    risk: medium
+
+  - id: TOOL-KNW-AUDIT
+    name: invoke_evaluator
+    description: Run evaluator checks on a memory candidate or batch
+    permission: read
+    risk: low
+
+  - id: TOOL-KNW-INVOKE
+    name: invoke_specialist
+    description: Dispatch a task to a specialist agent in this harness
+    permission: execute
+    risk: medium
+
+policy:
+  require_approval_for_write: true
+  max_entries_per_batch: 50
+  rate_limit_per_agent: "10 writes per cycle"
