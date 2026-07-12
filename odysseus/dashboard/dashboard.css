@@ -484,3 +484,355 @@
   height: 100%;
   background: var(--bg);
 }
+
+/* ── Search Bar ──────────────────────────────────────────────────────── */
+
+.aos-search-bar { margin-bottom: 16px; }
+
+.aos-search-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+  border-radius: 8px;
+  color: var(--fg);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.aos-search-input:focus {
+  border-color: color-mix(in srgb, var(--fg) 30%, transparent);
+}
+
+.aos-search-input::placeholder { opacity: 0.4; }
+
+/* ── Layer Tabs ──────────────────────────────────────────────────────── */
+
+.aos-layer-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.aos-layer-tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: capitalize;
+  transition: background 0.15s;
+}
+
+.aos-layer-tab.active {
+  background: color-mix(in srgb, var(--fg) 15%, transparent);
+  border-color: color-mix(in srgb, var(--fg) 25%, transparent);
+}
+
+/* ── Memory Enhanced ─────────────────────────────────────────────────── */
+
+.aos-memory-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.aos-memory-card-info { flex: 1; }
+.aos-memory-desc { font-size: 11px; opacity: 0.5; margin-top: 2px; }
+
+.aos-memory-entries {
+  border-top: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+  padding-top: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.aos-memory-entry {
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.aos-memory-entry-content {
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.aos-memory-entry-time {
+  font-size: 10px;
+  opacity: 0.4;
+  font-family: monospace;
+  margin-bottom: 2px;
+}
+
+.aos-growth-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 80px;
+  padding: 8px 0;
+}
+
+.aos-growth-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.aos-growth-fill {
+  width: 100%;
+  background: color-mix(in srgb, var(--color-accent, #3b82f6) 60%, transparent);
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  margin-top: auto;
+}
+
+.aos-growth-label {
+  font-size: 9px;
+  opacity: 0.4;
+  margin-top: 4px;
+}
+
+.aos-growth-value {
+  font-size: 10px;
+  opacity: 0.6;
+  position: absolute;
+  top: -2px;
+}
+
+.aos-memory-stats, .aos-entity-stats {
+  display: flex;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+  margin-top: 16px;
+}
+
+.aos-stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.aos-stat-label { opacity: 0.6; }
+.aos-stat-value { font-weight: 600; }
+
+/* ── Entity Enhanced ─────────────────────────────────────────────────── */
+
+.aos-view-toggle { display: flex; gap: 4px; }
+
+.aos-view-btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.aos-view-btn.active {
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+
+.aos-type-chips {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.aos-chip {
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.aos-chip.active {
+  background: color-mix(in srgb, var(--fg) 15%, transparent);
+  border-color: color-mix(in srgb, var(--fg) 25%, transparent);
+}
+
+.aos-entity-icon { font-size: 20px; margin-bottom: 4px; }
+
+/* Graph view */
+.aos-entity-graph {
+  position: relative;
+  height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aos-graph-center {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid color-mix(in srgb, var(--color-accent, #3b82f6) 40%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.aos-graph-center-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.aos-graph-node {
+  position: absolute;
+  width: 70px;
+  text-align: center;
+  z-index: 2;
+}
+
+.aos-graph-node-icon { font-size: 18px; }
+.aos-graph-node-label { font-size: 10px; opacity: 0.7; margin-top: 2px; }
+.aos-graph-node-count { font-size: 12px; font-weight: 600; }
+
+.aos-graph-line {
+  position: absolute;
+  height: 1px;
+  background: color-mix(in srgb, var(--fg) 15%, transparent);
+  transform-origin: left center;
+  z-index: 1;
+}
+
+/* ── Events Enhanced ─────────────────────────────────────────────────── */
+
+.aos-event-count-bar {
+  margin-bottom: 12px;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.aos-event-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.aos-event-badge { font-size: 14px; }
+.aos-event-expand { opacity: 0.4; margin-left: auto; }
+
+.aos-event-detail {
+  padding: 8px 0 8px 24px;
+  border-top: 1px solid color-mix(in srgb, var(--fg) 5%, transparent);
+}
+
+.aos-event-detail-text {
+  font-size: 12px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  opacity: 0.7;
+}
+
+.aos-event-timestamp, .aos-event-source {
+  font-size: 11px;
+  opacity: 0.5;
+  margin-top: 4px;
+}
+
+.aos-event-entry.expanded {
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+/* ── Sales Enhanced ──────────────────────────────────────────────────── */
+
+.aos-sales-lead-card {
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.aos-lead-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.aos-lead-icon { font-size: 24px; }
+.aos-lead-name { font-size: 18px; font-weight: 700; }
+.aos-lead-stage {
+  font-size: 12px;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.aos-sales-reasoning {
+  background: color-mix(in srgb, var(--color-accent, #3b82f6) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent, #3b82f6) 20%, transparent);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.aos-reasoning-text {
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+.aos-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.aos-objection-item {
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.aos-deal-outcome {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.aos-deal-won {
+  background: color-mix(in srgb, var(--color-success, #22c55e) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-success, #22c55e) 30%, transparent);
+}
+
+.aos-deal-lost {
+  background: color-mix(in srgb, var(--color-error, #ef4444) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error, #ef4444) 30%, transparent);
+}
+
+.aos-section-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.7;
+  margin: 0 0 8px 0;
+}
+
+.aos-pipeline-actions { display: flex; flex-direction: column; gap: 4px; }
