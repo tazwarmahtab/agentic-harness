@@ -156,7 +156,7 @@ def validate_manifest(path: Path, known_ids: set[str] | None = None) -> list[Val
     errors = []
 
     # Reject traversal in user-supplied path
-    if sanitize_path(str(path)) is None and ".." in path.parts:
+    if ".." in path.parts:
         errors.append(ValidationError(str(path), "(path)", "Path traversal detected"))
         return errors
 

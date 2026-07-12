@@ -8,8 +8,6 @@ from pathlib import Path
 
 from aos.hardening import sanitize_path
 from aos.schemas.harness import Harness, AgentTeam
-
-logger = logging.getLogger(__name__)
 from aos.schemas.agent import Agent
 from aos.schemas.venture import Venture
 from aos.schemas.memory import Memory
@@ -27,6 +25,8 @@ from aos.loader import (
     load_sop,
     load_policy_collection,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -143,9 +143,9 @@ def load_registry(
 ) -> Registry:
     """Load all manifests from a harness directory into a typed registry."""
     # Reject traversal in user-supplied paths
-    if sanitize_path(str(harness_dir)) is None and ".." in harness_dir.parts:
+    if ".." in harness_dir.parts:
         raise ValueError(f"Path traversal detected in harness directory: {harness_dir}")
-    if venture_path is not None and sanitize_path(str(venture_path)) is None and ".." in venture_path.parts:
+    if venture_path is not None and ".." in venture_path.parts:
         raise ValueError(f"Path traversal detected in venture path: {venture_path}")
 
     registry = Registry()

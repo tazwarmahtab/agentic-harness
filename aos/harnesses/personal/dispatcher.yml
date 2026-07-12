@@ -10,6 +10,10 @@ allowed_memory:
   read: [all_long_term]
   write: []
   cannot_read: [company_financials, payroll_details]
+allowed_tools:
+  - { capability: read_memory, permission: read }
+  - { capability: write_memory, permission: request_approval }
+  - { capability: invoke_specialist, permission: execute }
 reasoning_structure:
   - read_priority_list
   - match_task_to_agent

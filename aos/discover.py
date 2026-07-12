@@ -21,7 +21,7 @@ def discover_ventures(ventures_dir: Path | None = None) -> list[tuple[Path, Vent
         ventures_dir = Path(__file__).parent / "ventures"
 
     # Reject traversal in user-supplied directories
-    if sanitize_path(str(ventures_dir)) is None and ".." in ventures_dir.parts:
+    if ".." in ventures_dir.parts:
         logger.warning("Rejected ventures directory with traversal: %s", ventures_dir)
         return []
 

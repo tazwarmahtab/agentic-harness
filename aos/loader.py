@@ -14,8 +14,6 @@ import yaml
 from jsonschema import Draft7Validator
 
 from aos.hardening import sanitize_path
-
-logger = logging.getLogger(__name__)
 from aos.schemas.harness import Harness
 from aos.schemas.agent import Agent
 from aos.schemas.venture import Venture
@@ -24,6 +22,8 @@ from aos.schemas.tool import ToolRegistry
 from aos.schemas.evaluation import Evaluation
 from aos.schemas.sop import SOP
 from aos.schemas.policy_collection import PolicyCollection
+
+logger = logging.getLogger(__name__)
 
 PLATFORM_DIR = Path(__file__).parent / "platform"
 SCHEMA_CACHE: dict[str, dict] = {}

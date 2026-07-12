@@ -10,6 +10,10 @@ allowed_memory:
   read: [all_long_term]
   write: []
   cannot_read: [founder_personal_notes]
+allowed_tools:
+  - { capability: read_memory, permission: read }
+  - { capability: search_knowledge, permission: read }
+  - { capability: write_memory, permission: request_approval }
 reasoning_structure:
   - review_incoming_tasks
   - prioritize_by_impact

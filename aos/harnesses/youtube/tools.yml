@@ -1,6 +1,6 @@
-# YouTube Harness — Tool Registry
+# YouTube Content Harness — Tool Registry
 
-id: TOOLS-YTU-001
+id: TOL-YTU-001
 name: YouTube Content Tools
 harness: HAR-YTU-001
 version: 1.0.0
@@ -8,63 +8,103 @@ version: 1.0.0
 tools:
   - id: TOOL-YTU-SCOUT
     name: scout_trending
-    description: "Search YouTube for trending videos in target niches"
-    permission: read
-    risk: low
+    capability: scout_trending
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [youtube_search]
+      write: []
 
   - id: TOOL-YTU-TRANSCRIPT
     name: fetch_transcript
-    description: "Extract transcript from a YouTube video"
-    permission: read
-    risk: low
+    capability: fetch_transcript
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [youtube_transcript]
+      write: []
 
   - id: TOOL-YTU-SCORE
     name: score_viral_potential
-    description: "Score a clip's viral potential using Gemini AI"
-    permission: read
-    risk: low
+    capability: score_viral_potential
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [gemini_api]
+      write: []
 
   - id: TOOL-YTU-STRATEGY
     name: generate_strategy
-    description: "Generate title, caption, thumbnail concept for a clip"
-    permission: read
-    risk: low
+    capability: generate_strategy
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [gemini_api, memory]
+      write: [content_plans]
 
   - id: TOOL-YTU-CROP
     name: crop_clip
-    description: "Crop video to 9:16 vertical format using ffmpeg"
-    permission: execute
-    risk: medium
+    capability: crop_clip
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [filesystem]
+      write: [filesystem]
 
   - id: TOOL-YTU-CAPTION
     name: burn_captions
-    description: "Burn captions into video using ffmpeg"
-    permission: execute
-    risk: medium
+    capability: burn_captions
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [filesystem]
+      write: [filesystem]
 
   - id: TOOL-YTU-THUMBNAIL
     name: generate_thumbnail
-    description: "Generate thumbnail using Higgsfield AI"
-    permission: execute
-    risk: medium
+    capability: generate_thumbnail
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [higgsfield_api]
+      write: [filesystem]
 
   - id: TOOL-YTU-UPLOAD
     name: upload_to_youtube
-    description: "Upload clip to YouTube Shorts via OAuth"
-    permission: request_approval
-    risk: high
+    capability: upload_to_youtube
+    category: communication
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [youtube_api]
+      write: [youtube_api]
 
   - id: TOOL-YTU-READ
     name: read_memory
-    description: "Read memory entries by ID, layer, or query"
-    permission: read
-    risk: low
+    capability: read_memory
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [memory_store]
+      write: []
 
   - id: TOOL-YTU-WRITE
     name: write_memory
-    description: "Submit memory candidates (requires curator approval)"
-    permission: request_approval
-    risk: medium
+    capability: write_memory
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [memory_store]
+      write: [memory_store]
 
 policy:
   require_approval_for_upload: true

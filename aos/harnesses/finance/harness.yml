@@ -25,10 +25,9 @@ outputs:
   - { name: cash_forecasts, type: artifact }
 
 inputs:
-- { source: founder_context, items: [priority_list, handoffs] }
-- { source: knowledge, items: [financial_models, accounting_standards] }
-- { source: venture_artifact, ref: ground_truth_constants }
-
+  - { source: founder_context, items: [priority_list, handoffs] }
+  - { source: knowledge, items: [financial_models, accounting_standards] }
+  - { source: venture_artifact, ref: ground_truth_constants }
 
 components:
   planner: planner.yml
@@ -38,33 +37,9 @@ components:
   tools: tools.yml
   approvals: approvals.yml
   evaluation: evaluation.yml
-ame: Finance Loop
-trigger: daily_08:00_BDT
-steps:
-  - action: review
-    target: [cash_balance, receivables, payables, investor_updates]
-  - action: plan
-    target: planner
-  - action: delegate
-    target: dispatcher
-  - action: execute
-    target: specialists
-  - action: validate
-    target: evaluator
-  - action: log
-    target: decision_log
-name: Finance Loop
-trigger: daily_08:00_BDT
-steps:
-  - review: [cash_balance, receivables, payables, investor_updates]
-  - plan: planner
-  - delegate: dispatcher
-  - execute: specialists
-  - validate: evaluator
-  - log: decision_log
 
 execution_cycle:
-  name: Finance Loop
+  name: Finance Harness
   trigger: daily_08:00_BDT
   steps:
     - action: review

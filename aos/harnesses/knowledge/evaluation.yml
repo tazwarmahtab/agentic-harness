@@ -1,42 +1,110 @@
-# AOS Platform — Evaluation Criteria: Knowledge Harness
+# Knowledge Harness — Evaluation Framework
 
-id: Eval-HAR-KNW-001
-name: Knowledge Harness Evaluation Criteria
+id: EVAL-KNW-001
+name: Knowledge Harness Evaluation Framework
 harness: HAR-KNW-001
 version: 1.0.0
 
-checks:
-  - id: Eval-KNW-001
-    name: No polling duplicates in session log
-    description: >
-      The session log must not contain two consecutive entries where
-      the same agent reports the same status. Duplicates indicate
-      a polling or logging loop bug.
-    severity: high
-    test: |
-      Load latest_session, group entries by agent_id, and within each
-      group check for adjacent entries with identical status strings.
-      Fail if any duplicate run is found.
+harness_metrics:
+  - name: retrieval_relevance_score
+    target: ">85%"
+    frequency: weekly
+    owner: AGT-KNW-AUDITOR
+    measurement: avg_relevance_of_retrieved_entries
 
-  - id: Eval-KNW-002
-    name: Context packet stay-legal
-    description: >
-      No retrieved context entry may reference a memory key classified
-      as founder_only or restricted unless the requesting agent is
-      explicitly permitted.
-    severity: critical
-    test: |
-      For every entry in a context packet, cross-reference the entry's
-      classification against the requesting agent's memory permissions.
-      Fail on the first violation.
+  - name: memory_pollution_rate
+    target: "<2%"
+    frequency: weekly
+    owner: AGT-KNW-CURATOR
+    measurement: rejected_candidates / total_candidates
 
-  - id: Eval-KNW-003
-    name: Retrieval coverage floor
-    description: >
-      At least 80% of agent queries must return a non-empty context
-      packet with at least one relevant entry.
-    severity: high
-    test: |
-      Run a sweep of recent graph executions. For each node that
-      invoked ContextRetriever, check whether the returned packet
-      contains entries. Fail if hit-rate drops below 80%.
+  - name: cross_harness_cache_hit_rate
+    target: ">70%"
+    frequency: weekly
+    owner: AGT-KNW-RETRIEVER
+    measurement: cache_hits / total_queries
+
+  - name: stale_entry_ratio
+    target: "<10%"
+    frequency: weekly
+    owner: AGT-KNW-AUDITOR
+    measurement: stale_entries / total_entries
+
+specialist_metrics:
+  AGT-KNW-CURATOR:
+    - curation_accuracy: { weight: 0.40 }
+    - false_positive_rate: { weight: 0.25 }
+    - consolidation_quality: { weight: 0.20 }
+    - processing_latency_ms: { weight: 0.15 }
+
+  AGT-KNW-RETRIEVER:
+    - relevance_score: { weight: 0.35 }
+    - permission_compliance: { weight: 0.25 }
+    - token_efficiency: { weight: 0.20 }
+    - miss_rate: { weight: 0.20 }
+
+  AGT-KNW-AUDITOR:
+    - audit_accuracy: { weight: 0.35 }
+    - issue_detection_rate: { weight: 0.30 }
+    - false_positive_rate: { weight: 0.20 }
+    - report_actionability: { weight: 0.15 }
+
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-KNW-AUDITOR
+      input: weekly_memory_metrics
+      output: variance_report
+    - step: identify_bottlenecks
+      owner: AGT-KNW-CURATOR
+      input: variance_report
+      output: bottleneck_list
+    - step: update_retrieval_heuristics
+      owner: AGT-KNW-RETRIEVER
+      input: bottleneck_list
+      output: updated_search_strategies
+    - step: record_lessons
+      owner: AGT-KNW-CURATOR
+      input: bottleneck_list
+      output: new_lessons_entries
+    - step: update_benchmarks
+      owner: AGT-KNW-AUDITOR
+      input: specialist_metrics
+      output: benchmark_update
+    - step: founder_review
+      owner: HUM-000001
+      input: weekly_review
+      output: approved_or_revised
+      frequency: weekly
+
+  improvement_sources:
+    - audit_reports: quality audit findings
+    - retrieval_logs: search success/failure patterns
+    - curation_decisions: store/reject/merge outcomes
+    - founder_feedback: direct corrections
+
+  metrics_tracked:
+    - retrieval_relevance_trend
+    - pollution_rate_trend
+    - cache_hit_rate_trend
+    - stale_entry_ratio_trend
+    - curation_latency_ms
+
+  review_cadence:
+    daily: [curation_decisions, retrieval_queries]
+    weekly: [audit_report, benchmark_update]
+    monthly: [knowledge_base_architecture_review]
+
+evaluation_pipeline:
+  1. agent_completes_task:
+     output: raw_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. evaluator_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+     - pass: store_artifact + update_memory
+     - fail_hard: reject_output + alert_founder + log_failure
+     - fail_soft: return_to_agent_with_feedback + retry
+     - low_confidence: escalate_to_founder_with_context

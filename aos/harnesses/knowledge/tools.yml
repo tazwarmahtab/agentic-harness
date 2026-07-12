@@ -1,7 +1,6 @@
 # Knowledge Harness — Tool Registry
-# Declares capabilities available to all agents in this harness.
 
-id: TOOLS-KNW-001
+id: TOL-KNW-001
 name: Knowledge Harness Tools
 harness: HAR-KNW-001
 version: 1.0.0
@@ -9,45 +8,73 @@ version: 1.0.0
 tools:
   - id: TOOL-KNW-READ
     name: read_memory
-    description: Read memory entries by ID, layer, or query
-    permission: read
-    risk: low
+    capability: read_memory
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [memory_store]
+      write: []
 
   - id: TOOL-KNW-SEARCH
     name: search_knowledge
-    description: Semantic search across long-term, episodic, semantic layers
-    permission: read
-    risk: low
+    capability: search_knowledge
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [memory_store]
+      write: []
 
   - id: TOOL-KNW-VECTOR
     name: vector_search
-    description: Nearest-neighbor search on embedded memory vectors
-    permission: read
-    risk: low
+    capability: vector_search
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [memory_store]
+      write: []
 
   - id: TOOL-KNW-WRITE
     name: write_memory
-    description: Submit memory candidates (requires curator approval to persist)
-    permission: request_approval
-    risk: medium
+    capability: write_memory
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [memory_store]
+      write: [memory_store]
 
   - id: TOOL-KNW-CONSOLIDATE
     name: consolidate_memory
-    description: Merge, version, or summarize existing memory entries
-    permission: request_approval
-    risk: medium
+    capability: consolidate_memory
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [memory_store]
+      write: [memory_store]
 
   - id: TOOL-KNW-AUDIT
     name: invoke_evaluator
-    description: Run evaluator checks on a memory candidate or batch
-    permission: read
-    risk: low
+    capability: invoke_evaluator
+    category: knowledge
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [evaluator]
+      write: []
 
   - id: TOOL-KNW-INVOKE
     name: invoke_specialist
-    description: Dispatch a task to a specialist agent in this harness
-    permission: execute
-    risk: medium
+    capability: invoke_specialist
+    category: governance
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [specialist_registry]
+      write: []
 
 policy:
   require_approval_for_write: true

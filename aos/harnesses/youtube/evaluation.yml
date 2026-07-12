@@ -1,39 +1,130 @@
-# YouTube Harness — Evaluation Criteria
+# YouTube Content Harness — Evaluation Framework
 
-id: Eval-HAR-YTU-001
-name: YouTube Content Evaluation Criteria
+id: EVAL-YTU-001
+name: YouTube Content Evaluation Framework
 harness: HAR-YTU-001
 version: 1.0.0
 
-checks:
-  - id: Eval-YTU-001
-    name: Financial accuracy in content
-    description: >
-      Any content referencing financial figures (savings rates, DSCR, PPA,
-      CAPEX) must match GROUND_TRUTH_CONSTANTS.md exactly.
-    severity: critical
-    test: |
-      Scan generated titles, captions, and descriptions for financial
-      keywords (savings, DSCR, PPA, CAPEX, BDT, rate). Cross-reference
-      each number against ground_truth_constants. Fail on any mismatch.
+harness_metrics:
+  - name: clips_uploaded_per_week
+    target: ">=5"
+    frequency: weekly
+    owner: AGT-YTU-UPLOADER
+    measurement: count_of_successful_uploads
 
-  - id: Eval-YTU-002
-    name: Brand safety compliance
-    description: >
-      Content must not contain competitor mentions, negative claims about
-      competitors, or misleading statements about Netso capabilities.
-    severity: high
-    test: |
-      Run content through brand safety classifier. Check for competitor
-      names, absolute claims (guaranteed, 100%, never), and unverifiable
-      statistics. Fail if any violation found.
+  - name: approval_gate_pass_rate
+    target: ">90%"
+    frequency: weekly
+    owner: AGT-YTU-PLAN
+    measurement: clips_approved / clips_submitted
 
-  - id: Eval-YTU-003
-    name: Clip quality threshold
-    description: >
-      Viral potential score must exceed 60/100 before packaging begins.
-      Clips below threshold should be discarded, not packaged.
-    severity: medium
-    test: |
-      Check viral_score field in clip metadata. If score < 60 and clip
-      was packaged anyway, flag as quality gate violation.
+  - name: financial_accuracy_rate
+    target: "100%"
+    frequency: per_clip
+    owner: AGT-YTU-STRATEGIST
+    measurement: zero_financial_mismatches
+
+  - name: viral_score_average
+    target: ">75"
+    frequency: weekly
+    owner: AGT-YTU-ANALYZER
+    measurement: avg_viral_score_of_uploaded_clips
+
+  - name: upload_success_rate
+    target: ">95%"
+    frequency: weekly
+    owner: AGT-YTU-UPLOADER
+    measurement: successful_uploads / attempted_uploads
+
+specialist_metrics:
+  AGT-YTU-SCOUT:
+    - result_relevance: { weight: 0.40 }
+    - freshness: { weight: 0.30 }
+    - engagement_quality: { weight: 0.30 }
+
+  AGT-YTU-ANALYZER:
+    - scoring_accuracy: { weight: 0.40 }
+    - hook_detection_quality: { weight: 0.30 }
+    - brand_compliance: { weight: 0.30 }
+
+  AGT-YTU-PLAN:
+    - plan_completeness: { weight: 0.35 }
+    - financial_accuracy: { weight: 0.30 }
+    - prioritization_quality: { weight: 0.20 }
+    - effort_estimate_accuracy: { weight: 0.15 }
+
+  AGT-YTU-STRATEGIST:
+    - financial_accuracy: { weight: 0.35 }
+    - title_effectiveness: { weight: 0.25 }
+    - caption_engagement: { weight: 0.25 }
+    - thumbnail_quality: { weight: 0.15 }
+
+  AGT-YTU-PACKAGER:
+    - output_quality: { weight: 0.40 }
+    - processing_reliability: { weight: 0.30 }
+    - metadata_completeness: { weight: 0.30 }
+
+  AGT-YTU-UPLOADER:
+    - approval_compliance: { weight: 0.40 }
+    - upload_success_rate: { weight: 0.35 }
+    - history_accuracy: { weight: 0.25 }
+
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-YTU-PLAN
+      input: weekly_content_outcomes
+      output: variance_report
+    - step: identify_bottlenecks
+      owner: AGT-YTU-DISPATCH
+      input: variance_report
+      output: bottleneck_list
+    - step: update_strategies
+      owner: AGT-YTU-STRATEGIST
+      input: bottleneck_list
+      output: updated_content_strategy
+    - step: record_lessons
+      owner: AGT-YTU-DISPATCH
+      input: bottleneck_list
+      output: new_lessons_entries
+    - step: update_benchmarks
+      owner: AGT-YTU-ANALYZER
+      input: specialist_metrics
+      output: benchmark_update
+    - step: founder_review
+      owner: HUM-000001
+      input: weekly_review
+      output: approved_or_revised
+      frequency: weekly
+
+  improvement_sources:
+    - weekly_review: content performance data
+    - upload_history: success/failure patterns
+    - viral_scores: scoring accuracy over time
+    - founder_feedback: direct corrections
+
+  metrics_tracked:
+    - viral_score_trend
+    - upload_success_rate
+    - financial_accuracy_rate
+    - approval_latency_hours
+    - content_pipeline_duration
+
+  review_cadence:
+    daily: [clips_uploaded, approval_decisions, upload_success]
+    weekly: [performance_report, strategy_review, benchmark_update]
+    monthly: [channel_growth_analysis, strategy_revision]
+
+evaluation_pipeline:
+  1. agent_completes_task:
+     output: raw_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. evaluator_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+     - pass: store_artifact + update_memory
+     - fail_hard: reject_output + alert_founder + log_failure
+     - fail_soft: return_to_agent_with_feedback + retry
+     - low_confidence: escalate_to_founder_with_context
