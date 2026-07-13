@@ -6,7 +6,7 @@ harness: HAR-YTU-001
 version: 1.0.0
 
 tools:
-  - id: TOOL-YTU-SCOUT
+  - id: TOL-YTU-001
     name: scout_trending
     capability: scout_trending
     category: knowledge
@@ -16,7 +16,7 @@ tools:
       read: [youtube_search]
       write: []
 
-  - id: TOOL-YTU-TRANSCRIPT
+  - id: TOL-YTU-002
     name: fetch_transcript
     capability: fetch_transcript
     category: knowledge
@@ -26,7 +26,7 @@ tools:
       read: [youtube_transcript]
       write: []
 
-  - id: TOOL-YTU-SCORE
+  - id: TOL-YTU-003
     name: score_viral_potential
     capability: score_viral_potential
     category: knowledge
@@ -36,7 +36,7 @@ tools:
       read: [gemini_api]
       write: []
 
-  - id: TOOL-YTU-STRATEGY
+  - id: TOL-YTU-004
     name: generate_strategy
     capability: generate_strategy
     category: knowledge
@@ -46,7 +46,7 @@ tools:
       read: [gemini_api, memory]
       write: [content_plans]
 
-  - id: TOOL-YTU-CROP
+  - id: TOL-YTU-005
     name: crop_clip
     capability: crop_clip
     category: internal
@@ -56,7 +56,7 @@ tools:
       read: [filesystem]
       write: [filesystem]
 
-  - id: TOOL-YTU-CAPTION
+  - id: TOL-YTU-006
     name: burn_captions
     capability: burn_captions
     category: internal
@@ -66,7 +66,7 @@ tools:
       read: [filesystem]
       write: [filesystem]
 
-  - id: TOOL-YTU-THUMBNAIL
+  - id: TOL-YTU-007
     name: generate_thumbnail
     capability: generate_thumbnail
     category: internal
@@ -76,7 +76,7 @@ tools:
       read: [higgsfield_api]
       write: [filesystem]
 
-  - id: TOOL-YTU-UPLOAD
+  - id: TOL-YTU-008
     name: upload_to_youtube
     capability: upload_to_youtube
     category: communication
@@ -86,7 +86,7 @@ tools:
       read: [youtube_api]
       write: [youtube_api]
 
-  - id: TOOL-YTU-READ
+  - id: TOL-YTU-009
     name: read_memory
     capability: read_memory
     category: knowledge
@@ -96,7 +96,7 @@ tools:
       read: [memory_store]
       write: []
 
-  - id: TOOL-YTU-WRITE
+  - id: TOL-YTU-010
     name: write_memory
     capability: write_memory
     category: knowledge

@@ -16,7 +16,6 @@ import yaml
 from jsonschema import Draft7Validator
 
 from aos.constants import NETSO_FINANCIAL
-from aos.hardening import sanitize_path
 from aos.loader import _load_schema, detect_manifest_type
 
 logger = logging.getLogger(__name__)
@@ -222,16 +221,12 @@ def validate_all(
     result = ValidationResult()
 
     # Reject traversal in user-supplied paths
-    if sanitize_path(str(harness_dir)) is None and ".." in harness_dir.parts:
+    if ".." in harness_dir.parts:
         result.errors.append(
             ValidationError(str(harness_dir), "(path)", "Path traversal detected")
         )
         return result
-    if (
-        venture_path is not None
-        and sanitize_path(str(venture_path)) is None
-        and ".." in venture_path.parts
-    ):
+    if venture_path is not None and ".." in venture_path.parts:
         result.errors.append(
             ValidationError(str(venture_path), "(path)", "Path traversal detected")
         )

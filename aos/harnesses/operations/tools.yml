@@ -78,4 +78,4 @@ compositions:
 providers:
   file_system:
     preferred: local
-    fallback: null
+    fallback: []

@@ -89,14 +89,14 @@ class SalesCycleState:
 # ---------------------------------------------------------------------------
 
 
-async def qualify_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
+async def qualify_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
     """Phase 1: Qualify incoming lead.
 
     Reads CRM pipeline, applies ICP matching (Bangladesh RMG, >500kW load),
     scores the lead, and decides whether to pass to outreach or disqualify.
     """
-    llm = config.get("llm")
-    bundle = config.get("bundle")
+    llm = harness_config.get("llm")
+    bundle = harness_config.get("bundle")
 
     # Get the lead qualifier agent
     bundle.specialists.get("AGT-SAL-LEAD") if bundle else None
@@ -174,14 +174,14 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def outreach_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
+async def outreach_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
     """Phase 2: Execute outreach to qualified lead.
 
     Composes personalized message, sends via preferred channel,
     tracks engagement, and manages follow-up sequence.
     """
-    llm = config.get("llm")
-    bundle = config.get("bundle")
+    llm = harness_config.get("llm")
+    bundle = harness_config.get("bundle")
 
     bundle.specialists.get("AGT-SAL-OUT") if bundle else None
 
@@ -243,7 +243,7 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def propose_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
+async def propose_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
     """Phase 3: Generate commercial proposal.
 
     Uses ground truth constants for all financial calculations:
@@ -253,8 +253,8 @@ async def propose_node(state: SalesCycleState, config: Any = None) -> SalesCycle
     - Customer Savings: 23.0%
     - Escalation: 3% annually
     """
-    llm = config.get("llm")
-    bundle = config.get("bundle")
+    llm = harness_config.get("llm")
+    bundle = harness_config.get("bundle")
 
     bundle.specialists.get("AGT-SAL-PROP") if bundle else None
 
@@ -337,14 +337,14 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def negotiate_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
+async def negotiate_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
     """Phase 4: Handle objections and negotiate terms.
 
     Manages customer objections using objection_handlers,
     adjusts terms within approval thresholds, and tracks status.
     """
-    llm = config.get("llm")
-    bundle = config.get("bundle")
+    llm = harness_config.get("llm")
+    bundle = harness_config.get("bundle")
 
     bundle.specialists.get("AGT-SAL-LEAD") if bundle else None
 
@@ -422,7 +422,7 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def close_node(state: SalesCycleState, config: Any = None) -> SalesCycleState:
+async def close_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
     """Phase 5: Close the deal.
 
     Confirms final terms, dispatches to Legal harness for NDA/LOI/PPA,
@@ -480,12 +480,12 @@ def build_sales_graph(
     graph = StateGraph(SalesCycleState)
     config = {"bundle": bundle, "llm": llm}
 
-    # Nodes — bind config so LangGraph only needs to pass state
-    graph.add_node("qualify", partial(qualify_node, config=config))
-    graph.add_node("outreach", partial(outreach_node, config=config))
-    graph.add_node("propose", partial(propose_node, config=config))
-    graph.add_node("negotiate", partial(negotiate_node, config=config))
-    graph.add_node("close", partial(close_node, config=config))
+    # Nodes — bind harness_config so LangGraph only needs to pass state
+    graph.add_node("qualify", partial(qualify_node, harness_config=config))
+    graph.add_node("outreach", partial(outreach_node, harness_config=config))
+    graph.add_node("propose", partial(propose_node, harness_config=config))
+    graph.add_node("negotiate", partial(negotiate_node, harness_config=config))
+    graph.add_node("close", partial(close_node, harness_config=config))
 
     # Entry
     graph.set_entry_point("qualify")

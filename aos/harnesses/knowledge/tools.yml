@@ -6,7 +6,7 @@ harness: HAR-KNW-001
 version: 1.0.0
 
 tools:
-  - id: TOOL-KNW-READ
+  - id: TOL-KNW-001
     name: read_memory
     capability: read_memory
     category: knowledge
@@ -16,7 +16,7 @@ tools:
       read: [memory_store]
       write: []
 
-  - id: TOOL-KNW-SEARCH
+  - id: TOL-KNW-002
     name: search_knowledge
     capability: search_knowledge
     category: knowledge
@@ -26,7 +26,7 @@ tools:
       read: [memory_store]
       write: []
 
-  - id: TOOL-KNW-VECTOR
+  - id: TOL-KNW-003
     name: vector_search
     capability: vector_search
     category: knowledge
@@ -36,7 +36,7 @@ tools:
       read: [memory_store]
       write: []
 
-  - id: TOOL-KNW-WRITE
+  - id: TOL-KNW-004
     name: write_memory
     capability: write_memory
     category: knowledge
@@ -46,7 +46,7 @@ tools:
       read: [memory_store]
       write: [memory_store]
 
-  - id: TOOL-KNW-CONSOLIDATE
+  - id: TOL-KNW-005
     name: consolidate_memory
     capability: consolidate_memory
     category: knowledge
@@ -56,7 +56,7 @@ tools:
       read: [memory_store]
       write: [memory_store]
 
-  - id: TOOL-KNW-AUDIT
+  - id: TOL-KNW-006
     name: invoke_evaluator
     capability: invoke_evaluator
     category: knowledge
@@ -66,7 +66,7 @@ tools:
       read: [evaluator]
       write: []
 
-  - id: TOOL-KNW-INVOKE
+  - id: TOL-KNW-007
     name: invoke_specialist
     capability: invoke_specialist
     category: governance

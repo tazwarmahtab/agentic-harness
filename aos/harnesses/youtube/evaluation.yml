@@ -20,7 +20,7 @@ harness_metrics:
 
   - name: financial_accuracy_rate
     target: "100%"
-    frequency: per_clip
+    frequency: realtime
     owner: AGT-YTU-STRATEGIST
     measurement: zero_financial_mismatches
 
