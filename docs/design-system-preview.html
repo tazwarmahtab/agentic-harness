@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AOS — Design System Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* === DESIGN TOKENS === */
+:root {
+  /* Colors */
+  --bg: #0D1117;
+  --surface: #161B22;
+  --surface-raised: #1C2128;
+  --border: #30363D;
+  --border-muted: #21262D;
+  --text: #E6EDF3;
+  --text-muted: #8B949E;
+  --text-subtle: #6E7681;
+  --primary: #10B981;
+  --primary-dim: #065F46;
+  --primary-glow: rgba(16, 185, 129, 0.15);
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+
+  /* Typography */
+  --font-display: 'Clash Grotesk', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+}
+
+/* === RESET === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; -webkit-font-smoothing: antialiased; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* === LAYOUT === */
+.page-header {
+  padding: var(--sp-6) var(--sp-8);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+}
+.page-header h1 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.page-header h1 .dot {
+  width: 8px; height: 8px;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  display: inline-block;
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+.page-header .meta {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 53px);
+}
+
+/* === SIDEBAR === */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: var(--sp-4) 0;
+}
+.sidebar-section {
+  padding: 0 var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+.sidebar-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  padding: var(--sp-2) var(--sp-4);
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 100ms, color 100ms;
+}
+.sidebar-item:hover { background: var(--surface-raised); color: var(--text); }
+.sidebar-item.active {
+  background: var(--primary-glow);
+  color: var(--primary);
+  font-weight: 500;
+}
+.sidebar-item .icon {
+  width: 16px; height: 16px;
+  opacity: 0.7;
+}
+.sidebar-item .badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  background: var(--primary-dim);
+  color: var(--primary);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* === MAIN CONTENT === */
+.main {
+  padding: var(--sp-6);
+  overflow-y: auto;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.section-title .tag {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+  background: var(--surface-raised);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* === STAT CARDS === */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
+}
+.stat-card .label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+  margin-bottom: var(--sp-1);
+}
+.stat-card .value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.stat-card .change {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  margin-top: var(--sp-1);
+}
+.stat-card .change.up { color: var(--success); }
+.stat-card .change.down { color: var(--error); }
+.stat-card .change.neutral { color: var(--text-muted); }
+
+/* === DATA TABLE === */
+.data-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--sp-6);
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.data-table th {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+.data-table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  vertical-align: middle;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--surface-raised); }
+
+/* === STATUS BADGES === */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+.status::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: var(--radius-full);
+}
+.status.healthy { background: rgba(16,185,129,0.12); color: #34D399; }
+.status.healthy::before { background: #10B981; }
+.status.warning { background: rgba(245,158,11,0.12); color: #FBBF24; }
+.status.warning::before { background: #F59E0B; }
+.status.error { background: rgba(239,68,68,0.12); color: #F87171; }
+.status.error::before { background: #EF4444; }
+.status.idle { background: rgba(139,148,158,0.12); color: #8B949E; }
+.status.idle::before { background: #6E7681; }
+
+/* === BUTTONS === */
+.btn {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 100ms, border-color 100ms;
+}
+.btn-primary {
+  background: var(--primary);
+  color: #0D1117;
+  border-color: var(--primary);
+}
+.btn-primary:hover { background: #34D399; }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+.btn-ghost:hover { background: var(--surface-raised); color: var(--text); }
+
+/* === APPROVAL QUEUE === */
+.approval-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border-muted);
+}
+.approval-item:last-child { border-bottom: none; }
+.approval-item .type-icon {
+  width: 32px; height: 32px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.approval-item .info { flex: 1; min-width: 0; }
+.approval-item .info .title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.approval-item .info .detail {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.approval-item .actions { display: flex; gap: var(--sp-2); flex-shrink: 0; }
+
+/* === SECTION DIVIDERS === */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-6) 0 var(--sp-4);
+}
+.section-divider .line { flex: 1; height: 1px; background: var(--border); }
+.section-divider .label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-subtle);
+}
+
+/* === FONT SPECIMEN === */
+.specimen {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+.specimen-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  margin-bottom: var(--sp-3);
+}
+.specimen-display {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  margin-bottom: var(--sp-3);
+}
+.specimen-body {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 60ch;
+  margin-bottom: var(--sp-3);
+}
+.specimen-mono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--primary);
+}
+
+/* === COLOR SWATCHES === */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+.swatch {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.swatch-color { height: 64px; }
+.swatch-info {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface);
+}
+.swatch-name {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.swatch-hex {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* === COMPONENT SHOWCASE === */
+.component-row {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+.alert {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  border-left: 3px solid;
+  font-size: 0.85rem;
+  margin-bottom: var(--sp-3);
+  max-width: 500px;
+}
+.alert-success { background: rgba(16,185,129,0.08); border-color: var(--success); color: #34D399; }
+.alert-warning { background: rgba(245,158,11,0.08); border-color: var(--warning); color: #FBBF24; }
+.alert-error { background: rgba(239,68,68,0.08); border-color: var(--error); color: #F87171; }
+.alert-info { background: rgba(59,130,246,0.08); border-color: var(--info); color: #60A5FA; }
+
+/* === PAGE SECTIONS === */
+.page-section {
+  display: none;
+}
+.page-section.active {
+  display: block;
+}
+.nav-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--sp-6);
+}
+.nav-tab {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: var(--sp-3) var(--sp-4);
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 100ms, border-color 100ms;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="page-header">
+  <h1><span class="dot"></span> AOS Design System</h1>
+  <div class="meta">v0.1.0 · Industrial/Utilitarian · Terminal-Native Dark</div>
+</div>
+
+<!-- TABS -->
+<div style="padding: 0 var(--sp-8);">
+  <div class="nav-tabs">
+    <div class="nav-tab active" onclick="showSection('dashboard')">Dashboard</div>
+    <div class="nav-tab" onclick="showSection('typography')">Typography</div>
+    <div class="nav-tab" onclick="showSection('colors')">Colors</div>
+    <div class="nav-tab" onclick="showSection('components')">Components</div>
+    <div class="nav-tab" onclick="showSection('cli')">CLI Output</div>
+  </div>
+</div>
+
+<!-- DASHBOARD SECTION -->
+<div class="page-section active" id="section-dashboard">
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-label" style="padding: var(--sp-2) var(--sp-4);">Ventures</div>
+    <div class="sidebar-item active">
+      <svg class="icon" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+      Netso Energy
+    </div>
+    <div class="sidebar-item">
+      <svg class="icon" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+      TransitBD
+    </div>
+    <div class="sidebar-item">
+      <svg class="icon" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>
+      9Router
+    </div>
+
+    <div class="sidebar-section" style="margin-top: var(--sp-4);">
+      <div class="sidebar-label">Harnesses</div>
+      <div class="sidebar-item active">Executive <span class="badge">17</span></div>
+      <div class="sidebar-item">Sales <span class="badge">12</span></div>
+      <div class="sidebar-item">Finance <span class="badge">9</span></div>
+      <div class="sidebar-item">Legal <span class="badge">6</span></div>
+      <div class="sidebar-item">Marketing <span class="badge">8</span></div>
+      <div class="sidebar-item">Operations <span class="badge">11</span></div>
+      <div class="sidebar-item">AI Dev <span class="badge">14</span></div>
+      <div class="sidebar-item">Software Dev <span class="badge">10</span></div>
+    </div>
+
+    <div class="sidebar-section" style="margin-top: var(--sp-4);">
+      <div class="sidebar-label">System</div>
+      <div class="sidebar-item">Health</div>
+      <div class="sidebar-item">Audit Log</div>
+      <div class="sidebar-item">Settings</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-5);">
+      <div class="section-title">Executive Harness <span class="tag">Netso Energy</span></div>
+      <div style="display: flex; gap: var(--sp-2);">
+        <button class="btn btn-ghost">Export</button>
+        <button class="btn btn-primary">Run Pipeline</button>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="label">Active Agents</div>
+        <div class="value" style="color: var(--primary);">14</div>
+        <div class="change up">+2 this week</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Pending Approvals</div>
+        <div class="value">3</div>
+        <div class="change neutral">avg 12min wait</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Decisions Today</div>
+        <div class="value">47</div>
+        <div class="change up">+18 vs yesterday</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">System Health</div>
+        <div class="value" style="color: var(--primary);">98%</div>
+        <div class="change up">all services nominal</div>
+      </div>
+    </div>
+
+    <!-- AGENT STATUS TABLE -->
+    <div class="section-divider">
+      <div class="line"></div>
+      <div class="label">Agent Status</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Harness</th>
+            <th>Status</th>
+            <th>Last Run</th>
+            <th>Tokens</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="color: var(--text); font-weight: 500;">ceo-advisor</td>
+            <td>executive</td>
+            <td><span class="status healthy">healthy</span></td>
+            <td>2m ago</td>
+            <td>12,847</td>
+            <td>$0.18</td>
+          </tr>
+          <tr>
+            <td style="color: var(--text); font-weight: 500;">sales-qualifier</td>
+            <td>sales</td>
+            <td><span class="status healthy">healthy</span></td>
+            <td>8m ago</td>
+            <td>8,234</td>
+            <td>$0.11</td>
+          </tr>
+          <tr>
+            <td style="color: var(--text); font-weight: 500;">financial-safeguard</td>
+            <td>finance</td>
+            <td><span class="status warning">warning</span></td>
+            <td>15m ago</td>
+            <td>15,691</td>
+            <td>$0.22</td>
+          </tr>
+          <tr>
+            <td style="color: var(--text); font-weight: 500;">legal-reviewer</td>
+            <td>legal</td>
+            <td><span class="status idle">idle</span></td>
+            <td>1h ago</td>
+            <td>4,102</td>
+            <td>$0.06</td>
+          </tr>
+          <tr>
+            <td style="color: var(--text); font-weight: 500;">content-generator</td>
+            <td>marketing</td>
+            <td><span class="status healthy">healthy</span></td>
+            <td>5m ago</td>
+            <td>22,450</td>
+            <td>$0.31</td>
+          </tr>
+          <tr>
+            <td style="color: var(--text); font-weight: 500;">deployment-agent</td>
+            <td>software_dev</td>
+            <td><span class="status error">error</span></td>
+            <td>32m ago</td>
+            <td>6,891</td>
+            <td>$0.10</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- APPROVAL QUEUE -->
+    <div class="section-divider">
+      <div class="line"></div>
+      <div class="label">Approval Queue</div>
+      <div class="line"></div>
+    </div>
+
+    <div class="data-table-wrap">
+      <div class="approval-item">
+        <div class="type-icon">PPA</div>
+        <div class="info">
+          <div class="title">PPA Contract v2.1 — Green Knit Exports</div>
+          <div class="detail">sales-qualifier · 12 min ago · BDT 10.00/kWh, 3% triennial</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost">Reject</button>
+          <button class="btn btn-primary">Approve</button>
+        </div>
+      </div>
+      <div class="approval-item">
+        <div class="type-icon">FIN</div>
+        <div class="info">
+          <div class="title">Scenario B CAPEX Adjustment — NBR Policy</div>
+          <div class="detail">financial-safeguard · 28 min ago · BDT 40K/kW (pending NBR confirmation)</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost">Reject</button>
+          <button class="btn btn-primary">Approve</button>
+        </div>
+      </div>
+      <div class="approval-item">
+        <div class="type-icon">MKT</div>
+        <div class="info">
+          <div class="title">LinkedIn Campaign — RMG Factory Decision Makers</div>
+          <div class="detail">content-generator · 45 min ago · 3 posts, A/B test variants</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost">Reject</button>
+          <button class="btn btn-primary">Approve</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- TYPOGRAPHY SECTION -->
+<div class="page-section" id="section-typography" style="padding: var(--sp-6) var(--sp-8);">
+  <div class="section-title" style="margin-bottom: var(--sp-6);">Typography Specimen</div>
+
+  <div class="specimen">
+    <div class="specimen-label">Display — Clash Grotesk</div>
+    <div class="specimen-display">Agentic Operating System</div>
+    <div class="specimen-display" style="font-size: 1.75rem; font-weight: 600;">One founder. Multiple ventures. One operating system.</div>
+    <div class="specimen-display" style="font-size: 1.25rem; font-weight: 500; color: var(--text-muted);">Governance-first multi-venture orchestration</div>
+  </div>
+
+  <div class="specimen">
+    <div class="specimen-label">Body — DM Sans</div>
+    <div class="specimen-body">
+      AOS orchestrates autonomous business systems for a solo founder running multiple companies.
+      Every architectural mistake gets multiplied across every future harness. So we build one
+      production-grade harness, establish the standards, then replicate. Identity-first. Policy-driven.
+      Capability-first. Least privilege. Auditable. Evaluated.
+    </div>
+    <div class="specimen-body" style="font-style: italic;">
+      "Every action leaves an immutable trail. Nothing is hidden. Governance by design."
+    </div>
+  </div>
+
+  <div class="specimen">
+    <div class="specimen-label">Data / Code — JetBrains Mono</div>
+    <div class="specimen-mono">
+      CAPEX: BDT 55,000/kW · True Variable: BDT 12.98/kWh · PPA: BDT 10.00/kWh<br>
+      DSCR: 2.25x (A) / 3.09x (B) · Payback: 4.1 yrs (A) / 3.0 yrs (B)<br>
+      <span style="color: var(--text-muted);">import</span> <span style="color: var(--text);">aos</span><br>
+      <span style="color: var(--text-muted);">from</span> <span style="color: var(--text);">aos.graph</span> <span style="color: var(--text-muted);">import</span> <span style="color: var(--text);">StateGraph</span>
+    </div>
+  </div>
+
+  <div class="specimen">
+    <div class="specimen-label">Scale Comparison</div>
+    <div style="font-family: var(--font-display); font-weight: 700; font-size: 2.5rem; letter-spacing: -0.04em; margin-bottom: var(--sp-2);">2.5rem — Hero</div>
+    <div style="font-family: var(--font-display); font-weight: 600; font-size: 1.75rem; letter-spacing: -0.03em; margin-bottom: var(--sp-2);">1.75rem — Section</div>
+    <div style="font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; letter-spacing: -0.02em; margin-bottom: var(--sp-2);">1.25rem — Subsection</div>
+    <div style="font-family: var(--font-body); font-size: 1rem; margin-bottom: var(--sp-2);">1rem — Body</div>
+    <div style="font-family: var(--font-body); font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--sp-2);">0.85rem — Secondary</div>
+    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-subtle);">0.75rem — Caption / Label</div>
+  </div>
+</div>
+
+<!-- COLORS SECTION -->
+<div class="page-section" id="section-colors" style="padding: var(--sp-6) var(--sp-8);">
+  <div class="section-title" style="margin-bottom: var(--sp-6);">Color Palette</div>
+
+  <div class="section-divider" style="margin-top: 0;">
+    <div class="line"></div>
+    <div class="label">Surfaces</div>
+    <div class="line"></div>
+  </div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background: #0D1117;"></div><div class="swatch-info"><div class="swatch-name">Background</div><div class="swatch-hex">#0D1117</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #161B22;"></div><div class="swatch-info"><div class="swatch-name">Surface</div><div class="swatch-hex">#161B22</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #1C2128;"></div><div class="swatch-info"><div class="swatch-name">Surface Raised</div><div class="swatch-hex">#1C2128</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #30363D;"></div><div class="swatch-info"><div class="swatch-name">Border</div><div class="swatch-hex">#30363D</div></div></div>
+  </div>
+
+  <div class="section-divider">
+    <div class="line"></div>
+    <div class="label">Text</div>
+    <div class="line"></div>
+  </div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background: #E6EDF3;"></div><div class="swatch-info"><div class="swatch-name">Text</div><div class="swatch-hex">#E6EDF3</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #8B949E;"></div><div class="swatch-info"><div class="swatch-name">Text Muted</div><div class="swatch-hex">#8B949E</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #6E7681;"></div><div class="swatch-info"><div class="swatch-name">Text Subtle</div><div class="swatch-hex">#6E7681</div></div></div>
+  </div>
+
+  <div class="section-divider">
+    <div class="line"></div>
+    <div class="label">Semantic</div>
+    <div class="line"></div>
+  </div>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background: #10B981;"></div><div class="swatch-info"><div class="swatch-name">Primary / Success</div><div class="swatch-hex">#10B981</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #065F46;"></div><div class="swatch-info"><div class="swatch-name">Primary Dim</div><div class="swatch-hex">#065F46</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #F59E0B;"></div><div class="swatch-info"><div class="swatch-name">Warning</div><div class="swatch-hex">#F59E0B</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #EF4444;"></div><div class="swatch-info"><div class="swatch-name">Error</div><div class="swatch-hex">#EF4444</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background: #3B82F6;"></div><div class="swatch-info"><div class="swatch-name">Info</div><div class="swatch-hex">#3B82F6</div></div></div>
+  </div>
+
+  <!-- CONTRAST CHECKS -->
+  <div class="section-divider">
+    <div class="line"></div>
+    <div class="label">Contrast Ratios</div>
+    <div class="line"></div>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); margin-bottom: var(--sp-6);">
+    <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-4); text-align: center;">
+      <div style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-subtle); margin-bottom: var(--sp-1);">Text on Background</div>
+      <div style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #E6EDF3;">Aa</div>
+      <div style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--primary);">12.6:1 AAA</div>
+    </div>
+    <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-4); text-align: center;">
+      <div style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-subtle); margin-bottom: var(--sp-1);">Primary on Background</div>
+      <div style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #10B981;">Aa</div>
+      <div style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--primary);">4.6:1 AA</div>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-4); text-align: center;">
+      <div style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-subtle); margin-bottom: var(--sp-1);">Muted on Surface</div>
+      <div style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #8B949E;">Aa</div>
+      <div style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--primary);">4.0:1 AA-Large</div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPONENTS SECTION -->
+<div class="page-section" id="section-components" style="padding: var(--sp-6) var(--sp-8);">
+  <div class="section-title" style="margin-bottom: var(--sp-6);">Components</div>
+
+  <div class="section-divider" style="margin-top: 0;">
+    <div class="line"></div>
+    <div class="label">Buttons</div>
+    <div class="line"></div>
+  </div>
+  <div class="component-row">
+    <button class="btn btn-primary">Approve</button>
+    <button class="btn btn-ghost">Cancel</button>
+    <button class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed;">Disabled</button>
+  </div>
+
+  <div class="section-divider">
+    <div class="line"></div>
+    <div class="label">Status Badges</div>
+    <div class="line"></div>
+  </div>
+  <div class="component-row">
+    <span class="status healthy">healthy</span>
+    <span class="status warning">warning</span>
+    <span class="status error">error</span>
+    <span class="status idle">idle</span>
+  </div>
+
+  <div class="section-divider">
+    <div class="line"></div>
+    <div class="label">Alerts</div>
+    <div class="line"></div>
+  </div>
+  <div class="alert alert-success">Agent financial-safeguard completed. DSCR validated at 2.25x.</div>
+  <div class="alert alert-warning">Scenario B CAPEX activated. Awaiting NBR confirmation before field use.</div>
+  <div class="alert alert-error">Deployment agent failed. Build error in test_cross_harness_integration.py:47.</div>
+  <div class="alert alert-info">New harness bundle available: investor_relations v0.3.0.</div>
+
+  <div class="section-divider">
+    <div class="line"></div>
+    <div class="label">Form Inputs</div>
+    <div class="line"></div>
+  </div>
+  <div style="max-width: 400px;">
+    <div style="margin-bottom: var(--sp-3);">
+      <label style="font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); display: block; margin-bottom: var(--sp-1);">Agent Name</label>
+      <input type="text" value="ceo-advisor" style="width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-3); font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); outline: none;" />
+    </div>
+    <div style="margin-bottom: var(--sp-3);">
+      <label style="font-family: var(--font-mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); display: block; margin-bottom: var(--sp-1);">Harness</label>
+      <select style="width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-3); font-family: var(--font-mono); font-size: 0.85rem; color: var(--text); outline: none;">
+        <option>executive</option>
+        <option>sales</option>
+        <option>finance</option>
+      </select>
+    </div>
+    <div style="display: flex; align-items: center; gap: var(--sp-2);">
+      <div style="width: 36px; height: 20px; background: var(--primary); border-radius: var(--radius-full); position: relative; cursor: pointer;">
+        <div style="width: 16px; height: 16px; background: white; border-radius: var(--radius-full); position: absolute; top: 2px; right: 2px;"></div>
+      </div>
+      <span style="font-size: 0.85rem;">Auto-approve low-risk decisions</span>
+    </div>
+  </div>
+</div>
+
+<!-- CLI SECTION -->
+<div class="page-section" id="section-cli" style="padding: var(--sp-6) var(--sp-8);">
+  <div class="section-title" style="margin-bottom: var(--sp-6);">CLI Output Preview</div>
+
+  <div style="background: #000; border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--sp-4); font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.7; overflow-x: auto;">
+    <div style="color: var(--primary);">$ aos status --venture netso</div>
+    <div style="color: var(--text-muted); margin-top: var(--sp-2);">Venture: <span style="color: var(--text);">Netso Energy</span></div>
+    <div style="color: var(--text-muted);">Phase: <span style="color: var(--primary);">BOO/OPEX Rooftop Solar</span></div>
+    <div style="color: var(--text-muted);">Market: <span style="color: var(--text);">Bangladesh RMG Sector</span></div>
+    <div style="margin-top: var(--sp-3); color: var(--text-muted);">─── Financial Constants ───</div>
+    <div style="color: var(--text-muted);">CAPEX (A):   <span style="color: var(--text);">BDT 55,000/kW</span></div>
+    <div style="color: var(--text-muted);">CAPEX (B):   <span style="color: var(--warning);">BDT 40,000/kW</span> <span style="color: var(--text-subtle);">⚠ pending NBR</span></div>
+    <div style="color: var(--text-muted);">True Var:    <span style="color: var(--text);">BDT 12.98/kWh</span></div>
+    <div style="color: var(--text-muted);">PPA:         <span style="color: var(--text);">BDT 10.00/kWh</span> <span style="color: var(--text-subtle);">(3% triennial)</span></div>
+    <div style="color: var(--text-muted);">DSCR:        <span style="color: var(--primary);">2.25x (A)</span> / <span style="color: var(--primary);">3.09x (B)</span></div>
+    <div style="color: var(--text-muted);">Payback:     <span style="color: var(--text);">4.1 yrs (A)</span> / <span style="color: var(--text);">3.0 yrs (B)</span></div>
+    <div style="margin-top: var(--sp-3); color: var(--text-muted);">─── Harness Status ───</div>
+    <div><span style="color: var(--primary);">✓</span> <span style="color: var(--text);">executive</span>       <span style="color: var(--text-subtle);">17 agents</span>   <span style="color: var(--primary);">operational</span></div>
+    <div><span style="color: var(--primary);">✓</span> <span style="color: var(--text);">sales</span>           <span style="color: var(--text-subtle);">12 agents</span>   <span style="color: var(--primary);">operational</span></div>
+    <div><span style="color: var(--warning);">!</span> <span style="color: var(--text);">finance</span>        <span style="color: var(--text-subtle);">9 agents</span>    <span style="color: var(--warning);">1 warning</span></div>
+    <div><span style="color: var(--primary);">✓</span> <span style="color: var(--text);">legal</span>          <span style="color: var(--text-subtle);">6 agents</span>    <span style="color: var(--primary);">operational</span></div>
+    <div><span style="color: var(--error);">✗</span> <span style="color: var(--text);">software_dev</span>   <span style="color: var(--text-subtle);">10 agents</span>   <span style="color: var(--error);">1 error</span></div>
+    <div style="margin-top: var(--sp-3); color: var(--text-muted);">─── Token Usage (Today) ───</div>
+    <div style="color: var(--text-muted);">Total:       <span style="color: var(--text);">142,847 tokens</span></div>
+    <div style="color: var(--text-muted);">Cost:        <span style="color: var(--text);">$2.04</span></div>
+    <div style="color: var(--text-muted);">Decisions:   <span style="color: var(--text);">47</span></div>
+    <div style="margin-top: var(--sp-3); color: var(--primary);">$ <span style="color: var(--text-muted); cursor: pointer;">█</span></div>
+  </div>
+</div>
+
+<script>
+function showSection(name) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
