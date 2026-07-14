@@ -316,7 +316,7 @@ class TestRollbackGate:
         }
         result = p._rollback_gate(state)
         assert result["retries"] == 1
-        assert "error" not in result
+        assert not result.get("error")
 
     def test_auto_approved_in_auto_mode(self, tmp_path: Path) -> None:
         p = AutonomousPipeline(dry_run=False, auto=True, project_root=tmp_path)
@@ -330,7 +330,7 @@ class TestRollbackGate:
         }
         result = p._rollback_gate(state)
         assert result["retries"] == 2
-        assert "error" not in result
+        assert not result.get("error")
 
     def test_max_retries_exhausted(self, tmp_path: Path) -> None:
         p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
@@ -441,6 +441,161 @@ class TestEdgeFunctions:
     def test_after_rollback_gate_stop(self) -> None:
         state: AutonomousState = {"error": "rejected"}
         assert AutonomousPipeline._after_rollback_gate(state) == "stop"
+
+
+# ---------------------------------------------------------------------------
+# Rollback integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestRollbackIntegration:
+    """Full graph loop with a failing phase — verifies rollback + retry."""
+
+    def test_rollback_retries_on_failure(self, tmp_path: Path) -> None:
+        """Phase fails once, rollback auto-approved, retried, then passes."""
+        from unittest.mock import patch
+        from datetime import datetime
+
+        call_count = {"n": 0}
+        _orig_run = AutonomousPipeline._run_phase
+
+        def fake_run_phase(self, state: AutonomousState) -> dict[str, Any]:
+            idx = state.get("current_phase_index", 0)
+            phases = state.get("phases", [])
+            phase = phases[idx]
+            call_count["n"] += 1
+            started = datetime.now().isoformat()
+
+            # Fail on first attempt, pass on second
+            if call_count["n"] == 1:
+                return {
+                    "phase_results": state.get("phase_results", []) + [{
+                        "phase_id": phase["id"],
+                        "title": phase.get("title", ""),
+                        "status": PhaseStatus.FAILED.value,
+                        "started_at": started,
+                        "finished_at": datetime.now().isoformat(),
+                        "error": "simulated failure",
+                    }],
+                    "error": "simulated failure",
+                }
+
+            return {
+                "phase_results": state.get("phase_results", []) + [{
+                    "phase_id": phase["id"],
+                    "title": phase.get("title", ""),
+                    "status": PhaseStatus.PASSED.value,
+                    "started_at": started,
+                    "finished_at": datetime.now().isoformat(),
+                }],
+            }
+
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: Test\nFailing phase\n")
+
+        with patch.object(AutonomousPipeline, "_run_phase", fake_run_phase):
+            p = AutonomousPipeline(
+                dry_run=True, auto=True, project_root=tmp_path, max_retries=3,
+            )
+            rc = p.run()
+
+        assert rc == 0
+        assert call_count["n"] == 2  # failed once, retried once, passed
+
+    def test_rollback_exhausts_retries(self, tmp_path: Path) -> None:
+        """Phase fails every time — pipeline stops after max_retries."""
+        from unittest.mock import patch
+        from datetime import datetime
+
+        call_count = {"n": 0}
+
+        def always_fail(self, state: AutonomousState) -> dict[str, Any]:
+            idx = state.get("current_phase_index", 0)
+            phases = state.get("phases", [])
+            phase = phases[idx]
+            call_count["n"] += 1
+            started = datetime.now().isoformat()
+            return {
+                "phase_results": state.get("phase_results", []) + [{
+                    "phase_id": phase["id"],
+                    "title": phase.get("title", ""),
+                    "status": PhaseStatus.FAILED.value,
+                    "started_at": started,
+                    "finished_at": datetime.now().isoformat(),
+                    "error": "always fails",
+                }],
+                "error": "always fails",
+            }
+
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: Test\nDoomed phase\n")
+
+        with patch.object(AutonomousPipeline, "_run_phase", always_fail):
+            p = AutonomousPipeline(
+                dry_run=True, auto=True, project_root=tmp_path, max_retries=2,
+            )
+            rc = p.run()
+
+        assert rc == 1  # failed
+        # run_phase called 1 (initial) + 2 (retries) = 3 times
+        assert call_count["n"] == 3
+
+    def test_rollback_resets_on_new_phase(self, tmp_path: Path) -> None:
+        """Phase 1 fails and retries, then phase 2 runs fresh (retries reset)."""
+        from unittest.mock import patch
+        from datetime import datetime
+
+        run_log: list[str] = []
+
+        def flaky_run(self, state: AutonomousState) -> dict[str, Any]:
+            idx = state.get("current_phase_index", 0)
+            phases = state.get("phases", [])
+            phase = phases[idx]
+            retries = state.get("retries", 0)
+            run_log.append(f"{phase['id']}:retries={retries}")
+            started = datetime.now().isoformat()
+
+            # Fail phase-0 on first attempt only
+            if phase["id"] == "phase-0" and retries == 0:
+                return {
+                    "phase_results": state.get("phase_results", []) + [{
+                        "phase_id": phase["id"],
+                        "title": phase.get("title", ""),
+                        "status": PhaseStatus.FAILED.value,
+                        "started_at": started,
+                        "finished_at": datetime.now().isoformat(),
+                        "error": "first attempt fail",
+                    }],
+                    "error": "first attempt fail",
+                }
+
+            return {
+                "phase_results": state.get("phase_results", []) + [{
+                    "phase_id": phase["id"],
+                    "title": phase.get("title", ""),
+                    "status": PhaseStatus.PASSED.value,
+                    "started_at": started,
+                    "finished_at": datetime.now().isoformat(),
+                }],
+            }
+
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: First\nFirst phase\n## Phase 2: Second\nSecond phase\n")
+
+        with patch.object(AutonomousPipeline, "_run_phase", flaky_run):
+            p = AutonomousPipeline(
+                dry_run=True, auto=True, project_root=tmp_path, max_retries=3,
+            )
+            rc = p.run()
+
+        assert rc == 0
+        # phase-0 failed once then passed on retry, phase-1 passed first try
+        assert run_log == [
+            "phase-0:retries=0",  # first attempt — fails
+            "phase-0:retries=1",  # retry — passes
+            "phase-1:retries=0",  # new phase — retries reset
+        ]
 
     def test_after_gate_milestone(self) -> None:
         state: AutonomousState = {}

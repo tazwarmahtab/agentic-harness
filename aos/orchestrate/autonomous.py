@@ -495,13 +495,13 @@ class AutonomousPipeline:
                 f"[autonomous] rollback_gate -- {phase_id} auto-approved "
                 f"({mode}, retry {retries + 1}/{max_retries})"
             )
-            return {"retries": retries + 1}
+            return {"retries": retries + 1, "error": None}
 
         # Check for existing decision
         existing = self.gate_manager.resolve_pending(Gate.DOUBT)
         if existing and existing.decision == GateDecision.APPROVED:
             print(f"[autonomous] rollback_gate -- {phase_id} previously approved")
-            return {"retries": retries + 1}
+            return {"retries": retries + 1, "error": None}
         if existing and existing.decision == GateDecision.REJECTED:
             print(f"[autonomous] rollback_gate -- {phase_id} rollback rejected")
             return {"error": f"Rollback of phase {phase_id} rejected by founder"}
@@ -533,7 +533,7 @@ class AutonomousPipeline:
 
         if wait_result.decision == GateDecision.APPROVED:
             print(f"[autonomous] rollback_gate -- {phase_id} approved (retry {retries + 1}/{max_retries})")
-            return {"retries": retries + 1}
+            return {"retries": retries + 1, "error": None}
 
         if wait_result.decision == GateDecision.REJECTED:
             print(f"[autonomous] rollback_gate -- {phase_id} rollback rejected")
