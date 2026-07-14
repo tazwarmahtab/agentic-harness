@@ -81,6 +81,9 @@ class AutonomousState(TypedDict, total=False):
     # Routing
     _next_action: str
 
+    # Roadmap write-back (set to overwrite the roadmap file with status markers)
+    writeback_file: Optional[str]
+
     # Control
     is_complete: bool
     error: Optional[str]
@@ -766,7 +769,77 @@ class AutonomousPipeline:
         if state.get("error"):
             print(f"[autonomous]   error: {state['error']}")
 
+        # Write-back: update the roadmap file with status markers
+        writeback_file = state.get("writeback_file")
+        if writeback_file and results:
+            self._write_back_roadmap(writeback_file, results)
+
         return {}
+
+    # ------------------------------------------------------------------
+    # Roadmap write-back
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _write_back_roadmap(
+        writeback_file: str,
+        results: list[dict[str, Any]],
+    ) -> None:
+        """Overwrite the roadmap file with phase status markers (✓/✗).
+
+        Reads the original roadmap, strips any existing markers, then
+        appends the current run's status to each ``## Phase`` heading.
+        Idempotent — re-running the pipeline re-marks phases cleanly.
+        """
+        import re
+
+        path = Path(writeback_file)
+        if not path.exists():
+            logger.warning("write_back_roadmap: %s not found", writeback_file)
+            return
+
+        text = path.read_text()
+
+        # Build lookup: phase_id -> status
+        status_map: dict[str, str] = {}
+        for r in results:
+            pid = r.get("phase_id", "")
+            status = r.get("status", "")
+            if pid:
+                status_map[pid] = status
+
+        # Strip existing markers from all ## Phase lines (idempotent)
+        # Handles: "## Phase 1: Title ✓", "## Phase 1: Title ✗ (failed)", etc.
+        marker_re = re.compile(r"\s+[✓✗]\s*(?:\(.*\))?\s*$")
+
+        lines = text.splitlines(keepends=True)
+        phase_index = 0
+        new_lines: list[str] = []
+
+        for line in lines:
+            stripped = line.rstrip("\n")
+
+            # Check if this is a ## Phase heading
+            if re.match(r"^## Phase\b", stripped):
+                # Strip any existing marker
+                clean = marker_re.sub("", stripped)
+
+                # Look up status by index
+                phase_id = f"phase-{phase_index}"
+                status = status_map.get(phase_id, "")
+
+                if status == PhaseStatus.PASSED.value:
+                    clean = f"{clean} ✓"
+                elif status == PhaseStatus.FAILED.value:
+                    clean = f"{clean} ✗"
+
+                new_lines.append(f"{clean}\n")
+                phase_index += 1
+            else:
+                new_lines.append(line)
+
+        path.write_text("".join(new_lines))
+        print(f"[autonomous] write_back_roadmap -- updated {writeback_file} ({phase_index} phases)")
 
     # ------------------------------------------------------------------
     # Conditional edge functions
@@ -832,6 +905,7 @@ class AutonomousPipeline:
             "dry_run": self.dry_run,
             "auto": self.auto,
             "max_retries": self.max_retries,
+            "writeback_file": self.roadmap_file,
             "phases": [],
             "current_phase_index": 0,
             "phase_results": [],

@@ -600,3 +600,137 @@ class TestRollbackIntegration:
     def test_after_gate_milestone(self) -> None:
         state: AutonomousState = {}
         assert AutonomousPipeline._after_gate_milestone(state) == "approved"
+
+
+# ---------------------------------------------------------------------------
+# Roadmap write-back tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestWriteBackRoadmap:
+    """_write_back_roadmap marks phases with ✓/✗ in the roadmap file."""
+
+    def test_marks_passed_phases(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text(
+            "# Roadmap\n\n## Phase 1: Setup\nDo stuff\n\n## Phase 2: Deploy\nShip it\n"
+        )
+        results = [
+            {"phase_id": "phase-0", "status": "passed"},
+            {"phase_id": "phase-1", "status": "passed"},
+        ]
+        AutonomousPipeline._write_back_roadmap(str(roadmap), results)
+        text = roadmap.read_text()
+        assert "## Phase 1: Setup ✓" in text
+        assert "## Phase 2: Deploy ✓" in text
+
+    def test_marks_failed_phases(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text(
+            "## Phase 1: Build\nWork\n## Phase 2: Test\nVerify\n"
+        )
+        results = [
+            {"phase_id": "phase-0", "status": "passed"},
+            {"phase_id": "phase-1", "status": "failed"},
+        ]
+        AutonomousPipeline._write_back_roadmap(str(roadmap), results)
+        text = roadmap.read_text()
+        assert "## Phase 1: Build ✓" in text
+        assert "## Phase 2: Test ✗" in text
+
+    def test_idempotent(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: Alpha\nFirst\n## Phase 2: Beta\nSecond\n")
+        results = [
+            {"phase_id": "phase-0", "status": "passed"},
+            {"phase_id": "phase-1", "status": "failed"},
+        ]
+        # Run twice — should not duplicate markers
+        AutonomousPipeline._write_back_roadmap(str(roadmap), results)
+        AutonomousPipeline._write_back_roadmap(str(roadmap), results)
+        text = roadmap.read_text()
+        assert text.count("✓") == 1
+        assert text.count("✗") == 1
+
+    def test_missing_file_no_crash(self, tmp_path: Path) -> None:
+        # Should log warning, not raise
+        AutonomousPipeline._write_back_roadmap(
+            str(tmp_path / "NOPE.md"),
+            [{"phase_id": "phase-0", "status": "passed"}],
+        )
+
+    def test_preserves_non_phase_lines(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        original = "# My Project\n\nIntro text\n\n## Phase 1: X\nDo it\n\n## Phase 2: Y\nDone\n"
+        roadmap.write_text(original)
+        results = [{"phase_id": "phase-0", "status": "passed"}]
+        AutonomousPipeline._write_back_roadmap(str(roadmap), results)
+        text = roadmap.read_text()
+        assert "# My Project" in text
+        assert "Intro text" in text
+        assert "## Phase 1: X ✓" in text
+        # Phase 2 has no result — no marker
+        assert "## Phase 2: Y\n" in text
+
+    def test_unknown_phase_ids_no_crash(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: Z\nWork\n")
+        results = [{"phase_id": "phase-99", "status": "passed"}]
+        # Should not crash — just no markers added
+        AutonomousPipeline._write_back_roadmap(str(roadmap), results)
+        text = roadmap.read_text()
+        assert "## Phase 1: Z\n" in text
+
+
+@pytest.mark.unit
+class TestAuditCompleteWriteBack:
+    """_audit_complete triggers write-back when writeback_file is set."""
+
+    def test_writes_back_when_file_set(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: Go\nDo it\n")
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        state: AutonomousState = {
+            "phase_results": [
+                {"phase_id": "phase-0", "status": "passed"},
+            ],
+            "writeback_file": str(roadmap),
+        }
+        p._audit_complete(state)
+        text = roadmap.read_text()
+        assert "## Phase 1: Go ✓" in text
+
+    def test_no_writeback_when_file_unset(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: Go\nDo it\n")
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        state: AutonomousState = {
+            "phase_results": [
+                {"phase_id": "phase-0", "status": "passed"},
+            ],
+        }
+        p._audit_complete(state)
+        # File unchanged — no marker
+        text = roadmap.read_text()
+        assert "✓" not in text
+
+
+@pytest.mark.unit
+class TestWriteBackIntegration:
+    """Full pipeline run writes back to the roadmap file."""
+
+    def test_dry_run_writes_back(self, tmp_path: Path) -> None:
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text(
+            "# Roadmap\n\n## Phase 1: Setup\nScaffold\n\n## Phase 2: Deploy\nShip\n"
+        )
+        p = AutonomousPipeline(
+            dry_run=True, auto=True, project_root=tmp_path,
+        )
+        rc = p.run()
+        assert rc == 0
+        text = roadmap.read_text()
+        # Dry-run phases stay pending — no markers
+        # (dry-run doesn't produce phase_results for individual phases)
+        assert "## Phase 1: Setup" in text
