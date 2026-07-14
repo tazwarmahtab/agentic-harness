@@ -734,3 +734,211 @@ class TestWriteBackIntegration:
         # Dry-run phases stay pending — no markers
         # (dry-run doesn't produce phase_results for individual phases)
         assert "## Phase 1: Setup" in text
+
+
+# ---------------------------------------------------------------------------
+# Persistent state (checkpoint / resume) tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestPersistState:
+    """_persist_state writes checkpoint to disk."""
+
+    def test_writes_json_file(self, tmp_path: Path) -> None:
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        state: AutonomousState = {
+            "roadmap_file": "ROADMAP.md",
+            "dry_run": True,
+            "auto": False,
+            "max_retries": 3,
+            "phases": [{"id": "phase-0", "title": "Test"}],
+            "current_phase_index": 1,
+            "phase_results": [{"phase_id": "phase-0", "status": "passed"}],
+            "retries": 0,
+        }
+        p._persist_state(state)
+        path = tmp_path / ".aos_state.json"
+        assert path.exists()
+        import json
+        data = json.loads(path.read_text())
+        assert data["current_phase_index"] == 1
+        assert len(data["phase_results"]) == 1
+        assert data["phases"][0]["id"] == "phase-0"
+
+    def test_overwrites_existing(self, tmp_path: Path) -> None:
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        state1: AutonomousState = {
+            "phases": [{"id": "p-0"}], "current_phase_index": 0,
+            "phase_results": [], "retries": 0,
+        }
+        state2: AutonomousState = {
+            "phases": [{"id": "p-0"}], "current_phase_index": 1,
+            "phase_results": [{"phase_id": "p-0", "status": "passed"}], "retries": 0,
+        }
+        p._persist_state(state1)
+        p._persist_state(state2)
+        import json
+        data = json.loads((tmp_path / ".aos_state.json").read_text())
+        assert data["current_phase_index"] == 1
+
+
+@pytest.mark.unit
+class TestLoadState:
+    """_load_state reads checkpoint from disk."""
+
+    def test_loads_existing(self, tmp_path: Path) -> None:
+        import json
+        checkpoint = {
+            "phases": [{"id": "phase-0", "title": "X"}],
+            "current_phase_index": 1,
+            "phase_results": [{"phase_id": "phase-0", "status": "passed"}],
+            "retries": 0,
+        }
+        (tmp_path / ".aos_state.json").write_text(json.dumps(checkpoint))
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        loaded = p._load_state()
+        assert loaded is not None
+        assert loaded["current_phase_index"] == 1
+        assert len(loaded["phase_results"]) == 1
+
+    def test_returns_none_when_missing(self, tmp_path: Path) -> None:
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        assert p._load_state() is None
+
+    def test_returns_none_on_corrupt(self, tmp_path: Path) -> None:
+        (tmp_path / ".aos_state.json").write_text("NOT JSON {{{")
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        assert p._load_state() is None
+
+
+@pytest.mark.unit
+class TestClearState:
+    """_clear_state removes the checkpoint file."""
+
+    def test_removes_file(self, tmp_path: Path) -> None:
+        import json
+        (tmp_path / ".aos_state.json").write_text(json.dumps({"x": 1}))
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        p._clear_state()
+        assert not (tmp_path / ".aos_state.json").exists()
+
+    def test_no_crash_when_missing(self, tmp_path: Path) -> None:
+        p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
+        p._clear_state()  # should not raise
+
+
+@pytest.mark.unit
+class TestResumeFromCheckpoint:
+    """Pipeline resumes from checkpoint instead of starting fresh."""
+
+    def test_resume_skips_completed_phases(self, tmp_path: Path) -> None:
+        import json
+        from unittest.mock import patch
+        from datetime import datetime
+
+        # Simulate: phase-0 already completed, phase-1 pending
+        checkpoint = {
+            "roadmap_file": "ROADMAP.md",
+            "dry_run": True,
+            "auto": True,
+            "max_retries": 3,
+            "phases": [
+                {"id": "phase-0", "title": "First", "status": "pending"},
+                {"id": "phase-1", "title": "Second", "status": "pending"},
+            ],
+            "current_phase_index": 1,
+            "phase_results": [
+                {"phase_id": "phase-0", "title": "First", "status": "passed"},
+            ],
+            "retries": 0,
+        }
+        (tmp_path / ".aos_state.json").write_text(json.dumps(checkpoint))
+
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: First\nA\n## Phase 2: Second\nB\n")
+
+        run_log: list[str] = []
+
+        def tracking_run(self, state: AutonomousState) -> dict[str, Any]:
+            idx = state.get("current_phase_index", 0)
+            phases = state.get("phases", [])
+            phase = phases[idx]
+            run_log.append(phase["id"])
+            started = datetime.now().isoformat()
+            return {
+                "phase_results": state.get("phase_results", []) + [{
+                    "phase_id": phase["id"],
+                    "title": phase.get("title", ""),
+                    "status": PhaseStatus.PASSED.value,
+                    "started_at": started,
+                    "finished_at": datetime.now().isoformat(),
+                }],
+            }
+
+        with patch.object(AutonomousPipeline, "_run_phase", tracking_run):
+            p = AutonomousPipeline(
+                dry_run=True, auto=True, project_root=tmp_path,
+            )
+            rc = p.run()
+
+        assert rc == 0
+        # Only phase-1 ran — phase-0 was skipped (already in results)
+        assert run_log == ["phase-1"]
+
+    def test_fresh_run_no_checkpoint(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+        from datetime import datetime
+
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: Only\nJust one\n")
+
+        run_log: list[str] = []
+
+        def tracking_run(self, state: AutonomousState) -> dict[str, Any]:
+            idx = state.get("current_phase_index", 0)
+            phases = state.get("phases", [])
+            phase = phases[idx]
+            run_log.append(phase["id"])
+            started = datetime.now().isoformat()
+            return {
+                "phase_results": state.get("phase_results", []) + [{
+                    "phase_id": phase["id"],
+                    "title": phase.get("title", ""),
+                    "status": PhaseStatus.PASSED.value,
+                    "started_at": started,
+                    "finished_at": datetime.now().isoformat(),
+                }],
+            }
+
+        with patch.object(AutonomousPipeline, "_run_phase", tracking_run):
+            p = AutonomousPipeline(
+                dry_run=True, auto=True, project_root=tmp_path,
+            )
+            rc = p.run()
+
+        assert rc == 0
+        assert run_log == ["phase-0"]
+
+    def test_checkpoint_cleared_on_success(self, tmp_path: Path) -> None:
+        import json
+
+        roadmap = tmp_path / "ROADMAP.md"
+        roadmap.write_text("## Phase 1: X\nWork\n")
+
+        p = AutonomousPipeline(dry_run=True, auto=True, project_root=tmp_path)
+        rc = p.run()
+        assert rc == 0
+        assert not (tmp_path / ".aos_state.json").exists()
+
+    def test_state_file_custom_name(self, tmp_path: Path) -> None:
+        p = AutonomousPipeline(
+            dry_run=True, project_root=tmp_path, state_file="my_state.json",
+        )
+        state: AutonomousState = {
+            "phases": [{"id": "p-0"}], "current_phase_index": 0,
+            "phase_results": [], "retries": 0,
+        }
+        p._persist_state(state)
+        assert (tmp_path / "my_state.json").exists()
+        assert not (tmp_path / ".aos_state.json").exists()

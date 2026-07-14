@@ -112,6 +112,7 @@ class AutonomousPipeline:
         gate_manager: Optional[GateManager] = None,
         gate_timeout_s: float = 300.0,
         max_retries: int = 3,
+        state_file: str = ".aos_state.json",
     ) -> None:
         self.roadmap_file = roadmap_file
         self.dry_run = dry_run
@@ -120,6 +121,7 @@ class AutonomousPipeline:
         self.harness_id = harness_id
         self.gate_timeout_s = gate_timeout_s
         self.max_retries = max_retries
+        self.state_file = state_file
 
         # Gate manager — create default if not supplied
         if gate_manager is not None:
@@ -202,6 +204,9 @@ class AutonomousPipeline:
     def _discover_phases(self, state: AutonomousState) -> dict[str, Any]:
         """Parse the roadmap file and populate *phases* in state.
 
+        On resume, phases are already populated from the checkpoint —
+        skip re-parsing the roadmap.
+
         Supports two roadmap formats:
 
         Simple (one-liner per phase)::
@@ -224,6 +229,21 @@ class AutonomousPipeline:
             - pyproject.toml
             - .github/workflows/ci.yml
         """
+        # Resume: phases already loaded from checkpoint
+        existing = state.get("phases", [])
+        if existing:
+            idx = state.get("current_phase_index", 0)
+            results = state.get("phase_results", [])
+            print(f"[autonomous] discover_phases -- resume: {len(existing)} phases, "
+                  f"at index {idx}, {len(results)} prior results")
+            return {
+                "phases": existing,
+                "current_phase_index": idx,
+                "phase_results": results,
+                "retries": state.get("retries", 0),
+                "is_complete": False,
+            }
+
         roadmap_file = state.get("roadmap_file", self.roadmap_file)
         logger.info("discover_phases: reading %s", roadmap_file)
         print(f"[autonomous] discover_phases -- reading {roadmap_file}")
@@ -751,7 +771,13 @@ class AutonomousPipeline:
             f"({'complete' if done else 'next phase'})"
         )
         # Reset retry counter when advancing to a new phase
-        return {"current_phase_index": next_index, "is_complete": done, "retries": 0}
+        updates: dict[str, Any] = {"current_phase_index": next_index, "is_complete": done, "retries": 0}
+
+        # Persist checkpoint after each successful phase
+        merged = {**state, **updates}
+        self._persist_state(merged)
+
+        return updates
 
     def _audit_complete(self, state: AutonomousState) -> dict[str, Any]:
         """Synthesise final results and produce a summary."""
@@ -773,6 +799,9 @@ class AutonomousPipeline:
         writeback_file = state.get("writeback_file")
         if writeback_file and results:
             self._write_back_roadmap(writeback_file, results)
+
+        # Clear checkpoint on completion (success or terminal failure)
+        self._clear_state()
 
         return {}
 
@@ -842,6 +871,52 @@ class AutonomousPipeline:
         print(f"[autonomous] write_back_roadmap -- updated {writeback_file} ({phase_index} phases)")
 
     # ------------------------------------------------------------------
+    # Persistent state (checkpoint / resume)
+    # ------------------------------------------------------------------
+
+    def _persist_state(self, state: AutonomousState) -> None:
+        """Write pipeline state to disk so a crashed run can resume."""
+        import json
+
+        path = self.project_root / self.state_file
+        checkpoint = {
+            "roadmap_file": state.get("roadmap_file", self.roadmap_file),
+            "dry_run": state.get("dry_run", self.dry_run),
+            "auto": state.get("auto", self.auto),
+            "max_retries": state.get("max_retries", self.max_retries),
+            "writeback_file": state.get("writeback_file", self.roadmap_file),
+            "phases": state.get("phases", []),
+            "current_phase_index": state.get("current_phase_index", 0),
+            "phase_results": state.get("phase_results", []),
+            "retries": state.get("retries", 0),
+        }
+        path.write_text(json.dumps(checkpoint, indent=2))
+        print(f"[autonomous] persist_state -- wrote {path}")
+
+    def _load_state(self) -> Optional[dict[str, Any]]:
+        """Load checkpoint from disk, or return None if no checkpoint exists."""
+        import json
+
+        path = self.project_root / self.state_file
+        if not path.exists():
+            return None
+
+        try:
+            data = json.loads(path.read_text())
+            print(f"[autonomous] load_state -- restored checkpoint from {path}")
+            return data
+        except Exception as exc:
+            logger.warning("load_state: failed to read %s: %s", path, exc)
+            return None
+
+    def _clear_state(self) -> None:
+        """Remove the checkpoint file after successful completion."""
+        path = self.project_root / self.state_file
+        if path.exists():
+            path.unlink()
+            print(f"[autonomous] clear_state -- removed {path}")
+
+    # ------------------------------------------------------------------
     # Conditional edge functions
     # ------------------------------------------------------------------
 
@@ -900,16 +975,19 @@ class AutonomousPipeline:
         print("=" * 60)
         print()
 
+        # Check for existing checkpoint to resume from
+        checkpoint = self._load_state()
+
         initial: AutonomousState = {
             "roadmap_file": self.roadmap_file,
             "dry_run": self.dry_run,
             "auto": self.auto,
             "max_retries": self.max_retries,
             "writeback_file": self.roadmap_file,
-            "phases": [],
-            "current_phase_index": 0,
-            "phase_results": [],
-            "retries": 0,
+            "phases": checkpoint.get("phases", []) if checkpoint else [],
+            "current_phase_index": checkpoint.get("current_phase_index", 0) if checkpoint else 0,
+            "phase_results": checkpoint.get("phase_results", []) if checkpoint else [],
+            "retries": checkpoint.get("retries", 0) if checkpoint else 0,
             "is_complete": False,
         }
 
