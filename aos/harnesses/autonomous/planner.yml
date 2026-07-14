@@ -1,0 +1,21 @@
+# Autonomous Harness — Planner
+id: AGT-AUTO-PLAN
+name: Autonomous Phase Planner
+harness: HAR-AUTO-001
+version: 1.0.0
+status: production
+criticality: high
+mission: "Discover phases from roadmap, determine execution order, identify dependencies."
+allowed_memory:
+  read: [all_long_term]
+  write: [phase_orders, dependency_graphs]
+  cannot_read: [founder_personal_notes]
+allowed_tools:
+  - { capability: read_memory, permission: read }
+  - { capability: search_knowledge, permission: read }
+  - { capability: write_memory, permission: request_approval }
+reasoning_structure:
+  - discover_phases_from_roadmap
+  - analyze_dependencies
+  - determine_execution_order
+  - output_phase_plan

@@ -1,0 +1,66 @@
+# SOP-AUTO-001 — Autonomous Execution Loop
+# Owner: AGT-AUTO-PLAN (discover) + AGT-AUTO-EXEC (execute) + AGT-AUTO-AUDIT (audit)
+# Frequency: Event-driven, triggered by milestone assignment
+# Purpose: End-to-end autonomous phase execution with discuss-plan-execute loops
+
+id: SOP-AUTO-001
+name: Autonomous Execution Loop
+owner: AGT-AUTO-PLAN
+version: 1.0.0
+trigger: event_driven
+
+phase_1_discover:
+  owner: AGT-AUTO-PLAN
+  actions:
+    - read: milestone_roadmap for pending phases
+    - parse: dependencies and ordering constraints
+    - determine: next executable phase
+    - output: phase_execution_plan
+
+phase_2_discuss:
+  owner: AGT-AUTO-DISPATCH
+  actions:
+    - route: phase to specialist agents
+    - facilitate: discuss loop for approach alignment
+    - collect: specialist inputs and concerns
+    - output: agreed_approach
+
+phase_3_plan:
+  owner: AGT-AUTO-PLAN
+  actions:
+    - synthesize: discuss outputs into actionable plan
+    - define: success criteria and acceptance tests
+    - identify: risks and mitigation strategies
+    - output: phase_plan
+
+phase_4_execute:
+  owner: AGT-AUTO-EXEC
+  actions:
+    - implement: per phase_plan
+    - write: tests per technical_standards
+    - track: progress via state_writer
+    - output: phase_result
+
+phase_5_audit:
+  owner: AGT-AUTO-AUDIT
+  actions:
+    - verify: implementation against plan
+    - check: completeness and quality
+    - score: against evaluation metrics
+    - output: audit_report
+
+phase_6_advance:
+  owner: AGT-AUTO-PLAN
+  actions:
+    - update: phase_state in memory
+    - advance: to next phase if audit passes
+    - trigger: approval gate for milestone completion
+    - output: updated_milestone_state
+
+escalation:
+  - trigger: phase_blocked_24_hours
+    notify: AGT-AUTO-PLAN + HUM-000001
+    urgency: high
+  - trigger: audit_fail_3_retries
+    notify: AGT-AUTO-AUDIT + HUM-000001
+    urgency: critical

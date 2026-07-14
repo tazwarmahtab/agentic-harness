@@ -1,0 +1,63 @@
+# AOS Autonomous Milestone Harness
+# Executes multi-phase development milestones via discuss-plan-execute loops.
+
+id: HAR-AUTO-001
+name: Autonomous Milestone Harness
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+criticality: high
+mission: >
+  Execute multi-phase development milestones autonomously using
+  discuss-plan-execute loops per phase, with persistent state tracking
+  and completion auditing.
+
+scope:
+  in_scope:
+    - milestone_execution
+    - phase_discovery
+    - phase_planning
+    - phase_execution
+    - state_tracking
+    - completion_audit
+  out_of_scope: [financial_modeling, hr_operations, customer_success]
+
+kpis:
+  - { name: phase_completion_rate, target: ">90%" }
+  - { name: milestone_cycle_time, target: "<5d" }
+  - { name: autonomous_execution_rate, target: ">80%" }
+
+outputs:
+  - { name: milestone_reports, type: artifact }
+  - { name: phase_audit_logs, type: artifact }
+
+inputs:
+  - { source: roadmap, items: [milestones, dependencies] }
+  - { source: knowledge, items: [technical_standards, coding_conventions] }
+
+components:
+  planner: planner.yml
+  dispatcher: dispatcher.yml
+  specialists_dir: specialists/
+  memory: memory.yml
+  tools: tools.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+sops_dir: sops/
+
+execution_cycle:
+  name: Autonomous Milestone Loop
+  trigger: event_driven
+  steps:
+    - action: discover
+      target: planner
+    - action: discuss
+      target: specialists
+    - action: plan
+      target: planner
+    - action: execute
+      target: specialists
+    - action: audit
+      target: evaluation
+    - action: log
+      target: memory

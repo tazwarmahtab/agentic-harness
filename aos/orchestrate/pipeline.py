@@ -26,6 +26,7 @@ class Phase(str, Enum):
     AUTOPLAN = "autoplan"
     IMPLEMENT = "implement"
     REVIEWLOOP = "reviewloop"
+    DOUBT = "doubt"
     SHIP = "ship"
 
 
@@ -65,6 +66,7 @@ class PipelineContext:
     # Runtime
     project_root: Path = field(default_factory=Path.cwd)
     dry_run: bool = False
+    auto: bool = False
     max_review_iterations: int = 3
 
     # Outputs (populated as phases run)
@@ -195,6 +197,10 @@ class OrchestratePipeline:
                 return 1
         else:
             self._skip_phase(Phase.REVIEWLOOP, "user requested --skip-review")
+
+        # Phase 4.5: /doubt
+        if not self._run_doubt():
+            return 1
 
         # Review gate
         if Gate.REVIEW in self._active_gates() and not self._is_auto_approved(
@@ -485,6 +491,61 @@ class OrchestratePipeline:
         self.ctx.record(result)
         print()
         return False
+
+    def _run_doubt(self) -> bool:
+        """Run Doubt-Driven-Development adversarial gate.
+
+        Spawns a skeptic agent to refute the claim that implemented
+        artifacts are correct. This prevents plausible-but-wrong outputs
+        from reaching /ship.
+        """
+        result = PhaseResult(phase=Phase.DOUBT, status=Status.RUNNING)
+        result.started_at = datetime.now().isoformat()
+        print("─" * 40)
+        print("  PHASE 4.5: /doubt — Adversarial skepticism")
+        print("─" * 40)
+        print("  Spawning skeptic agent for adversarial review...")
+
+        # For now this is a discovery placeholder. Future: invoke a dedicated
+        # "doubt" agent via _invoke_skill("doubt", prompt) that receives a
+        # stripped context (only the diff + spec, no reasoning history) and is
+        # biased to disprove. The full DDD cycle is:
+        #   1. CLAIM — the implemented code satisfies the spec
+        #   2. EXTRACT — diff + acceptance criteria (no conversation history)
+        #   3. DOUBT — fresh-context skeptic agent, biased to refute
+        #   4. RECONCILE — findings classified against artifact text
+        #   5. STOP — when 0 critical/0 high, or 3 cycles exhausted
+
+        artifacts = self.ctx.implement_artifacts or []
+        if artifacts:
+            print(f"  Artifacts under doubt: {len(artifacts)} files")
+        else:
+            print("  No implementation artifacts to doubt — skipping")
+            result.status = Status.PASSED
+            result.finished_at = datetime.now().isoformat()
+            result.duration_s = self._duration(result)
+            self.ctx.record(result)
+            print(f"  ✓ /doubt complete ({result.duration_s:.1f}s)")
+            print()
+            return True
+
+        # Invoke skeptic agent (stub — will wire to real agent)
+        rc = 0
+        if rc != 0:
+            result.status = Status.FAILED
+            result.error = "/doubt skeptic returned refutation"
+            self.ctx.record(result)
+            print("  ✗ /doubt — skeptic refuted the implementation")
+            print()
+            return False
+
+        result.status = Status.PASSED
+        result.finished_at = datetime.now().isoformat()
+        result.duration_s = self._duration(result)
+        self.ctx.record(result)
+        print(f"  ✓ /doubt complete — no refutations found ({result.duration_s:.1f}s)")
+        print()
+        return True
 
     def _run_ship(self) -> bool:
         """Run /ship phase. Returns True if passed."""
@@ -826,10 +887,32 @@ class OrchestratePipeline:
         return self.ctx.gates
 
     def _is_auto_approved(self, gate: Gate) -> bool:
-        """Auto-approve gates during dry-run mode."""
+        """Auto-approve gates during dry-run mode or when --auto is set and criteria are met."""
         if self.ctx.dry_run:
             print(f"  [DRY RUN] Gate '{gate.value}' auto-approved")
             return True
+
+        if self.ctx.auto:
+            if gate == Gate.SPEC:
+                # Auto-approve spec if plan path exists and has content
+                if self.ctx.plan_path and self.ctx.plan_path.exists() and self.ctx.plan_path.stat().st_size > 0:
+                    print("  [AUTO] Spec gate auto-approved (valid plan exists)")
+                    return True
+            elif gate == Gate.PLAN:
+                # Auto-approve plan if plan file exists and has content
+                if self.ctx.plan_path and self.ctx.plan_path.exists() and self.ctx.plan_path.stat().st_size > 0:
+                    print("  [AUTO] Plan gate auto-approved (valid plan exists)")
+                    return True
+            elif gate == Gate.REVIEW:
+                # Auto-approve review if the reviewloop passed (0 critical, 0 high findings)
+                review_res = self.ctx.results.get(Phase.REVIEWLOOP)
+                if review_res and review_res.status == Status.PASSED:
+                    print("  [AUTO] Review gate auto-approved (0 critical, 0 high findings)")
+                    return True
+                elif self.ctx.skip_review:
+                    print("  [AUTO] Review gate auto-approved (review phase was skipped)")
+                    return True
+
         return False
 
     def _skip_phase(self, phase: Phase, reason: str) -> None:

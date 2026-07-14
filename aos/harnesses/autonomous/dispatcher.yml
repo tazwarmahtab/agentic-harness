@@ -1,0 +1,21 @@
+# Autonomous Harness — Dispatcher
+id: AGT-AUTO-DISPATCH
+name: Autonomous Phase Dispatcher
+harness: HAR-AUTO-001
+version: 1.0.0
+status: production
+criticality: high
+mission: "Route each phase to the appropriate specialist agents (discuss, plan, execute)."
+allowed_memory:
+  read: [all_long_term, phase_orders]
+  write: [dispatch_log]
+  cannot_read: [founder_personal_notes]
+allowed_tools:
+  - { capability: read_memory, permission: read }
+  - { capability: write_memory, permission: write }
+  - { capability: invoke_specialist, permission: execute }
+reasoning_structure:
+  - read_phase_plan
+  - match_phase_to_specialist
+  - create_dispatch_assignments
+  - output_dispatch_log

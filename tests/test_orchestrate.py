@@ -651,3 +651,168 @@ class TestGateBlocking:
 
         rc = pipeline.run()
         assert rc == 0  # continued past spec gate
+
+
+class TestAutoFlag:
+    """Tests for the --auto flag behavior in OrchestratePipeline."""
+
+    @patch("aos.orchestrate.pipeline.OrchestratePipeline._invoke_skill")
+    def test_auto_flag_auto_approves_spec_gate(self, mock_invoke_skill):
+        """--auto should auto-approve spec gate if plan exists."""
+        mock_invoke_skill.return_value = 0, "", ""  # Simulate skill success
+        ctx = _make_ctx(auto=True, skip_spec=False, gates={"spec"}, dry_run=False)
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        rc = pipeline.run()
+        assert rc == 0
+        assert ctx.results[Phase.SPEC].status == Status.PASSED
+        # Ensure _invoke_skill was called, check it was called for spec
+        assert any(call.args[0] == "spec" for call in mock_invoke_skill.call_args_list)
+        # _is_auto_approved logic should skip the manual gate.check/wait_for_decision
+        pipeline.gates.check.assert_not_called()
+        pipeline.gates.wait_for_decision.assert_not_called()
+        # Clean up temp file
+        if ctx.plan_path and ctx.plan_path.exists():
+            ctx.plan_path.unlink()
+
+    @patch("aos.orchestrate.pipeline.OrchestratePipeline._invoke_skill")
+    def test_auto_flag_auto_approves_plan_gate(self, mock_invoke_skill):
+        """--auto should auto-approve plan gate if plan exists."""
+        mock_invoke_skill.return_value = 0, "", ""  # Simulate skill success
+        ctx = _make_ctx(
+            auto=True, skip_spec=True, skip_plan=False, gates={"plan"}, dry_run=False
+        )
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        rc = pipeline.run()
+        assert rc == 0
+        assert ctx.results[Phase.AUTOPLAN].status == Status.PASSED
+        # Ensure _invoke_skill was called, check it was called for autoplan
+        assert any(call.args[0] == "autoplan" for call in mock_invoke_skill.call_args_list)
+        pipeline.gates.check.assert_not_called()
+        pipeline.gates.wait_for_decision.assert_not_called()
+        if ctx.plan_path and ctx.plan_path.exists():
+            ctx.plan_path.unlink()
+
+    @patch("aos.orchestrate.pipeline.OrchestratePipeline._invoke_skill")
+    def test_auto_flag_auto_approves_review_gate_if_passed(self, mock_invoke_skill):
+        """--auto should auto-approve review gate if reviewloop passed."""
+        mock_invoke_skill.return_value = 0, "", ""  # Simulate skill success
+        # Mock _run_reviewloop to return True (passed)
+        with patch.object(
+            OrchestratePipeline, "_run_reviewloop", return_value=True
+        ) as mock_run_reviewloop:
+            ctx = _make_ctx(
+                auto=True,
+                skip_spec=True,
+                skip_plan=True,
+                skip_review=False,
+                gates={"review"},
+                dry_run=False,
+            )
+            # Manually set reviewloop result as PASSED for auto-approval check
+            ctx.record(
+                PhaseResult(
+                    phase=Phase.REVIEWLOOP, status=Status.PASSED, started_at=""
+                )
+            )
+            pipeline = OrchestratePipeline(ctx, MagicMock())
+
+            rc = pipeline.run()
+            assert rc == 0
+            mock_run_reviewloop.assert_called_once()
+            pipeline.gates.check.assert_not_called()
+            pipeline.gates.wait_for_decision.assert_not_called()
+            ctx.plan_path.unlink()
+
+    @patch("aos.orchestrate.pipeline.OrchestratePipeline._invoke_skill")
+    def test_auto_flag_does_not_auto_approve_review_gate_if_failed(
+        self, mock_invoke_skill
+    ):
+        """--auto should NOT auto-approve review gate if reviewloop failed."""
+        mock_invoke_skill.return_value = 0, "", ""  # Simulate skill success
+        # Mock _run_reviewloop to return True (so it doesn't stop) but Status.FAILED
+        # Wait, if it returns True, it continues. If it returns False, it stops.
+        # We want it to continue but NOT auto-approve.
+        # Actually, if it failed, it stops before the gate.
+        # Let's mock _run_reviewloop to return True but set status to FAILED.
+        def mock_failed_review(self_pipeline):
+            res = PhaseResult(phase=Phase.REVIEWLOOP, status=Status.FAILED)
+            self_pipeline.ctx.record(res)
+            return True # Continue to gate
+
+        with patch.object(
+            OrchestratePipeline, "_run_reviewloop", side_effect=mock_failed_review, autospec=True
+        ):
+            mock_gates = MagicMock()
+            # Simulate gate blocking if not auto-approved
+            mock_gates.check.return_value = GateResult(
+                gate=Gate.REVIEW, decision=GateDecision.SKIPPED, item_id="GATE-R1"
+            )
+            mock_gates.wait_for_decision.return_value = GateResult(
+                gate=Gate.REVIEW, decision=GateDecision.SKIPPED, item_id="GATE-R1"
+            )
+
+            ctx = _make_ctx(
+                auto=True,
+                skip_spec=True,
+                skip_plan=True,
+                skip_review=False,
+                gates={"review"},
+                dry_run=False,
+            )
+            pipeline = OrchestratePipeline(ctx, mock_gates)
+
+            rc = pipeline.run()
+            assert rc == 1  # Pipeline should stop due to gate not auto-approved
+            # Gate check/wait should be called since auto-approval failed
+            mock_gates.check.assert_called_once()
+            mock_gates.wait_for_decision.assert_called_once()
+            ctx.plan_path.unlink()
+
+
+class TestDoubtPhase:
+    """Tests for the new Doubt-Driven-Development phase."""
+
+    @patch("aos.orchestrate.pipeline.OrchestratePipeline._invoke_skill")
+    def test_doubt_phase_runs_and_passes_with_no_artifacts(self, mock_invoke_skill):
+        """Doubt phase should run and pass if no artifacts to doubt."""
+        mock_invoke_skill.return_value = 0, "", ""
+        ctx = _make_ctx(
+            skip_spec=True,
+            skip_plan=True,
+            skip_review=True,
+            gates=set(),
+            implement_artifacts=[],
+        )
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        rc = pipeline.run()
+        assert rc == 0
+        assert Phase.DOUBT in ctx.results
+        assert ctx.results[Phase.DOUBT].status == Status.PASSED
+        mock_invoke_skill.assert_not_called()  # No skill invoked if no artifacts
+        ctx.plan_path.unlink()
+
+    @patch("aos.orchestrate.pipeline.OrchestratePipeline._invoke_skill")
+    def test_doubt_phase_runs_and_passes_with_artifacts_and_no_refutation(
+        self, mock_invoke_skill
+    ):
+        """Doubt phase should run and pass if artifacts exist but no refutation."""
+        mock_invoke_skill.return_value = 0, "", ""  # Simulate skeptic passing
+        ctx = _make_ctx(
+            skip_spec=True,
+            skip_plan=True,
+            skip_review=True,
+            gates=set(),
+            implement_artifacts=["file1.py", "file2.py"],
+        )
+        pipeline = OrchestratePipeline(ctx, MagicMock())
+
+        rc = pipeline.run()
+        assert rc == 0
+        assert Phase.DOUBT in ctx.results
+        assert ctx.results[Phase.DOUBT].status == Status.PASSED
+        # In future, this would call the 'doubt' skill
+        # mock_invoke_skill.assert_called_with("doubt", Any(str))
+        ctx.plan_path.unlink()

@@ -22,6 +22,7 @@ class Gate(str, Enum):
     SPEC = "spec"
     PLAN = "plan"
     REVIEW = "review"
+    DOUBT = "doubt"
     SHIP = "ship"
 
 

@@ -1,0 +1,76 @@
+# Autonomous Harness — Tools
+id: TOL-AUTO-001
+name: Autonomous Harness Tool Registry
+harness: HAR-AUTO-001
+version: 1.0.0
+
+tools:
+  - id: TOL-AUTO-001
+    name: File Reader
+    capability: file_reader
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [AGT-AUTO-PLAN, AGT-AUTO-DISPATCH, AGT-AUTO-EXEC, AGT-AUTO-AUDIT]
+    inputs:
+      required: [path]
+    outputs: [content]
+
+  - id: TOL-AUTO-002
+    name: Roadmap Parser
+    capability: roadmap_parser
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      read: [AGT-AUTO-PLAN, AGT-AUTO-DISPATCH]
+    inputs:
+      required: [roadmap_path]
+    outputs: [phases, dependencies, milestones]
+
+  - id: TOL-AUTO-003
+    name: State Writer
+    capability: state_writer
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      write: [AGT-AUTO-EXEC, AGT-AUTO-AUDIT]
+    inputs:
+      required: [phase_id, state, details]
+    outputs: [status, timestamp]
+
+  - id: TOL-AUTO-004
+    name: Phase Executor
+    capability: phase_executor
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      execute: [AGT-AUTO-EXEC]
+    inputs:
+      required: [phase_id, plan, context]
+    outputs: [result, artifacts]
+
+  - id: TOL-AUTO-005
+    name: LLM Invoke
+    capability: llm_invoke
+    category: internal
+    version: 1.0.0
+    status: registered
+    permissions:
+      execute: [AGT-AUTO-PLAN, AGT-AUTO-DISPATCH, AGT-AUTO-EXEC, AGT-AUTO-AUDIT]
+    inputs:
+      required: [prompt, model]
+    outputs: [response]
+
+compositions:
+  - name: phase_cycle
+    steps:
+      - capability: roadmap_parser
+      - capability: file_reader
+      - capability: llm_invoke
+      - capability: phase_executor
+      - capability: state_writer
+    owner: Autonomous Harness

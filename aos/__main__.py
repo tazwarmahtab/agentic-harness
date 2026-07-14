@@ -5,6 +5,7 @@ Usage:
  python -m aos status [--harness NAME] [--venture NAME]
  python -m aos run [--venture NAME] [--dry-run]
  python -m aos orchestrate [--one-liner TEXT] [plan_path] [--skip-spec] [--skip-plan] [--skip-review] [--gate spec,plan,review] [--dry-run]
+ python -m aos orchestrate --autonomous [--roadmap-file PATH] [--dry-run]
  python -m aos ventures
  python -m aos approvals [list|approve-all|reject-all|approve ID|reject ID]
 """
@@ -202,6 +203,23 @@ def cmd_orchestrate(args: argparse.Namespace) -> int:
     """Run the end-to-end pipeline: /spec → /autoplan → /implement → /reviewloop → /ship."""
     root = find_project_root()
 
+    # Autonomous mode: delegate to AutonomousPipeline
+    if getattr(args, "autonomous", False):
+        from aos.orchestrate.autonomous import AutonomousPipeline
+
+        roadmap_file = getattr(args, "roadmap_file", "ROADMAP.md")
+        gate_timeout = getattr(args, "gate_timeout", 300.0)
+        max_retries = getattr(args, "max_retries", 3)
+        pipeline = AutonomousPipeline(
+            roadmap_file=roadmap_file,
+            dry_run=args.dry_run,
+            auto=getattr(args, "auto", False),
+            project_root=root,
+            gate_timeout_s=gate_timeout,
+            max_retries=max_retries,
+        )
+        return pipeline.run()
+
     # Resolve plan path
     plan_path: Optional[Path] = None
     if args.plan_path:
@@ -243,6 +261,7 @@ def cmd_orchestrate(args: argparse.Namespace) -> int:
         gates=gates,
         project_root=root,
         dry_run=args.dry_run,
+        auto=args.auto,
         max_review_iterations=args.max_review_iterations,
     )
 
@@ -412,6 +431,11 @@ def main() -> int:
         help="Enforce gate(s): spec, plan, review (repeatable, default: all)",
     )
     orch_parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Fast-lane: auto-approve gates when exit criteria are met",
+    )
+    orch_parser.add_argument(
         "--dry-run", action="store_true", help="Log actions without executing"
     )
     orch_parser.add_argument(
@@ -419,6 +443,28 @@ def main() -> int:
         type=int,
         default=3,
         help="Max review-fix iterations (default: 3)",
+    )
+    orch_parser.add_argument(
+        "--autonomous",
+        action="store_true",
+        help="Run autonomous milestone pipeline (discuss/plan/execute loop)",
+    )
+    orch_parser.add_argument(
+        "--roadmap-file",
+        default="ROADMAP.md",
+        help="Path to roadmap file for autonomous mode (default: ROADMAP.md)",
+    )
+    orch_parser.add_argument(
+        "--gate-timeout",
+        type=float,
+        default=300.0,
+        help="Seconds to wait for founder decision on approval gates (default: 300)",
+    )
+    orch_parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Max rollback retries per phase before hard stop (default: 3)",
     )
 
     # approvals command

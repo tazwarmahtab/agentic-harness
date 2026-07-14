@@ -1,0 +1,90 @@
+# Autonomous Harness — Evaluation Framework
+id: EVAL-AUTO-001
+name: Autonomous Harness Evaluation Framework
+harness: HAR-AUTO-001
+version: 1.0.0
+
+harness_metrics:
+  - name: phase_completion_rate
+    target: ">90%"
+    frequency: per_milestone
+    owner: AGT-AUTO-AUDIT
+    measurement: phases_completed_divided_by_total
+
+  - name: milestone_cycle_time
+    target: "<5d"
+    frequency: per_milestone
+    owner: AGT-AUTO-PLAN
+    measurement: days_from_start_to_completion
+
+  - name: autonomous_execution_rate
+    target: ">80%"
+    frequency: per_milestone
+    owner: AGT-AUTO-AUDIT
+    measurement: phases_without_human_intervention_divided_by_total
+
+specialist_metrics:
+  AGT-AUTO-EXEC:
+    - implementation_completeness: { weight: 0.35 }
+    - plan_adherence: { weight: 0.30 }
+    - code_quality: { weight: 0.20 }
+    - execution_speed: { weight: 0.15 }
+
+  AGT-AUTO-AUDIT:
+    - audit_accuracy: { weight: 0.35 }
+    - gap_detection_rate: { weight: 0.30 }
+    - false_positive_rate: { weight: 0.20, hard_fail_if: ">20%" }
+    - audit_completeness: { weight: 0.15 }
+
+evaluation_pipeline:
+  1. phase_completes:
+     output: phase_result
+  2. self_check_passes:
+     condition: all self_check questions return true
+  3. auditor_scores:
+     metrics: specialist_metrics[agent_id]
+     hard_fail_check: any metric with hard_fail_if condition
+  4. result:
+    - pass: store_artifact + update_state + advance_phase
+    - fail_hard: reject_output + alert_founder + log_failure
+    - fail_soft: return_to_executor_with_feedback + retry
+    - low_confidence: escalate_to_founder_with_context
+
+continuous_improvement:
+  cycle:
+    - step: compare_planned_vs_actual
+      owner: AGT-AUTO-AUDIT
+      input: phase_outcomes_from_milestone
+      output: variance_report
+    - step: identify_bottlenecks_and_failures
+      owner: AGT-AUTO-AUDIT
+      input: variance_report
+      output: bottleneck_list
+    - step: update_artifacts
+      owner: AGT-AUTO-DISPATCH
+      input: bottleneck_list
+      output: updated_sops_and_routing
+      artifacts_affected: [sops/autonomous-execution.yml]
+    - step: update_benchmarks
+      owner: AGT-AUTO-AUDIT
+      input: specialist_metrics
+      output: benchmark_update
+
+  improvement_sources:
+    - phase_retrospective: "ai_system/System/CHECK/REVIEW.md"
+    - lessons: "ai_system/System/ACT/LESSONS.md"
+    - specialist_evaluations: evaluation scores above
+    - phase_metrics: phase_completion_rate, cycle_time, autonomous_rate
+
+  metrics_tracked:
+    - phase_completion_rate_pct
+    - milestone_cycle_time_days
+    - autonomous_execution_rate_pct
+    - human_intervention_count_per_milestone
+    - hard_fail_count_per_phase
+    - auditor_accuracy_pct
+
+  review_cadence:
+    per_phase: [phase_audit, state_checkpoint]
+    per_milestone: [milestone_retrospective]
+    monthly: [autonomous_rate_review]

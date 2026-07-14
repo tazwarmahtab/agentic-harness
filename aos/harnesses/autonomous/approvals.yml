@@ -1,0 +1,68 @@
+# Autonomous Harness — Approval Gates
+id: POL-AUTO-001
+name: Autonomous Harness Approval Gates
+harness: HAR-AUTO-001
+version: 1.0.0
+status: production
+
+rules:
+  - id: POL-AUTO-001
+    name: Phase Transition Gate
+    category: execution
+    rule:
+      if:
+        action: advance_to_next_phase
+        current_phase_status: completed
+      then: "Auto-advance if audit passes. Requires approval if audit is soft-fail."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 24
+
+  - id: POL-AUTO-002
+    name: Milestone Completion Gate
+    category: governance
+    rule:
+      if:
+        action: complete_milestone
+        all_phases_completed: true
+      then: "Requires Founder approval for milestone sign-off."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 48
+
+  - id: POL-AUTO-003
+    name: Phase Rollback Gate
+    category: execution
+    rule:
+      if:
+        action: rollback_phase
+        rollback_reason: [audit_failure, blocker, scope_change]
+      then: "Requires Founder approval before rollback."
+    action: require_approval
+    approval_owner: HUM-000001
+    approval_expires_hours: 12
+
+auto_actions:
+  - discover_phases
+  - execute_discuss_loop
+  - execute_plan_loop
+  - run_phase_audit
+  - update_state_tracking
+  - log_decision
+
+decision_queue_format:
+  bundled: true
+  summary_per_decision: [action_description, risk_assessment]
+  actions_available: [approve_all, reject]
+  delivery: console_queue
+
+delegation:
+  enabled: true
+  rule: "Delegation is explicit and temporary."
+  format:
+    delegator: HUM-000001
+    delegatee: [agent_id]
+    capability: [specific_action]
+    duration_hours: [48]
+    auto_expires: true
+  current_delegations: []
