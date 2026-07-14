@@ -78,6 +78,9 @@ class AutonomousState(TypedDict, total=False):
     # Gate tracking
     pending_gate_item_id: Optional[str]
 
+    # Routing
+    _next_action: str
+
     # Control
     is_complete: bool
     error: Optional[str]
@@ -192,25 +195,30 @@ class AutonomousPipeline:
 
     def _discover_phases(self, state: AutonomousState) -> dict[str, Any]:
         """Parse the roadmap file and populate *phases* in state."""
-        logger.info("discover_phases: reading %s", self.roadmap_file)
-        print(f"[autonomous] discover_phases -- reading {self.roadmap_file}")
+        roadmap_file = state.get("roadmap_file", self.roadmap_file)
+        logger.info("discover_phases: reading %s", roadmap_file)
+        print(f"[autonomous] discover_phases -- reading {roadmap_file}")
 
-        roadmap_path = self.project_root / self.roadmap_file
+        roadmap_path = Path(roadmap_file)
+        if not roadmap_path.is_absolute():
+            roadmap_path = self.project_root / roadmap_file
         phases: list[dict[str, Any]] = []
 
         if roadmap_path.exists():
             text = roadmap_path.read_text()
             # Simple markdown-phase extraction: lines starting with "## Phase"
-            for idx, line in enumerate(text.splitlines()):
+            phase_counter = 0
+            for line in text.splitlines():
                 if line.lower().startswith("## phase"):
                     title = line.lstrip("#").strip()
                     phases.append(
                         {
-                            "id": f"phase-{idx}",
+                            "id": f"phase-{phase_counter}",
                             "title": title,
                             "status": PhaseStatus.PENDING.value,
                         }
                     )
+                    phase_counter += 1
 
         if not phases:
             # Fallback: single synthetic phase so the loop has something to do.
