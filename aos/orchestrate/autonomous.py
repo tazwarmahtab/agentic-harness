@@ -129,8 +129,11 @@ class AutonomousPipeline:
                 decision_log_path=log_path,
             )
 
-        # Load registry and llm client
-        self.registry = load_registry(self.project_root / "aos" / "harnesses")
+        # Load registry and llm client — load from the autonomous subdirectory
+        # so HAR-AUTO-001 and its specialists are found.
+        self.registry = load_registry(
+            self.project_root / "aos" / "harnesses" / "autonomous"
+        )
         self.llm = RouterLLMClient()
 
         self.graph = self._build_graph()
