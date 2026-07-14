@@ -1,11 +1,11 @@
 /* AOS Dashboard — Accessibility & Responsive (WCAG 2.1 AA)
- * Follows Odysseus design tokens. Keyboard-focusable, screen-reader friendly.
+ * Design tokens from DESIGN.md. Keyboard-focusable, screen-reader friendly.
  */
 
 /* ── Focus Styles (WCAG 2.4.7) ─────────────────────────────────────── */
 
 *:focus-visible {
-  outline: 2px solid var(--color-accent, #3b82f6);
+  outline: 2px solid var(--aos-primary, #10B981);
   outline-offset: 2px;
 }
 
@@ -15,7 +15,7 @@
 .aos-chip:focus-visible,
 .aos-layer-tab:focus-visible,
 .aos-view-btn:focus-visible {
-  outline: 2px solid var(--color-accent, #3b82f6);
+  outline: 2px solid var(--aos-primary, #10B981);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -26,14 +26,16 @@
   position: absolute;
   top: -40px;
   left: 0;
-  background: var(--color-accent, #3b82f6);
-  color: #fff;
+  background: var(--aos-primary, #10B981);
+  color: #0D1117;
   padding: 8px 16px;
   z-index: 100000;
+  font-family: var(--aos-font-body, 'DM Sans', sans-serif);
   font-size: 14px;
+  font-weight: 500;
   text-decoration: none;
   border-radius: 0 0 4px 0;
-  transition: top 0.15s;
+  transition: top 100ms;
 }
 
 .aos-skip-link:focus {
@@ -330,9 +332,9 @@
   position: relative;
   width: 480px;
   max-width: 90vw;
-  background: var(--panel);
-  border: 1px solid color-mix(in srgb, var(--fg) 15%, transparent);
-  border-radius: 12px;
+  background: var(--aos-surface, #161B22);
+  border: 1px solid var(--aos-border, #30363D);
+  border-radius: 8px;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
   overflow: hidden;
 }
@@ -342,8 +344,9 @@
   padding: 16px 20px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--fg) 10%, transparent);
-  color: var(--fg);
+  border-bottom: 1px solid var(--aos-border, #30363D);
+  color: var(--aos-text, #E6EDF3);
+  font-family: var(--aos-font-body, 'DM Sans', sans-serif);
   font-size: 16px;
   outline: none;
 }
@@ -368,7 +371,7 @@
 
 .aos-palette-item:hover,
 .aos-palette-item.active {
-  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  background: var(--aos-surface-raised, #1C2128);
 }
 
 .aos-palette-key {
@@ -377,11 +380,12 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  background: color-mix(in srgb, var(--fg) 10%, transparent);
+  background: var(--aos-surface-raised, #1C2128);
   border-radius: 4px;
-  font-size: 12px;
+  font-family: var(--aos-font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
   font-weight: 600;
-  opacity: 0.6;
+  color: var(--aos-text-subtle, #6E7681);
 }
 
 .aos-palette-label {
@@ -391,6 +395,6 @@
 .aos-palette-empty {
   text-align: center;
   padding: 20px;
-  opacity: 0.4;
+  color: var(--aos-text-subtle, #6E7681);
   font-size: 13px;
 }

@@ -62,7 +62,7 @@ function renderStatusSection(container, state) {
 
     const dot = document.createElement('span');
     dot.className = 'aos-dot';
-    const dotColor = { online: '#22c55e', offline: '#ef4444', active: '#3b82f6', idle: '#6b7280', warning: '#f59e0b', ok: '#22c55e' };
+    const dotColor = { online: '#10B981', offline: '#EF4444', active: '#10B981', idle: '#6E7681', warning: '#F59E0B', ok: '#10B981' };
     dot.style.backgroundColor = dotColor[item.status] || '#6b7280';
 
     const label = document.createElement('span');

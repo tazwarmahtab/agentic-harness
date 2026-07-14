@@ -43,6 +43,26 @@ let _isOpen = false;
 let _currentUnsub = null;
 let _storeUnsub = null;
 
+function _loadDesignFonts() {
+  if (document.getElementById('aos-design-fonts')) return;
+  const link = document.createElement('link');
+  link.id = 'aos-design-fonts';
+  link.rel = 'preconnect';
+  link.href = 'https://fonts.googleapis.com';
+  document.head.appendChild(link);
+
+  const link2 = document.createElement('link');
+  link2.rel = 'preconnect';
+  link2.href = 'https://fonts.gstatic.com';
+  link2.crossOrigin = 'anonymous';
+  document.head.appendChild(link2);
+
+  const style = document.createElement('link');
+  style.rel = 'stylesheet';
+  style.href = 'https://fonts.googleapis.com/css2?family=Clash+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap';
+  document.head.appendChild(style);
+}
+
 function _ensurePanel() {
   let modal = document.getElementById('aos-dashboard-modal');
   if (!modal) {
@@ -85,6 +105,7 @@ export function openPanel() {
   if (_isOpen) return;
   _isOpen = true;
 
+  _loadDesignFonts();
   const modal = _ensurePanel();
   modal.classList.remove('hidden');
 

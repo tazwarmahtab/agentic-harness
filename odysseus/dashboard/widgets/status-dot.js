@@ -5,16 +5,16 @@
 
 export function getStatusColor(status) {
   const colors = {
-    ok: '#22c55e',
-    running: '#3b82f6',
-    active: '#3b82f6',
-    idle: '#6b7280',
-    error: '#ef4444',
-    warning: '#f59e0b',
-    offline: '#6b7280',
-    online: '#22c55e',
+    ok: '#10B981',
+    running: '#10B981',
+    active: '#10B981',
+    idle: '#6E7681',
+    error: '#EF4444',
+    warning: '#F59E0B',
+    offline: '#6E7681',
+    online: '#10B981',
   };
-  return colors[status] || '#6b7280';
+  return colors[status] || '#6E7681';
 }
 
 export function renderStatusDot(container, status, label = '') {
