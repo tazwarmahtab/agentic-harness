@@ -220,6 +220,50 @@ def _get_output_format(agent_id: str) -> str:
             "}"
         )
 
+    if agent_id == "AGT-AUTO-EXEC":
+        return (
+            "OUTPUT FORMAT: You MUST respond with ONLY a JSON object.\n"
+            "{\n"
+            '  "summary": "one-line summary of what you implemented",\n'
+            '  "artifacts": ["path/to/file1.py", "path/to/file2.py"],\n'
+            '  "tests_written": ["test_name_1", "test_name_2"],\n'
+            '  "tests_passing": true,\n'
+            '  "acceptance_criteria_met": [true, true, false],\n'
+            '  "blockers": [],\n'
+            '  "notes": "anything the auditor should know"\n'
+            "}"
+        )
+
+    if agent_id == "AGT-AUTO-AUDIT":
+        return (
+            "OUTPUT FORMAT: You MUST respond with ONLY a JSON object.\n"
+            "{\n"
+            '  "verdict": "PASS or FAIL",\n'
+            '  "summary": "one-line audit summary",\n'
+            '  "criterion_results": [\n'
+            "    {\n"
+            '      "criterion": "the acceptance criterion",\n'
+            '      "met": true,\n'
+            '      "evidence": "specific evidence or file reference"\n'
+            "    }\n"
+            "  ],\n"
+            '  "gaps": [\n'
+            "    {\n"
+            '      "description": "what is missing",\n'
+            '      "severity": "critical|high|medium|low",\n'
+            '      "remediation": "specific fix recommendation"\n'
+            "    }\n"
+            "  ],\n"
+            '  "scores": {\n'
+            '    "plan_adherence": 0.0,\n'
+            '    "implementation_completeness": 0.0,\n'
+            '    "test_coverage": 0.0,\n'
+            '    "scope_discipline": 0.0\n'
+            "  },\n"
+            '  "confidence": "high|medium|low"\n'
+            "}"
+        )
+
     # Default: request structured JSON
     return (
         "OUTPUT FORMAT: Respond with a JSON object containing your analysis.\n"

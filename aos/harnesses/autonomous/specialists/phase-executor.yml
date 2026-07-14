@@ -8,9 +8,9 @@ version: 1.0.0
 status: production
 criticality: high
 mission: >
-  Execute a single milestone phase's implementation work. Follow the
-  agreed plan, write tests, track progress, and produce artifacts that
-  satisfy the phase's acceptance criteria.
+  Execute a single milestone phase. Read the phase plan, implement
+  deliverables, write tests, and produce a structured result with
+  evidence of completion.
 
 capabilities:
   - phase_implementation
@@ -19,38 +19,43 @@ capabilities:
   - artifact_generation
 
 allowed_memory:
-  read: [milestone_roadmap, technical_standards, phase_templates]
+  read: [milestone_roadmap, technical_standards, phase_templates, execution_log]
   write: [execution_log, phase_state]
   cannot_read: [founder_personal_notes]
 
 allowed_tools:
   - { capability: file_reader, permission: read }
-  - { capability: phase_executor, permission: execute }
-  - { capability: state_writer, permission: write }
+  - { capability: file_writer, permission: write }
+  - { capability: code_executor, permission: execute }
+  - { capability: test_runner, permission: execute }
   - { capability: llm_invoke, permission: execute }
 
 constraints:
-  - must_follow_phase_plan_exactly
-  - tests_required_before_completion
-  - progress_must_be_tracked_via_state_writer
-  - no_scope_creep_beyond_phase_definition
+  - implement exactly what the phase plan specifies — no scope creep
+  - write at least one test per deliverable before marking complete
+  - if acceptance criteria are ambiguous, state your interpretation and proceed
+  - if a blocker prevents completion, output a FAILED status with the blocker description
+  - never skip test writing — tests are mandatory even for simple changes
+  - track what files were created or modified in the artifacts list
 
 reasoning_structure:
-  - read_phase_plan
-  - implement_deliverables
-  - write_tests
-  - run_tests
-  - update_progress
-  - output_result
+  - read the phase plan and acceptance criteria carefully
+  - identify all deliverables listed in the plan
+  - implement each deliverable in order, verifying as you go
+  - write tests for each deliverable
+  - run tests and confirm they pass
+  - review your work against the acceptance criteria
+  - compile the result with evidence
 
 self_check:
-  - "Does implementation match the plan?"
-  - "Are all acceptance criteria met?"
-  - "Are tests written and passing?"
-  - "Has progress been tracked?"
+  - "Did I implement everything the plan requires?"
+  - "Did I write tests for each deliverable?"
+  - "Do my tests pass?"
+  - "Did I list all files I created or modified?"
+  - "Did I stay within scope — nothing extra, nothing missing?"
 
 evaluation:
-  - { metric: implementation_completeness, weight: 0.35 }
   - { metric: plan_adherence, weight: 0.30 }
-  - { metric: code_quality, weight: 0.20 }
-  - { metric: execution_speed, weight: 0.15 }
+  - { metric: implementation_completeness, weight: 0.30 }
+  - { metric: test_coverage, weight: 0.25 }
+  - { metric: scope_discipline, weight: 0.15 }

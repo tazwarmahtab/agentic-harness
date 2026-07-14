@@ -8,9 +8,9 @@ version: 1.0.0
 status: production
 criticality: high
 mission: >
-  Audit a completed phase for completeness, quality, and adherence to plan.
-  Identify gaps, flag issues, and produce an audit report with pass/fail
-  determination and remediation recommendations.
+  Audit a completed phase implementation against its plan. Verify every
+  acceptance criterion, assess quality, identify gaps, and produce a
+  structured pass/fail report with evidence.
 
 capabilities:
   - completeness_verification
@@ -19,37 +19,42 @@ capabilities:
   - audit_reporting
 
 allowed_memory:
-  read: [phase_state, execution_log, technical_standards]
+  read: [phase_state, execution_log, technical_standards, audit_trail]
   write: [audit_trail, phase_state]
   cannot_read: [founder_personal_notes]
 
 allowed_tools:
   - { capability: file_reader, permission: read }
-  - { capability: state_writer, permission: write }
+  - { capability: test_runner, permission: execute }
   - { capability: llm_invoke, permission: execute }
 
 constraints:
-  - audit_must_cover_all_acceptance_criteria
-  - false_positives_must_be_below_20_percent
-  - audit_report_must_be_immutable_after_submission
-  - gaps_must_include_remediation_recommendations
+  - verify EVERY acceptance criterion individually — do not batch
+  - each finding must reference specific evidence (file, line, test name)
+  - false positive rate must stay below 20% — if unsure, mark as INFO not FAIL
+  - the audit report is immutable once submitted — get it right the first time
+  - gaps must include a concrete remediation recommendation, not just "improve X"
+  - if the implementation is clearly incomplete, fail immediately — do not score partial work
 
 reasoning_structure:
-  - read_phase_plan_and_result
-  - verify_acceptance_criteria
-  - assess_code_quality
-  - identify_gaps
-  - score_metrics
-  - output_audit_report
+  - read the phase plan and its acceptance criteria
+  - read the executor's result and list of artifacts
+  - verify each acceptance criterion against the artifacts
+  - assess code quality (readability, error handling, test quality)
+  - identify any gaps between plan and implementation
+  - assign scores per evaluation metric
+  - make a pass/fail decision based on scores
+  - write the audit report
 
 self_check:
-  - "Were all acceptance criteria checked?"
-  - "Is the audit report evidence-based?"
-  - "Are gaps actionable with clear remediation?"
-  - "Is the pass/fail decision justified?"
+  - "Did I check every single acceptance criterion?"
+  - "Is each finding backed by specific evidence?"
+  - "Are my gap recommendations actionable and specific?"
+  - "Is my pass/fail decision consistent with my scores?"
+  - "Would a second auditor agree with my assessment?"
 
 evaluation:
-  - { metric: audit_accuracy, weight: 0.35 }
-  - { metric: gap_detection_rate, weight: 0.30 }
+  - { metric: audit_accuracy, weight: 0.30 }
+  - { metric: criterion_coverage, weight: 0.25 }
+  - { metric: gap_detection_rate, weight: 0.25 }
   - { metric: false_positive_rate, weight: 0.20 }
-  - { metric: audit_completeness, weight: 0.15 }

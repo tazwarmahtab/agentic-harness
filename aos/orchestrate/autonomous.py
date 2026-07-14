@@ -194,7 +194,30 @@ class AutonomousPipeline:
     # ------------------------------------------------------------------
 
     def _discover_phases(self, state: AutonomousState) -> dict[str, Any]:
-        """Parse the roadmap file and populate *phases* in state."""
+        """Parse the roadmap file and populate *phases* in state.
+
+        Supports two roadmap formats:
+
+        Simple (one-liner per phase)::
+
+            ## Phase 1: Foundation
+            Set up scaffolding.
+
+        Rich (with acceptance criteria and deliverables)::
+
+            ## Phase 1: Foundation
+            Set up project scaffolding and core modules.
+
+            **Acceptance Criteria:**
+            - Directory structure created
+            - pyproject.toml configured
+            - CI pipeline passes
+
+            **Deliverables:**
+            - aos/ package skeleton
+            - pyproject.toml
+            - .github/workflows/ci.yml
+        """
         roadmap_file = state.get("roadmap_file", self.roadmap_file)
         logger.info("discover_phases: reading %s", roadmap_file)
         print(f"[autonomous] discover_phases -- reading {roadmap_file}")
@@ -206,19 +229,7 @@ class AutonomousPipeline:
 
         if roadmap_path.exists():
             text = roadmap_path.read_text()
-            # Simple markdown-phase extraction: lines starting with "## Phase"
-            phase_counter = 0
-            for line in text.splitlines():
-                if line.lower().startswith("## phase"):
-                    title = line.lstrip("#").strip()
-                    phases.append(
-                        {
-                            "id": f"phase-{phase_counter}",
-                            "title": title,
-                            "status": PhaseStatus.PENDING.value,
-                        }
-                    )
-                    phase_counter += 1
+            phases = self._parse_roadmap(text)
 
         if not phases:
             # Fallback: single synthetic phase so the loop has something to do.
@@ -226,11 +237,19 @@ class AutonomousPipeline:
                 {
                     "id": "phase-0",
                     "title": "Default phase (no roadmap phases found)",
+                    "description": "",
+                    "acceptance_criteria": [],
+                    "deliverables": [],
                     "status": PhaseStatus.PENDING.value,
                 }
             )
 
         print(f"[autonomous] discovered {len(phases)} phase(s)")
+        for ph in phases:
+            criteria = len(ph.get("acceptance_criteria", []))
+            deliverables = len(ph.get("deliverables", []))
+            print(f"  - {ph['id']}: {ph['title']} ({criteria} criteria, {deliverables} deliverables)")
+
         return {
             "phases": phases,
             "current_phase_index": 0,
@@ -238,6 +257,73 @@ class AutonomousPipeline:
             "retries": 0,
             "is_complete": False,
         }
+
+    @staticmethod
+    def _parse_roadmap(text: str) -> list[dict[str, Any]]:
+        """Parse markdown roadmap into structured phase dicts."""
+        import re
+
+        phases: list[dict[str, Any]] = []
+        # Split on ## Phase headings (prepend \n to ensure first heading is found)
+        sections = re.split(r"\n(?=## Phase\b)", "\n" + text)
+        # Filter out empty leading section from the prepend
+        sections = [s for s in sections if s.strip()]
+
+        phase_counter = 0
+        for section in sections:
+            lines = section.strip().splitlines()
+            if not lines or not lines[0].lower().startswith("## phase"):
+                continue
+
+            title = lines[0].lstrip("#").strip()
+            body = "\n".join(lines[1:]).strip()
+
+            # Extract description (text before first ** block or bullet list)
+            description_lines: list[str] = []
+            acceptance_criteria: list[str] = []
+            deliverables: list[str] = []
+
+            current_section = "description"
+            for line in lines[1:]:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+
+                # Detect section headers
+                lower = stripped.lower()
+                if "**acceptance criteria**" in lower or "acceptance criteria:" in lower:
+                    current_section = "criteria"
+                    continue
+                if "**deliverables**" in lower or "deliverables:" in lower:
+                    current_section = "deliverables"
+                    continue
+                if "**dependencies**" in lower or "dependencies:" in lower:
+                    current_section = "done"
+                    continue
+
+                # Strip bullet markers
+                bullet = re.sub(r"^[-*]\s+", "", stripped)
+
+                if current_section == "criteria":
+                    acceptance_criteria.append(bullet)
+                elif current_section == "deliverables":
+                    deliverables.append(bullet)
+                elif current_section == "description":
+                    description_lines.append(stripped)
+
+            phases.append(
+                {
+                    "id": f"phase-{phase_counter}",
+                    "title": title,
+                    "description": " ".join(description_lines),
+                    "acceptance_criteria": acceptance_criteria,
+                    "deliverables": deliverables,
+                    "status": PhaseStatus.PENDING.value,
+                }
+            )
+            phase_counter += 1
+
+        return phases
 
     # ------------------------------------------------------------------
     # Gate nodes (POL-AUTO-001, POL-AUTO-002)
@@ -365,7 +451,12 @@ class AutonomousPipeline:
     # ------------------------------------------------------------------
 
     def _run_phase(self, state: AutonomousState) -> dict[str, Any]:
-        """Execute the discuss -> plan -> execute sub-loop for the current phase."""
+        """Execute the discuss -> plan -> execute sub-loop for the current phase.
+
+        Builds rich context from the phase plan (description, acceptance
+        criteria, deliverables) and passes it to the executor and auditor
+        specialists via ``build_prompt``.
+        """
         idx = state.get("current_phase_index", 0)
         phases = state.get("phases", [])
         if idx >= len(phases):
@@ -380,7 +471,13 @@ class AutonomousPipeline:
         retry_tag = f" (retry {retries})" if retries else ""
         print(f"[autonomous] run_phase -- {phase_id}: {title}{retry_tag}")
 
+        # Build rich phase context for specialists
+        phase_context = self._build_phase_context(phase, state)
+
         error_msg: Optional[str] = None
+        exec_output: Optional[str] = None
+        audit_output: Optional[str] = None
+
         if state.get("dry_run"):
             print(f"[autonomous]   (dry-run, skipping execution for {phase_id})")
         else:
@@ -394,18 +491,56 @@ class AutonomousPipeline:
                     error_msg = "Specialist agents not found"
                 else:
                     try:
-                        exec_prompt = build_prompt(executor, memory_context=f"Phase: {title}")
+                        # --- Executor ---
+                        exec_prompt = build_prompt(
+                            executor, memory_context=phase_context,
+                        )
                         resp = self.llm.complete(
                             model="default",
                             system=exec_prompt,
-                            messages=[{"role": "user", "content": f"Implement phase: {title}"}]
+                            messages=[{
+                                "role": "user",
+                                "content": (
+                                    f"Execute phase: {title}\n\n"
+                                    f"{phase_context}\n\n"
+                                    "Implement the deliverables listed above. "
+                                    "Write tests. Output your result as JSON."
+                                ),
+                            }],
                         )
-                        audit_prompt = build_prompt(auditor, memory_context=f"Result: {resp.content}")
+                        exec_output = resp.content
+                        print(f"[autonomous]   executor output: {len(exec_output)} chars")
+
+                        # --- Auditor ---
+                        audit_prompt = build_prompt(
+                            auditor,
+                            memory_context=(
+                                f"{phase_context}\n\n"
+                                f"EXECUTOR OUTPUT:\n{exec_output}"
+                            ),
+                        )
                         audit_resp = self.llm.complete(
                             model="default",
                             system=audit_prompt,
-                            messages=[{"role": "user", "content": f"Audit phase output: {resp.content}"}]
+                            messages=[{
+                                "role": "user",
+                                "content": (
+                                    f"Audit the implementation of phase: {title}\n\n"
+                                    "Verify each acceptance criterion against the "
+                                    "executor's output. Output your audit as JSON "
+                                    "with a 'verdict' field: PASS or FAIL."
+                                ),
+                            }],
                         )
+                        audit_output = audit_resp.content
+                        print(f"[autonomous]   auditor output: {len(audit_output)} chars")
+
+                        # --- Check verdict ---
+                        verdict = self._parse_audit_verdict(audit_output)
+                        if verdict == "FAIL":
+                            error_msg = f"Audit FAILED for {phase_id}"
+                            print(f"[autonomous]   ✗ audit: FAIL")
+
                     except Exception as exc:
                         error_msg = f"LLM execution failed: {exc}"
 
@@ -419,6 +554,8 @@ class AutonomousPipeline:
                 "started_at": started,
                 "finished_at": finished,
                 "error": error_msg,
+                "exec_output": exec_output,
+                "audit_output": audit_output,
             }
             return {
                 "phase_results": state.get("phase_results", []) + [record],
@@ -431,8 +568,61 @@ class AutonomousPipeline:
             "status": PhaseStatus.PASSED.value,
             "started_at": started,
             "finished_at": finished,
+            "exec_output": exec_output,
+            "audit_output": audit_output,
         }
         return {"phase_results": state.get("phase_results", []) + [record]}
+
+    @staticmethod
+    def _build_phase_context(
+        phase: dict[str, Any], state: AutonomousState,
+    ) -> str:
+        """Build a rich context string for specialist agents."""
+        parts: list[str] = []
+        parts.append(f"PHASE: {phase.get('title', phase['id'])}")
+        parts.append(f"PHASE ID: {phase['id']}")
+
+        description = phase.get("description", "")
+        if description:
+            parts.append(f"\nDESCRIPTION:\n{description}")
+
+        criteria = phase.get("acceptance_criteria", [])
+        if criteria:
+            parts.append("\nACCEPTANCE CRITERIA (you MUST satisfy all of these):")
+            for i, c in enumerate(criteria, 1):
+                parts.append(f"  {i}. {c}")
+
+        deliverables = phase.get("deliverables", [])
+        if deliverables:
+            parts.append("\nDELIVERABLES (you MUST produce all of these):")
+            for d in deliverables:
+                parts.append(f"  - {d}")
+
+        retries = state.get("retries", 0)
+        if retries:
+            parts.append(f"\nNOTE: This is retry #{retries}. The previous attempt "
+                         f"failed. Review the prior error and avoid repeating it.")
+
+        prior_results = state.get("phase_results", [])
+        if prior_results:
+            last = prior_results[-1]
+            if last.get("error"):
+                parts.append(f"\nPRIOR ATTEMPT ERROR:\n{last['error']}")
+
+        return "\n".join(parts)
+
+    @staticmethod
+    def _parse_audit_verdict(audit_output: str) -> str:
+        """Extract PASS/FAIL verdict from audit output."""
+        import re
+        # Look for "verdict": "PASS" or "verdict": "FAIL" in JSON-like output
+        match = re.search(r'"verdict"\s*:\s*"(PASS|FAIL)"', audit_output, re.IGNORECASE)
+        if match:
+            return match.group(1).upper()
+        # Fallback: look for standalone PASS or FAIL
+        if re.search(r"\bFAIL\b", audit_output):
+            return "FAIL"
+        return "PASS"
 
     # ------------------------------------------------------------------
     # Phase result + rollback nodes (POL-AUTO-003)
