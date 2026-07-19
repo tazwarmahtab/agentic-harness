@@ -30,6 +30,8 @@ import * as netsoOverviewPage from './pages/netso/netso-overview.js';
 import * as customerGenerationPage from './pages/netso/customer-generation.js';
 import * as customerSavingsPage from './pages/netso/customer-savings.js';
 import * as customerBillingPage from './pages/netso/customer-billing.js';
+import * as internalPortfolioPage from './pages/netso/internal-portfolio.js';
+import * as internalFinancialsPage from './pages/netso/internal-financials.js';
 
 const PAGES = {
   overview:   overviewPage,
@@ -45,6 +47,8 @@ const PAGES = {
   'netso-generation': customerGenerationPage,
   'netso-savings': customerSavingsPage,
   'netso-billing': customerBillingPage,
+  'netso-portfolio': internalPortfolioPage,
+  'netso-financials': internalFinancialsPage,
 };
 
 let _isOpen = false;
