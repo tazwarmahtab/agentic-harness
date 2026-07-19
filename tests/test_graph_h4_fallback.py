@@ -149,26 +149,44 @@ class TestSpecialistsNodeTeamShadowing:
     def test_team_results_preserved_with_solo(self):
         """Team results must appear in specialist_results alongside solo results."""
         from aos.graph import specialists_node
+        from aos.schemas.harness import AgentTeam, TeamMember
 
-        bundle = _build_registry().harnesses.get("HAR-EXEC-001")
-        assert bundle is not None
+        # Build a synthetic bundle with a team using mocks
+        team_agent_a = MagicMock()
+        team_agent_a.id = "AGT-TEST-T1"
+        team_agent_b = MagicMock()
+        team_agent_b.id = "AGT-TEST-T2"
+        solo_agent = MagicMock()
+        solo_agent.id = "AGT-TEST-SOLO"
 
-        # Create a team with 2 members
-        team_member_ids = list(bundle.teams.values())[0].members[:2]
-        team_agent_ids = [m.agent_id for m in team_member_ids]
+        team = AgentTeam(
+            id="TEAM-TEST-01",
+            name="Test Team",
+            members=[
+                TeamMember(agent_id="AGT-TEST-T1", role="analyst"),
+                TeamMember(agent_id="AGT-TEST-T2", role="writer"),
+            ],
+            coordination_strategy="sequential",
+        )
 
-        # Assignments: 2 agents in a team + 1 solo agent
-        solo_agent_id = [
-            k for k in bundle.specialists.keys() if k not in team_agent_ids
-        ][0]
+        bundle = HarnessBundle(
+            harness=MagicMock(),
+            specialists={
+                "AGT-TEST-T1": team_agent_a,
+                "AGT-TEST-T2": team_agent_b,
+                "AGT-TEST-SOLO": solo_agent,
+            },
+            teams={"TEAM-TEST-01": team},
+            dispatcher=None,
+        )
 
+        # Assignments: 2 team agents + 1 solo
         assignments = [
-            {"agent_id": team_agent_ids[0], "task": "team task 1"},
-            {"agent_id": team_agent_ids[1], "task": "team task 2"},
-            {"agent_id": solo_agent_id, "task": "solo task"},
+            {"agent_id": "AGT-TEST-T1", "task": "team task 1"},
+            {"agent_id": "AGT-TEST-T2", "task": "team task 2"},
+            {"agent_id": "AGT-TEST-SOLO", "task": "solo task"},
         ]
 
-        # Mock team execution to return results
         team_result = {
             "status": "success",
             "results": [
@@ -178,16 +196,13 @@ class TestSpecialistsNodeTeamShadowing:
             "errors": [],
         }
 
-        # Mock solo execution
         solo_result = {
             "step": "run_specialists",
             "status": "success",
             "output": {"status": "done", "summary": "solo done"},
         }
 
-        state = _make_state(
-            delegate_output={"assignments": assignments},
-        )
+        state = _make_state(delegate_output={"assignments": assignments})
 
         config = {
             "configurable": {
@@ -203,14 +218,12 @@ class TestSpecialistsNodeTeamShadowing:
         with (
             patch("aos.graph.get_config", return_value=config),
             patch("aos.graph._run_team", return_value=team_result),
-            patch("aos.graph._run_parallel", return_value=[(solo_agent_id, solo_result)]),
-            patch("aos.graph._run_agent_node", return_value=solo_result),
+            patch("aos.graph._run_parallel", return_value=[("AGT-TEST-SOLO", solo_result)]),
         ):
             result = specialists_node(state)
 
         specialist_results = result.get("specialists_output", {}).get("specialist_results", [])
 
-        # CRITICAL: team results MUST be present (was the bug — they were discarded)
         team_results = [r for r in specialist_results if r.get("agent_id", "").startswith("TEAM:")]
         solo_results = [r for r in specialist_results if not r.get("agent_id", "").startswith("TEAM:")]
 
