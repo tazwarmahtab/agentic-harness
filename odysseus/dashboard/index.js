@@ -26,6 +26,7 @@ import * as entitiesPage from './pages/entities.js';
 import * as eventsPage from './pages/events.js';
 import * as salesPage from './pages/sales.js';
 import * as systemPage from './pages/system.js';
+import * as netsoOverviewPage from './pages/netso/netso-overview.js';
 
 const PAGES = {
   overview:   overviewPage,
@@ -37,6 +38,7 @@ const PAGES = {
   events:     eventsPage,
   sales:      salesPage,
   system:     systemPage,
+  'netso-overview': netsoOverviewPage,
 };
 
 let _isOpen = false;
