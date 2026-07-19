@@ -33,6 +33,15 @@ class DashboardStore {
       events: [],
       entityIndex: null,
 
+      // Netso customer dashboard
+      role: 'internal', // 'customer' | 'internal' | 'admin'
+      siteId: 'CGS-001',
+      netsoGeneration: null,
+      netsoSavings: null,
+      netsoBilling: null,
+      netsoPortfolio: null,
+      netsoFinancials: null,
+
       // UI
       currentPage: 'overview',
       loading: false,
@@ -142,6 +151,51 @@ class DashboardStore {
       const data = await api.getEntityIndex();
       this._update({ entityIndex: data });
     } catch (e) { console.error('Failed to load entity index:', e); }
+  }
+
+  // ── Netso Customer Dashboard ───────────────────────────────────────────
+
+  setRole(role) {
+    this._update({ role });
+  }
+
+  setSiteId(siteId) {
+    this._update({ siteId });
+  }
+
+  async loadNetsoGeneration() {
+    try {
+      const data = await api.getNetsoGeneration(this._state.siteId);
+      this._update({ netsoGeneration: data });
+    } catch (e) { console.error('Failed to load netso generation:', e); }
+  }
+
+  async loadNetsoSavings() {
+    try {
+      const data = await api.getNetsoSavings(this._state.siteId);
+      this._update({ netsoSavings: data });
+    } catch (e) { console.error('Failed to load netso savings:', e); }
+  }
+
+  async loadNetsoBilling() {
+    try {
+      const data = await api.getNetsoBilling(this._state.siteId);
+      this._update({ netsoBilling: data });
+    } catch (e) { console.error('Failed to load netso billing:', e); }
+  }
+
+  async loadNetsoPortfolio() {
+    try {
+      const data = await api.getNetsoPortfolio();
+      this._update({ netsoPortfolio: data });
+    } catch (e) { console.error('Failed to load netso portfolio:', e); }
+  }
+
+  async loadNetsoFinancials() {
+    try {
+      const data = await api.getNetsoFinancials();
+      this._update({ netsoFinancials: data });
+    } catch (e) { console.error('Failed to load netso financials:', e); }
   }
 
   // ── Actions ────────────────────────────────────────────────────────────

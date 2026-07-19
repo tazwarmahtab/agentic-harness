@@ -49,6 +49,13 @@ class AosApi {
   getEvents()          { return this._get('/events'); }
   getEntityIndex()     { return this._get('/entity-index'); }
 
+  // ── Netso Customer Dashboard ───────────────────────────────────────────
+  getNetsoGeneration(siteId) { return this._get(`/netso/customers/${siteId}/generation`); }
+  getNetsoSavings(siteId)    { return this._get(`/netso/customers/${siteId}/savings`); }
+  getNetsoBilling(siteId)    { return this._get(`/netso/customers/${siteId}/billing`); }
+  getNetsoPortfolio()        { return this._get('/netso/portfolio'); }
+  getNetsoFinancials()       { return this._get('/netso/financials'); }
+
   // ── Sales ──────────────────────────────────────────────────────────────
   getSalesStatus()     { return this._get('/sales/status'); }
 
