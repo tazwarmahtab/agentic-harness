@@ -1,0 +1,17 @@
+{
+  "customers": [
+    {
+      "customer_id": "CGS-001",
+      "customer_name": "Comprehensive Garment Solutions",
+      "site_name": "CGS rooftop — Chattogram",
+      "system_capacity_kw": 850,
+      "status": "active",
+      "ppa_start_date": "2026-01-01",
+      "ppa_rate_bdt_per_kwh": 10.00,
+      "escalation_rate_pct": 3.0,
+      "escalation_interval_years": 3,
+      "next_escalation_date": "2029-01-01",
+      "health_score": 0.98
+    }
+  ]
+}

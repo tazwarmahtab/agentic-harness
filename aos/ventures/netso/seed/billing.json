@@ -1,0 +1,9 @@
+{
+  "CGS-001": {
+    "invoices": [
+      {"invoice_id": "INV-2026-01-CGS001", "month": "2026-01", "generation_kwh": 11200, "ppa_rate_bdt_per_kwh": 10.00, "amount_bdt": 112000.00, "status": "paid", "paid_date": "2026-02-10"},
+      {"invoice_id": "INV-2026-02-CGS001", "month": "2026-02", "generation_kwh": 11800, "ppa_rate_bdt_per_kwh": 10.00, "amount_bdt": 118000.00, "status": "paid", "paid_date": "2026-03-10"},
+      {"invoice_id": "INV-2026-03-CGS001", "month": "2026-03", "generation_kwh": 12750, "ppa_rate_bdt_per_kwh": 10.00, "amount_bdt": 127500.00, "status": "pending", "due_date": "2026-04-15"}
+    ]
+  }
+}

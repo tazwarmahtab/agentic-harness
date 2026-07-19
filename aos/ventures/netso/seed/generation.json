@@ -1,0 +1,10 @@
+{
+  "CGS-001": {
+    "system_capacity_kw": 850,
+    "monthly": [
+      {"month": "2026-01", "generation_kwh": 11200, "grid_export_kwh": 1680, "availability_pct": 97.5},
+      {"month": "2026-02", "generation_kwh": 11800, "grid_export_kwh": 1770, "availability_pct": 98.0},
+      {"month": "2026-03", "generation_kwh": 12750, "grid_export_kwh": 1850, "availability_pct": 98.2}
+    ]
+  }
+}
