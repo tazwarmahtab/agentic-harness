@@ -24,6 +24,7 @@ Extend the existing Odysseus vanilla JS dashboard. No new framework.
 ```
 odysseus/dashboard/
   pages/netso/
+    netso-overview.js
     customer-generation.js
     customer-savings.js
     customer-billing.js
@@ -82,6 +83,7 @@ Sidebar navigation filters pages by role:
 
 ```js
 const NETSO_NAV = [
+  { id: 'netso-overview',   icon: '🏠', label: 'Overview',   roles: ['customer', 'internal', 'admin'] },
   { id: 'netso-generation', icon: '☀️', label: 'Generation', roles: ['customer', 'admin'] },
   { id: 'netso-savings',    icon: '💰', label: 'Savings',    roles: ['customer', 'admin'] },
   { id: 'netso-billing',    icon: '📄', label: 'Billing',    roles: ['customer', 'admin'] },
@@ -135,21 +137,24 @@ Savings breakdown vs grid rate. All values derived from ground-truth constants.
 {
   "customer_id": "CGS-001",
   "customer_name": "Comprehensive Garment Solutions",
+  "system_capacity_kw": 850,
   "grid_rate_bdt_per_kwh": 12.98,
   "ppa_rate_bdt_per_kwh": 10.00,
   "savings_pct": 23.0,
   "current_month": {
-    "grid_cost_bdt": 165645.00,
+    "generation_kwh": 12750,
+    "grid_cost_bdt": 165495.00,
     "ppa_cost_bdt": 127500.00,
-    "savings_bdt": 38145.00
+    "savings_bdt": 37995.00
   },
   "ytd": {
-    "grid_cost_bdt": 993870.00,
+    "generation_kwh": 76500,
+    "grid_cost_bdt": 992970.00,
     "ppa_cost_bdt": 765000.00,
-    "savings_bdt": 228870.00
+    "savings_bdt": 227970.00
   },
   "lifetime_projected": {
-    "total_savings_bdt": 5721750.00,
+    "total_savings_bdt": 3825450.00,
     "payback_years": 4.1,
     "irr_pct": 68.7
   },
@@ -161,10 +166,15 @@ Savings breakdown vs grid rate. All values derived from ground-truth constants.
   "trend": [
     {"month": "2026-01", "savings_bdt": 33600.00},
     {"month": "2026-02", "savings_bdt": 35400.00},
-    {"month": "2026-03", "savings_bdt": 38145.00}
+    {"month": "2026-03", "savings_bdt": 37995.00}
   ]
 }
 ```
+
+**Math notes:**
+- `grid_cost_bdt` = `generation_kwh` × 12.98 (true variable rate, NEVER blended)
+- `savings_bdt` = `grid_cost_bdt` − `ppa_cost_bdt`
+- `lifetime_projected.total_savings_bdt` = `system_capacity_kw` × 16.5% CF × 8,760 hrs × 25 yrs × (12.98 − 10.00) = ~3.83M BDT
 
 ### 4.3 `GET /api/netso/customers/{site_id}/billing`
 
@@ -197,13 +207,11 @@ PPA invoices and payment history.
       "paid_date": "2026-07-10",
       "generation_kwh": 12210
     }
-  ],
-  "dscr": {
-    "current": 2.25,
-    "alert_floor": 2.0,
-    "status": "healthy"
-  }
+  ]
 }
+```
+
+**Note:** DSCR is a project-level metric, not per-customer. It lives on the `/api/netso/financials` endpoint only.
 ```
 
 ### 4.4 `GET /api/netso/portfolio`
@@ -297,8 +305,9 @@ Unit economics and scenario analysis (internal only).
     "total_capex_bdt": 233750000,
     "monthly_revenue_bdt": 637500,
     "ytd_revenue_bdt": 3825000,
-    "monthly_opex_bdt": 4250000,
-    "net_monthly_bdt": 637500
+    "annual_opex_bdt": 4250000,
+    "monthly_opex_bdt": 354167,
+    "net_monthly_bdt": 283333
   },
   "approval_thresholds": {
     "proposal_value_bdt": 5000000,
@@ -310,6 +319,21 @@ Unit economics and scenario analysis (internal only).
 ```
 
 ## 5. Pages
+
+### 5.0 Netso Overview (`netso-overview.js`)
+
+Landing page for all Netso roles. Combines key metrics from all views into a single summary.
+
+**Customer view:**
+- KPI strip: system capacity, current month generation, current month savings (BDT), next invoice amount, savings percentage
+- Quick status: system health, last generation update, next billing date
+- Links to detailed pages (generation, savings, billing)
+
+**Internal view:**
+- KPI strip: total customers, total capacity, monthly revenue, DSCR status, overdue invoices
+- Portfolio health: active vs in-installation vs churned
+- DSCR alert banner (if breaches exist)
+- Links to detailed pages (portfolio, financials)
 
 ### 5.1 Customer: Generation (`customer-generation.js`)
 
@@ -333,7 +357,6 @@ Unit economics and scenario analysis (internal only).
 - Current invoice card: invoice ID, amount (BDT), status badge, due date
 - Outstanding summary: total outstanding, overdue count
 - Payment history table: last 12 invoices with status (paid/pending/overdue)
-- DSCR status indicator (healthy/warning/critical)
 - Loading skeleton + error state
 
 ### 5.4 Internal: Portfolio (`internal-portfolio.js`)
@@ -361,7 +384,7 @@ Displays BDT saved with a trend indicator. Takes `{ value_bdt, trend_pct, label 
 
 ### 6.2 `dscr-banner.js`
 
-Full-width red banner rendered at the top of the dashboard shell (not inside a page). Checks `state.portfolio.alerts.dscr_breaches > 0` on every store update. If breaches exist, shows: "⚠️ DSCR Alert: {customer_name} at {dscr_value} — below 2.0 floor". Dismissible per session (not per page).
+Full-width red banner rendered at the top of the dashboard shell (not inside a page). **Internal-only** — only renders when `state.role` is `'internal'` or `'admin'`. Checks `state.portfolio.alerts.dscr_breaches > 0` on every store update. If breaches exist, shows: "⚠️ DSCR Alert: {customer_name} at {dscr_value} — below 2.0 floor". Dismissible per session (not per page). Customers never see this banner — DSCR is a project-level metric, not customer-facing.
 
 ## 7. Loading and Error Patterns
 
@@ -410,7 +433,8 @@ Seed data covers 1 customer (CGS-001) with 3 months of history. Enough to demo a
 6. API client methods (`services/api.js`)
 7. Layout + nav filtering (`layouts/dashboard-layout.js`)
 8. Widgets (`savings-tile.js`, `dscr-banner.js`)
-9. Customer pages (generation → savings → billing)
-10. Internal pages (portfolio → financials)
-11. Tests (backend service + API endpoints)
-12. Page registration (`index.js` PAGES map)
+9. Netso overview page (`netso-overview.js`)
+10. Customer pages (generation → savings → billing)
+11. Internal pages (portfolio → financials)
+12. Tests (backend service + API endpoints)
+13. Page registration (`index.js` PAGES map)
