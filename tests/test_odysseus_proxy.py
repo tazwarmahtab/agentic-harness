@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
+import httpx
 import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
@@ -33,17 +36,26 @@ def client() -> TestClient:
     return TestClient(app)
 
 
+@pytest.fixture
+def engine_down():
+    """Mock the httpx client to simulate AOS engine being unavailable."""
+    mock_client = AsyncMock()
+    mock_client.get.side_effect = httpx.ConnectError("Connection refused")
+    with patch("odysseus.routes.aos_routes._get_client", return_value=mock_client):
+        yield
+
+
 class TestAOSHealthProxy:
     """Tests for AOS health check proxy endpoint."""
 
-    def test_health_check_returns_dict(self, client: TestClient) -> None:
+    def test_health_check_returns_dict(self, client: TestClient, engine_down) -> None:
         """GET /api/aos/health returns 502 when AOS engine is not running."""
         response = client.get("/api/aos/health")
         assert response.status_code == 502
         body = response.json()
         assert "error" in body
 
-    def test_health_check_handles_unavailable(self, client: TestClient) -> None:
+    def test_health_check_handles_unavailable(self, client: TestClient, engine_down) -> None:
         """Health check returns 502 with engine-unavailable error body."""
         response = client.get("/api/aos/health")
         assert response.status_code == 502
@@ -54,7 +66,7 @@ class TestAOSHealthProxy:
 class TestAOSStatusProxy:
     """Tests for AOS status proxy endpoint."""
 
-    def test_status_returns_dict(self, client: TestClient) -> None:
+    def test_status_returns_dict(self, client: TestClient, engine_down) -> None:
         """GET /api/aos/status returns 502 when AOS engine is not running."""
         response = client.get("/api/aos/status")
         assert response.status_code == 502
@@ -62,7 +74,7 @@ class TestAOSStatusProxy:
         assert isinstance(body, dict)
         assert "error" in body
 
-    def test_status_handles_unavailable(self, client: TestClient) -> None:
+    def test_status_handles_unavailable(self, client: TestClient, engine_down) -> None:
         """Status returns 502 with engine-unavailable error body."""
         response = client.get("/api/aos/status")
         assert response.status_code == 502
