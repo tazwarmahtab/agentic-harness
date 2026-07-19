@@ -197,3 +197,37 @@ class TestNetsoEndpoints:
         data = resp.json()
         assert data["venture_id"] == "VEN-NETSO-001"
         assert "scenarios" in data
+
+
+@pytest.mark.integration
+class TestNetsoEndToEnd:
+    """Verify all Netso endpoints return valid data for the seed customer."""
+
+    def setup_method(self):
+        from fastapi.testclient import TestClient
+        from aos.api import app
+
+        self.client = TestClient(app, raise_server_exceptions=False)
+
+    def test_all_endpoints_return_200(self):
+        endpoints = [
+            "/api/netso/customers/CGS-001/generation",
+            "/api/netso/customers/CGS-001/savings",
+            "/api/netso/customers/CGS-001/billing",
+            "/api/netso/portfolio",
+            "/api/netso/financials",
+        ]
+        for ep in endpoints:
+            resp = self.client.get(ep)
+            assert resp.status_code == 200, f"{ep} returned {resp.status_code}"
+
+    def test_generation_savings_consistency(self):
+        gen = self.client.get("/api/netso/customers/CGS-001/generation").json()
+        sav = self.client.get("/api/netso/customers/CGS-001/savings").json()
+        assert gen["current_month"]["generation_kwh"] == sav["current_month"]["generation_kwh"]
+
+    def test_financial_constants_match_ground_truth(self):
+        port = self.client.get("/api/netso/portfolio").json()
+        fin = self.client.get("/api/netso/financials").json()
+        assert port["financial_constants"]["true_variable_rate"] == 12.98
+        assert fin["unit_economics"]["true_variable_rate_bdt_per_kwh"] == 12.98
