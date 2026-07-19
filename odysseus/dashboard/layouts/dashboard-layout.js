@@ -17,6 +17,15 @@ const NAV_ITEMS = [
   { id: 'system',       icon: '🖥️', label: 'System' },
 ];
 
+const NETSO_NAV = [
+  { id: 'netso-overview',   icon: '🏠', label: 'Netso Overview',   roles: ['customer', 'internal', 'admin'] },
+  { id: 'netso-generation', icon: '☀️', label: 'Generation',       roles: ['customer', 'admin'] },
+  { id: 'netso-savings',    icon: '💰', label: 'Savings',          roles: ['customer', 'admin'] },
+  { id: 'netso-billing',    icon: '📄', label: 'Billing',          roles: ['customer', 'admin'] },
+  { id: 'netso-portfolio',  icon: '🏢', label: 'Portfolio',        roles: ['internal', 'admin'] },
+  { id: 'netso-financials', icon: '📈', label: 'Financials',       roles: ['internal', 'admin'] },
+];
+
 export function renderLayout(container) {
   container.innerHTML = `
     <div class="aos-dash" role="application" aria-label="AOS Mission Control Dashboard">
@@ -51,7 +60,10 @@ export function renderLayout(container) {
 }
 
 function renderNav(navEl) {
-  navEl.innerHTML = NAV_ITEMS.map((item) => `
+  const role = store.state.role || 'internal';
+  const allItems = [...NAV_ITEMS, ...NETSO_NAV.filter((item) => item.roles.includes(role))];
+
+  navEl.innerHTML = allItems.map((item) => `
     <button class="aos-nav-item" data-page="${item.id}" role="menuitem" aria-label="${item.label}" tabindex="0">
       <span class="aos-nav-icon" aria-hidden="true">${item.icon}</span>
       <span class="aos-nav-label">${item.label}</span>
@@ -65,7 +77,7 @@ function renderNav(navEl) {
     store.setPage(page);
     setActiveNav(page);
     document.getElementById('aos-page-title').textContent =
-      NAV_ITEMS.find((n) => n.id === page)?.label || page;
+      allItems.find((n) => n.id === page)?.label || page;
   });
 }
 
