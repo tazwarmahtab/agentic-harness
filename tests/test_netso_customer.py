@@ -152,3 +152,48 @@ class TestGetFinancials:
         annual = result.portfolio_financials["annual_opex_bdt"]
         monthly = result.portfolio_financials["monthly_opex_bdt"]
         assert monthly == round(annual / 12, 2)
+
+
+@pytest.mark.integration
+class TestNetsoEndpoints:
+    def setup_method(self):
+        from fastapi.testclient import TestClient
+        from aos.api import app
+
+        self.client = TestClient(app, raise_server_exceptions=False)
+
+    def test_generation_valid_site(self):
+        resp = self.client.get("/api/netso/customers/CGS-001/generation")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["customer_id"] == "CGS-001"
+        assert "current_month" in data
+
+    def test_generation_unknown_site(self):
+        resp = self.client.get("/api/netso/customers/NONEXISTENT/generation")
+        assert resp.status_code == 404
+
+    def test_savings_valid_site(self):
+        resp = self.client.get("/api/netso/customers/CGS-001/savings")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["grid_rate_bdt_per_kwh"] == 12.98
+
+    def test_billing_valid_site(self):
+        resp = self.client.get("/api/netso/customers/CGS-001/billing")
+        assert resp.status_code == 200
+        assert "history" in resp.json()
+
+    def test_portfolio(self):
+        resp = self.client.get("/api/netso/portfolio")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total_customers" in data
+        assert "customers" in data
+
+    def test_financials(self):
+        resp = self.client.get("/api/netso/financials")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["venture_id"] == "VEN-NETSO-001"
+        assert "scenarios" in data

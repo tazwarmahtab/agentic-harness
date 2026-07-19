@@ -43,6 +43,13 @@ from aos.services.memory import get_memory_summary
 from aos.services.sales import get_sales_status
 from aos.services.system import get_system_status
 from aos.services.agents import get_agents_status
+from aos.services.netso_customer import (
+    get_generation,
+    get_savings,
+    get_billing,
+    get_portfolio,
+    get_financials,
+)
 
 logger = logging.getLogger("aos.api")
 
@@ -774,3 +781,46 @@ async def _stream_graph(
             "event": "error",
             "message": f"Graph execution failed: {exc}",
         }
+
+
+# ── Netso Customer Dashboard ────────────────────────────────────────────────
+
+
+@app.get("/api/netso/customers/{site_id}/generation")
+async def netso_generation(site_id: str) -> dict:
+    data = get_generation(site_id)
+    if data is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=f"Site {site_id} not found")
+    return data.to_dict()
+
+
+@app.get("/api/netso/customers/{site_id}/savings")
+async def netso_savings(site_id: str) -> dict:
+    data = get_savings(site_id)
+    if data is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=f"Site {site_id} not found")
+    return data.to_dict()
+
+
+@app.get("/api/netso/customers/{site_id}/billing")
+async def netso_billing(site_id: str) -> dict:
+    data = get_billing(site_id)
+    if data is None:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=f"Site {site_id} not found")
+    return data.to_dict()
+
+
+@app.get("/api/netso/portfolio")
+async def netso_portfolio() -> dict:
+    return get_portfolio().to_dict()
+
+
+@app.get("/api/netso/financials")
+async def netso_financials() -> dict:
+    return get_financials().to_dict()
