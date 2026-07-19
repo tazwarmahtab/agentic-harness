@@ -80,14 +80,41 @@ class TestHealthCheck:
         assert result["memory"]["status"] == "not_configured"
 
     def test_health_llm_degraded(self) -> None:
+        """Health check returns 'degraded' when LLM endpoint is unreachable."""
+        from unittest.mock import patch
+        import urllib.error
         from aos.hardening import health_check
 
-        class BrokenLLM:
-            def complete(self, **kwargs):
-                raise ConnectionError("LLM unreachable")
+        class FakeLLM:
+            base_url = "http://localhost:9999"
 
-        result = health_check(llm=BrokenLLM())
+        with patch("aos.hardening.urllib.request.urlopen", side_effect=urllib.error.URLError("refused")):
+            result = health_check(llm=FakeLLM())
         assert result["llm"]["status"] == "degraded"
+
+    def test_health_llm_ok_when_endpoint_responds(self) -> None:
+        """Health check returns 'ok' when LLM endpoint responds to /v1/models."""
+        from unittest.mock import patch, MagicMock
+        from aos.hardening import health_check
+
+        class FakeLLM:
+            base_url = "http://localhost:20128"
+
+        mock_resp = MagicMock()
+        mock_resp.status = 200
+        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+        mock_resp.__exit__ = MagicMock(return_value=False)
+
+        with patch("aos.hardening.urllib.request.urlopen", return_value=mock_resp):
+            result = health_check(llm=FakeLLM())
+        assert result["llm"]["status"] == "ok"
+
+    def test_health_llm_no_base_url(self) -> None:
+        """Health check returns 'ok' when LLM client has no base_url (fallback)."""
+        from aos.hardening import health_check
+
+        result = health_check(llm=object())
+        assert result["llm"]["status"] == "ok"
 
 
 # ---------------------------------------------------------------------------

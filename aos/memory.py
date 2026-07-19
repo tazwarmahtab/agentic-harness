@@ -309,6 +309,19 @@ class MemoryStore:
         self._counter += 1
         return f"{prefix}-{self._counter:06d}"
 
+    @staticmethod
+    def _mark_replaced(entry: MemoryEntry, new_id: str) -> None:
+        """Mark a frozen MemoryEntry as superseded by a newer version.
+
+        This is the ONLY sanctioned escape hatch for the frozen=True contract.
+        Invariant: ``replaced_by`` is set exactly once per entry's lifecycle,
+        immediately before the replacement entry is appended to its layer.
+
+        Do NOT use ``object.__setattr__`` on MemoryEntry elsewhere — always
+        call this method instead.
+        """
+        object.__setattr__(entry, "replaced_by", new_id)
+
     # ----- Permission checks -----
 
     def can_read(self, agent_id: str, domain: str) -> bool:
@@ -883,9 +896,9 @@ CONTENT: <the fact/pattern/rule>
             replaced_by=None,
         )
 
-        # Mark old entry as superseded (frozen dataclass bypass)
+        # Mark old entry as superseded via documented escape hatch
         if old_entry:
-            object.__setattr__(old_entry, "replaced_by", new_entry.id)
+            self._mark_replaced(old_entry, new_entry.id)
 
         self.layers[candidate.layer][candidate.domain].append(new_entry)
         return new_entry
@@ -915,7 +928,7 @@ CONTENT: <the fact/pattern/rule>
                 source_agent=candidate.agent_id,
                 version=old_entry.version + 1,
             )
-            object.__setattr__(old_entry, "replaced_by", new_entry.id)
+            self._mark_replaced(old_entry, new_entry.id)
             self.layers[candidate.layer][candidate.domain].append(new_entry)
             return new_entry
 

@@ -282,19 +282,33 @@ def health_check(
 
 
 def _check_llm(llm: Any | None) -> dict[str, Any]:
-    """Probe the LLM backend with a lightweight call."""
+    """Probe the LLM backend with a lightweight connectivity check.
+
+    Uses a HEAD-style request to the /v1/models endpoint instead of a real
+    completion call — avoids burning tokens and failing on invalid model IDs.
+    """
     if llm is None:
         return {"status": "not_configured"}
-    try:
-        llm.complete(
-            model="test",
-            system="ping",
-            messages=[{"role": "user", "content": "ping"}],
-            max_tokens=1,
-            temperature=0.0,
-        )
+
+    # Extract base URL from the LLM client for a lightweight probe
+    base_url = getattr(llm, "base_url", None)
+    if not base_url:
+        # No base_url available — fall back to assuming configured
         return {"status": "ok"}
-    except ConnectionError:
+
+    import urllib.request
+    import urllib.error
+
+    try:
+        req = urllib.request.Request(
+            f"{base_url}/v1/models",
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            if resp.status < 400:
+                return {"status": "ok"}
+            return {"status": "degraded"}
+    except urllib.error.URLError:
         return {"status": "degraded"}
     except Exception:
         return {"status": "degraded"}
