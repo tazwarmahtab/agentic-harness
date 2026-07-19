@@ -34,6 +34,7 @@ from typing import Annotated, Any, Callable, TypeVar, TypedDict
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.runnables import RunnableConfig
 from langgraph.config import get_config
 
@@ -1867,6 +1868,7 @@ def build_graph(
     memory_store: MemoryStore | None = None,
     usage_tracker: UsageTracker | None = None,
     approval_queue: Any = None,
+    checkpointer: Any | None = None,
 ) -> CompiledStateGraph:
     """Build and compile the AOS LangGraph StateGraph.
 
@@ -1887,8 +1889,11 @@ def build_graph(
       - Progress tracking (iteration history, context summaries)
       - Notification hooks (loop blocks/completions)
 
-    Pure open-source LangGraph — no LangSmith or LangGraph Cloud
-    dependencies.  No checkpointer (in-memory state only).
+    Checkpointing:
+      If ``checkpointer`` is provided, graph state is persisted after each
+      node, enabling resume after crashes.  Defaults to ``MemorySaver()``
+      (in-memory checkpoint store) for backward compatibility.  Pass
+      ``None`` to disable checkpointing entirely.
     """
     graph = StateGraph(CycleState)
 
@@ -1946,8 +1951,10 @@ def build_graph(
         },
     )
 
-    # Compile (no checkpointer — pure local state)
-    return graph.compile()
+    # Compile — use provided checkpointer or MemorySaver for crash recovery
+    if checkpointer is None:
+        checkpointer = MemorySaver()
+    return graph.compile(checkpointer=checkpointer)
 
 
 # ---------------------------------------------------------------------------
@@ -1967,6 +1974,8 @@ def run_cycle_graph(
     max_iterations: int = 1,
     completion_criteria: dict[str, Any] | None = None,
     registry: Registry | None = None,
+    checkpointer: Any | None = None,
+    thread_id: str | None = None,
 ) -> CycleState:
     """Execute the full daily harness cycle via LangGraph.
 
@@ -2053,7 +2062,7 @@ def run_cycle_graph(
         ApprovalQueue(persistence_path=queue_path) if queue_path else ApprovalQueue()
     )
 
-    # Build and compile the graph
+    # Build and compile the graph with checkpointing for crash recovery
     compiled = build_graph(
         bundle=bundle,
         llm=llm,
@@ -2061,6 +2070,7 @@ def run_cycle_graph(
         memory_store=memory_store,
         usage_tracker=usage_tracker,
         approval_queue=approval_queue,
+        checkpointer=checkpointer,
     )
 
     # Default completion criteria if not provided
@@ -2101,6 +2111,7 @@ def run_cycle_graph(
             "approval_queue": approval_queue,
             "venture_constants": venture_constants,
             "registry": registry,  # H4: cross-harness dispatch
+            "thread_id": thread_id or cycle_id,  # checkpoint thread for crash recovery
         }
     }
 

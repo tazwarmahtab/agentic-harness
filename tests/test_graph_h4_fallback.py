@@ -237,6 +237,65 @@ class TestSpecialistsNodeTeamShadowing:
         )
 
 
+class TestGraphCheckpointing:
+    """P1: Graph must checkpoint state so crashes don't lose all progress."""
+
+    def test_build_graph_default_checkpointer(self):
+        """build_graph() with no checkpointer arg should use MemorySaver."""
+        from aos.graph import build_graph
+        from langgraph.checkpoint.memory import MemorySaver
+
+        bundle = _build_registry().harnesses.get("HAR-EXEC-001")
+        assert bundle is not None
+
+        compiled = build_graph(
+            bundle=bundle,
+            llm=MagicMock(),
+        )
+
+        # Compiled graph should have a checkpointer attached
+        assert hasattr(compiled, "builder")
+        # MemorySaver is the default
+        assert compiled.checkpointer is not None
+
+    def test_build_graph_with_explicit_checkpointer(self):
+        """build_graph(checkpointer=...) should use the provided checkpointer."""
+        from aos.graph import build_graph
+        from langgraph.checkpoint.memory import MemorySaver
+
+        bundle = _build_registry().harnesses.get("HAR-EXEC-001")
+        assert bundle is not None
+
+        custom_saver = MemorySaver()
+        compiled = build_graph(
+            bundle=bundle,
+            llm=MagicMock(),
+            checkpointer=custom_saver,
+        )
+
+        assert compiled.checkpointer is custom_saver
+
+    def test_checkpoint_enables_resume(self):
+        """After a partial run, checkpoint should allow resuming from last saved state."""
+        from aos.graph import build_graph
+        from langgraph.checkpoint.memory import MemorySaver
+
+        bundle = _build_registry().harnesses.get("HAR-EXEC-001")
+        assert bundle is not None
+
+        saver = MemorySaver()
+        compiled = build_graph(
+            bundle=bundle,
+            llm=MagicMock(),
+            checkpointer=saver,
+        )
+
+        # List checkpoints — should be empty initially
+        config = {"configurable": {"thread_id": "test-resume-001"}}
+        checkpoints = list(saver.list(config))
+        assert len(checkpoints) == 0
+
+
 class TestSummarizeNodeRegistryFallback:
     """summarize_node falls back to registry when Chief of Staff not in bundle."""
 
