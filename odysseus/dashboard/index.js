@@ -27,6 +27,9 @@ import * as eventsPage from './pages/events.js';
 import * as salesPage from './pages/sales.js';
 import * as systemPage from './pages/system.js';
 import * as netsoOverviewPage from './pages/netso/netso-overview.js';
+import * as customerGenerationPage from './pages/netso/customer-generation.js';
+import * as customerSavingsPage from './pages/netso/customer-savings.js';
+import * as customerBillingPage from './pages/netso/customer-billing.js';
 
 const PAGES = {
   overview:   overviewPage,
@@ -39,6 +42,9 @@ const PAGES = {
   sales:      salesPage,
   system:     systemPage,
   'netso-overview': netsoOverviewPage,
+  'netso-generation': customerGenerationPage,
+  'netso-savings': customerSavingsPage,
+  'netso-billing': customerBillingPage,
 };
 
 let _isOpen = false;
