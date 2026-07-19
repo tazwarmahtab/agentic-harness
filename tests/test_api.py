@@ -262,3 +262,120 @@ class TestResolveBundleValidation:
         bundle, venture_id, harness_id = _resolve_bundle("nonexistent")
         assert bundle is None  # not found, but name was valid
         assert harness_id == "nonexistent"
+
+
+class TestRESTAuthMiddleware:
+    """Tests for REST approval endpoint authentication (P0-1 fix)."""
+
+    def test_approvals_rejects_no_token(self) -> None:
+        """GET /api/approvals should return 401 when AOS_API_TOKEN is set but no auth header."""
+        with patch.dict(os.environ, {"AOS_API_TOKEN": "secret-123"}):
+            import importlib
+            import aos.api
+
+            importlib.reload(aos.api)
+            try:
+                client = TestClient(app)
+                response = client.get("/api/approvals")
+                assert response.status_code == 401
+                assert "Missing Authorization" in response.json()["detail"]
+            finally:
+                importlib.reload(aos.api)
+
+    def test_approvals_rejects_bad_token(self) -> None:
+        """GET /api/approvals should return 401 when token is wrong."""
+        with patch.dict(os.environ, {"AOS_API_TOKEN": "secret-123"}):
+            import importlib
+            import aos.api
+
+            importlib.reload(aos.api)
+            try:
+                client = TestClient(app)
+                response = client.get(
+                    "/api/approvals",
+                    headers={"Authorization": "Bearer wrong-token"},
+                )
+                assert response.status_code == 401
+                assert "Invalid token" in response.json()["detail"]
+            finally:
+                importlib.reload(aos.api)
+
+    def test_approvals_rejects_bad_format(self) -> None:
+        """GET /api/approvals should return 401 for non-Bearer auth format."""
+        with patch.dict(os.environ, {"AOS_API_TOKEN": "secret-123"}):
+            import importlib
+            import aos.api
+
+            importlib.reload(aos.api)
+            try:
+                client = TestClient(app)
+                response = client.get(
+                    "/api/approvals",
+                    headers={"Authorization": "Basic secret-123"},
+                )
+                assert response.status_code == 401
+                assert "Invalid Authorization format" in response.json()["detail"]
+            finally:
+                importlib.reload(aos.api)
+
+    def test_approvals_accepts_valid_token(self) -> None:
+        """GET /api/approvals should return 200 when correct Bearer token is provided."""
+        with patch.dict(os.environ, {"AOS_API_TOKEN": "secret-123"}):
+            import importlib
+            import aos.api
+
+            importlib.reload(aos.api)
+            try:
+                client = TestClient(app)
+                response = client.get(
+                    "/api/approvals",
+                    headers={"Authorization": "Bearer secret-123"},
+                )
+                assert response.status_code == 200
+                assert isinstance(response.json(), list)
+            finally:
+                importlib.reload(aos.api)
+
+    def test_approve_endpoint_requires_auth(self) -> None:
+        """POST /api/approvals/{id}/approve should return 401 without token."""
+        with patch.dict(os.environ, {"AOS_API_TOKEN": "secret-123"}):
+            import importlib
+            import aos.api
+
+            importlib.reload(aos.api)
+            try:
+                client = TestClient(app)
+                response = client.post("/api/approvals/test-123/approve")
+                assert response.status_code == 401
+            finally:
+                importlib.reload(aos.api)
+
+    def test_reject_endpoint_requires_auth(self) -> None:
+        """POST /api/approvals/{id}/reject should return 401 without token."""
+        with patch.dict(os.environ, {"AOS_API_TOKEN": "secret-123"}):
+            import importlib
+            import aos.api
+
+            importlib.reload(aos.api)
+            try:
+                client = TestClient(app)
+                response = client.post("/api/approvals/test-123/reject")
+                assert response.status_code == 401
+            finally:
+                importlib.reload(aos.api)
+
+    def test_auth_skipped_when_no_token_configured(self) -> None:
+        """GET /api/approvals should return 200 when AOS_API_TOKEN is not set (dev mode)."""
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("AOS_API_TOKEN", None)
+            os.environ.pop("TAZOS_API_TOKEN", None)
+            import importlib
+            import aos.api
+
+            importlib.reload(aos.api)
+            try:
+                client = TestClient(app)
+                response = client.get("/api/approvals")
+                assert response.status_code == 200
+            finally:
+                importlib.reload(aos.api)

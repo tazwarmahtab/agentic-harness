@@ -19,7 +19,8 @@ import uuid
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from aos.discover import find_venture
 from aos.hardening import ConnectionLimiter, sanitize_path, validate_harness_name
@@ -78,12 +79,50 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS — allow dashboard preview from any local origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Token auth — if AOS_API_TOKEN env var is set, WebSocket requires it as ?token=
 AOS_API_TOKEN = os.getenv("AOS_API_TOKEN", "") or os.getenv("TAZOS_API_TOKEN", "")
 TAZOS_API_TOKEN = AOS_API_TOKEN  # backward-compat alias
 
 # WebSocket connection limiter — caps concurrent connections per server instance
 _ws_limiter = ConnectionLimiter(max_connections=10)
+
+
+# ---------------------------------------------------------------------------
+# REST auth dependency — mirrors WebSocket token gating for REST endpoints
+# ---------------------------------------------------------------------------
+
+
+def _require_auth(
+    authorization: str | None = Header(None),
+) -> None:
+    """FastAPI dependency: reject requests without valid Bearer token.
+
+    If AOS_API_TOKEN is not configured, auth is skipped (local-dev mode).
+    Raises HTTPException 401 if token is missing or invalid.
+    """
+    from fastapi import HTTPException
+
+    if not AOS_API_TOKEN:
+        return  # no token configured — local dev, allow all
+
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid Authorization format")
+
+    if parts[1] != AOS_API_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 def _check_llm_providers() -> dict[str, str | list[str] | bool]:
@@ -560,14 +599,19 @@ async def pipeline_history() -> list[dict[str, object]]:
 
 
 @app.get("/api/approvals")
-async def list_approvals() -> list[dict[str, object]]:
+async def list_approvals(
+    _auth: None = Depends(_require_auth),
+) -> list[dict[str, object]]:
     """Return pending approvals."""
     approvals = get_pending_approvals()
     return [a.to_dict() for a in approvals]
 
 
 @app.post("/api/approvals/{approval_id}/approve")
-async def approve_approval(approval_id: str) -> dict[str, object]:
+async def approve_approval(
+    approval_id: str,
+    _auth: None = Depends(_require_auth),
+) -> dict[str, object]:
     """Approve a pending request."""
     return approve_request(approval_id)
 
@@ -576,6 +620,7 @@ async def approve_approval(approval_id: str) -> dict[str, object]:
 async def reject_approval(
     approval_id: str,
     reason: str = "",
+    _auth: None = Depends(_require_auth),
 ) -> dict[str, object]:
     """Reject a pending request."""
     return reject_request(approval_id, reason)

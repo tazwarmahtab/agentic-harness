@@ -1328,10 +1328,9 @@ def specialists_node(state: CycleState) -> dict:
         )
 
     # Fan-out via async parallel — M3
-    specialist_results: list[dict[str, Any]] = []
-    new_errors: list[str] = []
-    new_approvals: list[dict[str, Any]] = []
-    new_handoffs: list[dict[str, Any]] = []
+    # NOTE: specialist_results, new_errors, new_approvals, new_handoffs are
+    # already declared above (lines 1224-1227) and may contain team results.
+    # Solo results append to the SAME lists — do NOT re-declare.
 
     # Wrap _run_one to catch exceptions cleanly
     def _run_one_safe(

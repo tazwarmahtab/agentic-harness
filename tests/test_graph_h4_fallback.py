@@ -138,6 +138,92 @@ class TestReviewNodeRegistryFallback:
         assert any("COO specialist not found" in e for e in errors)
 
 
+class TestSpecialistsNodeTeamShadowing:
+    """P0-2: specialists_node must NOT discard team results when solo specialists also run.
+
+    Regression test for the variable shadowing bug where lines 1331-1334
+    re-declared specialist_results, new_errors, new_approvals, new_handoffs,
+    discarding team results accumulated at lines 1224-1227.
+    """
+
+    def test_team_results_preserved_with_solo(self):
+        """Team results must appear in specialist_results alongside solo results."""
+        from aos.graph import specialists_node
+
+        bundle = _build_registry().harnesses.get("HAR-EXEC-001")
+        assert bundle is not None
+
+        # Create a team with 2 members
+        team_member_ids = list(bundle.teams.values())[0].members[:2]
+        team_agent_ids = [m.agent_id for m in team_member_ids]
+
+        # Assignments: 2 agents in a team + 1 solo agent
+        solo_agent_id = [
+            k for k in bundle.specialists.keys() if k not in team_agent_ids
+        ][0]
+
+        assignments = [
+            {"agent_id": team_agent_ids[0], "task": "team task 1"},
+            {"agent_id": team_agent_ids[1], "task": "team task 2"},
+            {"agent_id": solo_agent_id, "task": "solo task"},
+        ]
+
+        # Mock team execution to return results
+        team_result = {
+            "status": "success",
+            "results": [
+                {"output": {"status": "done", "summary": "team member 1 done"}},
+                {"output": {"status": "done", "summary": "team member 2 done"}},
+            ],
+            "errors": [],
+        }
+
+        # Mock solo execution
+        solo_result = {
+            "step": "run_specialists",
+            "status": "success",
+            "output": {"status": "done", "summary": "solo done"},
+        }
+
+        state = _make_state(
+            delegate_output={"assignments": assignments},
+        )
+
+        config = {
+            "configurable": {
+                "bundle": bundle,
+                "llm": MagicMock(),
+                "registry": None,
+                "memory_store": None,
+                "usage_tracker": None,
+                "venture_constants": None,
+            }
+        }
+
+        with (
+            patch("aos.graph.get_config", return_value=config),
+            patch("aos.graph._run_team", return_value=team_result),
+            patch("aos.graph._run_parallel", return_value=[(solo_agent_id, solo_result)]),
+            patch("aos.graph._run_agent_node", return_value=solo_result),
+        ):
+            result = specialists_node(state)
+
+        specialist_results = result.get("specialists_output", {}).get("specialist_results", [])
+
+        # CRITICAL: team results MUST be present (was the bug — they were discarded)
+        team_results = [r for r in specialist_results if r.get("agent_id", "").startswith("TEAM:")]
+        solo_results = [r for r in specialist_results if not r.get("agent_id", "").startswith("TEAM:")]
+
+        assert len(team_results) >= 1, (
+            f"Team results were discarded! Got {len(specialist_results)} total results "
+            f"but 0 TEAM: prefixed. specialist_results={specialist_results}"
+        )
+        assert len(solo_results) >= 1, (
+            f"Solo results missing! Got {len(specialist_results)} total results "
+            f"but 0 non-TEAM results."
+        )
+
+
 class TestSummarizeNodeRegistryFallback:
     """summarize_node falls back to registry when Chief of Staff not in bundle."""
 
