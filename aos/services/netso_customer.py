@@ -285,6 +285,7 @@ def get_savings(site_id: str) -> SavingsData | None:
         },
         escalation={
             "rate": escalation_rate,
+            "interval_years": customer.get("escalation_interval_years", 3),
             "next_escalation_date": customer.get("next_escalation_date", ""),
             "projected_ppa_after_escalation": round(projected_ppa, 2),
         },
@@ -361,6 +362,8 @@ def get_portfolio() -> PortfolioData:
     total_gen_ytd = 0
     total_revenue_month = 0
     total_savings_month = 0
+    total_ytd_revenue = 0
+    total_ytd_savings = 0
     customer_summaries = []
 
     for c in customers:
@@ -378,6 +381,12 @@ def get_portfolio() -> PortfolioData:
         total_gen_ytd += gen_ytd
         total_revenue_month += rev_month
         total_savings_month += sav_month
+
+        # YTD: sum actual monthly revenue/savings from all months in generation data
+        for m in monthly:
+            gen_kwh = m.get("generation_kwh", 0)
+            total_ytd_revenue += gen_kwh * ppa_rate
+            total_ytd_savings += gen_kwh * (TRUE_VARIABLE_RATE - ppa_rate)
 
         customer_summaries.append(
             {
@@ -412,8 +421,8 @@ def get_portfolio() -> PortfolioData:
         financial_summary={
             "pipeline_value_bdt": total_capacity * CAPEX_PER_KW_SCENARIO_A,
             "monthly_revenue_bdt": round(total_revenue_month, 2),
-            "ytd_revenue_bdt": round(total_revenue_month * 3, 2),
-            "ytd_savings_delivered_bdt": round(total_savings_month * 3, 2),
+            "ytd_revenue_bdt": round(total_ytd_revenue, 2),
+            "ytd_savings_delivered_bdt": round(total_ytd_savings, 2),
         },
         customers=customer_summaries,
         alerts={

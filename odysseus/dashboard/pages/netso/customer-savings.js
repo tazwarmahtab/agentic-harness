@@ -204,8 +204,9 @@ function renderProjectionSection(container, sav) {
     const escalationDiv = document.createElement('div');
     escalationDiv.className = 'aos-escalation-info';
 
+    const interval = escalation.interval_years || 3;
     const p1 = document.createElement('p');
-    p1.textContent = `PPA rate escalates at ${escalation.rate}% annually.`;
+    p1.textContent = `PPA rate escalates ${escalation.rate}% every ${interval} years.`;
     escalationDiv.appendChild(p1);
 
     const p2 = document.createElement('p');

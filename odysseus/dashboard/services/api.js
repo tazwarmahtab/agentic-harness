@@ -4,14 +4,22 @@
  */
 
 const API_BASE = '/api/aos';
+const NETSO_API_BASE = '/api/netso';
 
 class AosApi {
-  constructor(baseUrl = API_BASE) {
+  constructor(baseUrl = API_BASE, netsoBaseUrl = NETSO_API_BASE) {
     this.baseUrl = baseUrl;
+    this.netsoBaseUrl = netsoBaseUrl;
   }
 
   async _get(path) {
     const resp = await fetch(this.baseUrl + path);
+    if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+    return resp.json();
+  }
+
+  async _getNetso(path) {
+    const resp = await fetch(this.netsoBaseUrl + path);
     if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
     return resp.json();
   }
@@ -50,11 +58,11 @@ class AosApi {
   getEntityIndex()     { return this._get('/entity-index'); }
 
   // ── Netso Customer Dashboard ───────────────────────────────────────────
-  getNetsoGeneration(siteId) { return this._get(`/netso/customers/${siteId}/generation`); }
-  getNetsoSavings(siteId)    { return this._get(`/netso/customers/${siteId}/savings`); }
-  getNetsoBilling(siteId)    { return this._get(`/netso/customers/${siteId}/billing`); }
-  getNetsoPortfolio()        { return this._get('/netso/portfolio'); }
-  getNetsoFinancials()       { return this._get('/netso/financials'); }
+  getNetsoGeneration(siteId) { return this._getNetso(`/customers/${siteId}/generation`); }
+  getNetsoSavings(siteId)    { return this._getNetso(`/customers/${siteId}/savings`); }
+  getNetsoBilling(siteId)    { return this._getNetso(`/customers/${siteId}/billing`); }
+  getNetsoPortfolio()        { return this._getNetso('/portfolio'); }
+  getNetsoFinancials()       { return this._getNetso('/financials'); }
 
   // ── Sales ──────────────────────────────────────────────────────────────
   getSalesStatus()     { return this._get('/sales/status'); }
