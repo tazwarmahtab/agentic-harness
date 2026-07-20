@@ -13,7 +13,7 @@ from aos.orchestrate.autonomous import (
     PhaseRecord,
     PhaseStatus,
 )
-from aos.orchestrate.gates import GateDecision, GateManager
+from aos.orchestrate.gates import GateManager
 from aos.approval_queue import ApprovalQueue
 
 
@@ -203,17 +203,25 @@ class TestGatePhase:
         queue = ApprovalQueue()
         gm = GateManager(queue=queue)
         p = AutonomousPipeline(
-            dry_run=False, auto=False, project_root=tmp_path, gate_manager=gm,
+            dry_run=False,
+            auto=False,
+            project_root=tmp_path,
+            gate_manager=gm,
         )
         # Pre-submit a rejected item
-        from aos.orchestrate.gates import Gate
+
         item = queue.add(
             agent_id="test",
             action="[spec gate] Approve phase: Test",
             rationale="test",
             risk_assessment="low",
         )
-        queue.decide(item.id, __import__("aos.approval_queue", fromlist=["ApprovalDecision"]).ApprovalDecision.REJECT)
+        queue.decide(
+            item.id,
+            __import__(
+                "aos.approval_queue", fromlist=["ApprovalDecision"]
+            ).ApprovalDecision.REJECT,
+        )
 
         state: AutonomousState = {
             "dry_run": False,
@@ -349,7 +357,10 @@ class TestRollbackGate:
         queue = ApprovalQueue()
         gm = GateManager(queue=queue)
         p = AutonomousPipeline(
-            dry_run=False, auto=False, project_root=tmp_path, gate_manager=gm,
+            dry_run=False,
+            auto=False,
+            project_root=tmp_path,
+            gate_manager=gm,
         )
         # Pre-submit a rejected rollback item
         item = queue.add(
@@ -358,7 +369,12 @@ class TestRollbackGate:
             rationale="test",
             risk_assessment="medium",
         )
-        queue.decide(item.id, __import__("aos.approval_queue", fromlist=["ApprovalDecision"]).ApprovalDecision.REJECT)
+        queue.decide(
+            item.id,
+            __import__(
+                "aos.approval_queue", fromlist=["ApprovalDecision"]
+            ).ApprovalDecision.REJECT,
+        )
 
         state: AutonomousState = {
             "dry_run": False,
@@ -470,25 +486,31 @@ class TestRollbackIntegration:
             # Fail on first attempt, pass on second
             if call_count["n"] == 1:
                 return {
-                    "phase_results": state.get("phase_results", []) + [{
-                        "phase_id": phase["id"],
-                        "title": phase.get("title", ""),
-                        "status": PhaseStatus.FAILED.value,
-                        "started_at": started,
-                        "finished_at": datetime.now().isoformat(),
-                        "error": "simulated failure",
-                    }],
+                    "phase_results": state.get("phase_results", [])
+                    + [
+                        {
+                            "phase_id": phase["id"],
+                            "title": phase.get("title", ""),
+                            "status": PhaseStatus.FAILED.value,
+                            "started_at": started,
+                            "finished_at": datetime.now().isoformat(),
+                            "error": "simulated failure",
+                        }
+                    ],
                     "error": "simulated failure",
                 }
 
             return {
-                "phase_results": state.get("phase_results", []) + [{
-                    "phase_id": phase["id"],
-                    "title": phase.get("title", ""),
-                    "status": PhaseStatus.PASSED.value,
-                    "started_at": started,
-                    "finished_at": datetime.now().isoformat(),
-                }],
+                "phase_results": state.get("phase_results", [])
+                + [
+                    {
+                        "phase_id": phase["id"],
+                        "title": phase.get("title", ""),
+                        "status": PhaseStatus.PASSED.value,
+                        "started_at": started,
+                        "finished_at": datetime.now().isoformat(),
+                    }
+                ],
             }
 
         roadmap = tmp_path / "ROADMAP.md"
@@ -496,7 +518,10 @@ class TestRollbackIntegration:
 
         with patch.object(AutonomousPipeline, "_run_phase", fake_run_phase):
             p = AutonomousPipeline(
-                dry_run=True, auto=True, project_root=tmp_path, max_retries=3,
+                dry_run=True,
+                auto=True,
+                project_root=tmp_path,
+                max_retries=3,
             )
             rc = p.run()
 
@@ -517,14 +542,17 @@ class TestRollbackIntegration:
             call_count["n"] += 1
             started = datetime.now().isoformat()
             return {
-                "phase_results": state.get("phase_results", []) + [{
-                    "phase_id": phase["id"],
-                    "title": phase.get("title", ""),
-                    "status": PhaseStatus.FAILED.value,
-                    "started_at": started,
-                    "finished_at": datetime.now().isoformat(),
-                    "error": "always fails",
-                }],
+                "phase_results": state.get("phase_results", [])
+                + [
+                    {
+                        "phase_id": phase["id"],
+                        "title": phase.get("title", ""),
+                        "status": PhaseStatus.FAILED.value,
+                        "started_at": started,
+                        "finished_at": datetime.now().isoformat(),
+                        "error": "always fails",
+                    }
+                ],
                 "error": "always fails",
             }
 
@@ -533,7 +561,10 @@ class TestRollbackIntegration:
 
         with patch.object(AutonomousPipeline, "_run_phase", always_fail):
             p = AutonomousPipeline(
-                dry_run=True, auto=True, project_root=tmp_path, max_retries=2,
+                dry_run=True,
+                auto=True,
+                project_root=tmp_path,
+                max_retries=2,
             )
             rc = p.run()
 
@@ -559,33 +590,44 @@ class TestRollbackIntegration:
             # Fail phase-0 on first attempt only
             if phase["id"] == "phase-0" and retries == 0:
                 return {
-                    "phase_results": state.get("phase_results", []) + [{
-                        "phase_id": phase["id"],
-                        "title": phase.get("title", ""),
-                        "status": PhaseStatus.FAILED.value,
-                        "started_at": started,
-                        "finished_at": datetime.now().isoformat(),
-                        "error": "first attempt fail",
-                    }],
+                    "phase_results": state.get("phase_results", [])
+                    + [
+                        {
+                            "phase_id": phase["id"],
+                            "title": phase.get("title", ""),
+                            "status": PhaseStatus.FAILED.value,
+                            "started_at": started,
+                            "finished_at": datetime.now().isoformat(),
+                            "error": "first attempt fail",
+                        }
+                    ],
                     "error": "first attempt fail",
                 }
 
             return {
-                "phase_results": state.get("phase_results", []) + [{
-                    "phase_id": phase["id"],
-                    "title": phase.get("title", ""),
-                    "status": PhaseStatus.PASSED.value,
-                    "started_at": started,
-                    "finished_at": datetime.now().isoformat(),
-                }],
+                "phase_results": state.get("phase_results", [])
+                + [
+                    {
+                        "phase_id": phase["id"],
+                        "title": phase.get("title", ""),
+                        "status": PhaseStatus.PASSED.value,
+                        "started_at": started,
+                        "finished_at": datetime.now().isoformat(),
+                    }
+                ],
             }
 
         roadmap = tmp_path / "ROADMAP.md"
-        roadmap.write_text("## Phase 1: First\nFirst phase\n## Phase 2: Second\nSecond phase\n")
+        roadmap.write_text(
+            "## Phase 1: First\nFirst phase\n## Phase 2: Second\nSecond phase\n"
+        )
 
         with patch.object(AutonomousPipeline, "_run_phase", flaky_run):
             p = AutonomousPipeline(
-                dry_run=True, auto=True, project_root=tmp_path, max_retries=3,
+                dry_run=True,
+                auto=True,
+                project_root=tmp_path,
+                max_retries=3,
             )
             rc = p.run()
 
@@ -627,9 +669,7 @@ class TestWriteBackRoadmap:
 
     def test_marks_failed_phases(self, tmp_path: Path) -> None:
         roadmap = tmp_path / "ROADMAP.md"
-        roadmap.write_text(
-            "## Phase 1: Build\nWork\n## Phase 2: Test\nVerify\n"
-        )
+        roadmap.write_text("## Phase 1: Build\nWork\n## Phase 2: Test\nVerify\n")
         results = [
             {"phase_id": "phase-0", "status": "passed"},
             {"phase_id": "phase-1", "status": "failed"},
@@ -726,7 +766,9 @@ class TestWriteBackIntegration:
             "# Roadmap\n\n## Phase 1: Setup\nScaffold\n\n## Phase 2: Deploy\nShip\n"
         )
         p = AutonomousPipeline(
-            dry_run=True, auto=True, project_root=tmp_path,
+            dry_run=True,
+            auto=True,
+            project_root=tmp_path,
         )
         rc = p.run()
         assert rc == 0
@@ -761,6 +803,7 @@ class TestPersistState:
         path = tmp_path / ".aos_state.json"
         assert path.exists()
         import json
+
         data = json.loads(path.read_text())
         assert data["current_phase_index"] == 1
         assert len(data["phase_results"]) == 1
@@ -769,16 +812,21 @@ class TestPersistState:
     def test_overwrites_existing(self, tmp_path: Path) -> None:
         p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
         state1: AutonomousState = {
-            "phases": [{"id": "p-0"}], "current_phase_index": 0,
-            "phase_results": [], "retries": 0,
+            "phases": [{"id": "p-0"}],
+            "current_phase_index": 0,
+            "phase_results": [],
+            "retries": 0,
         }
         state2: AutonomousState = {
-            "phases": [{"id": "p-0"}], "current_phase_index": 1,
-            "phase_results": [{"phase_id": "p-0", "status": "passed"}], "retries": 0,
+            "phases": [{"id": "p-0"}],
+            "current_phase_index": 1,
+            "phase_results": [{"phase_id": "p-0", "status": "passed"}],
+            "retries": 0,
         }
         p._persist_state(state1)
         p._persist_state(state2)
         import json
+
         data = json.loads((tmp_path / ".aos_state.json").read_text())
         assert data["current_phase_index"] == 1
 
@@ -789,6 +837,7 @@ class TestLoadState:
 
     def test_loads_existing(self, tmp_path: Path) -> None:
         import json
+
         checkpoint = {
             "phases": [{"id": "phase-0", "title": "X"}],
             "current_phase_index": 1,
@@ -818,6 +867,7 @@ class TestClearState:
 
     def test_removes_file(self, tmp_path: Path) -> None:
         import json
+
         (tmp_path / ".aos_state.json").write_text(json.dumps({"x": 1}))
         p = AutonomousPipeline(dry_run=True, project_root=tmp_path)
         p._clear_state()
@@ -867,18 +917,23 @@ class TestResumeFromCheckpoint:
             run_log.append(phase["id"])
             started = datetime.now().isoformat()
             return {
-                "phase_results": state.get("phase_results", []) + [{
-                    "phase_id": phase["id"],
-                    "title": phase.get("title", ""),
-                    "status": PhaseStatus.PASSED.value,
-                    "started_at": started,
-                    "finished_at": datetime.now().isoformat(),
-                }],
+                "phase_results": state.get("phase_results", [])
+                + [
+                    {
+                        "phase_id": phase["id"],
+                        "title": phase.get("title", ""),
+                        "status": PhaseStatus.PASSED.value,
+                        "started_at": started,
+                        "finished_at": datetime.now().isoformat(),
+                    }
+                ],
             }
 
         with patch.object(AutonomousPipeline, "_run_phase", tracking_run):
             p = AutonomousPipeline(
-                dry_run=True, auto=True, project_root=tmp_path,
+                dry_run=True,
+                auto=True,
+                project_root=tmp_path,
             )
             rc = p.run()
 
@@ -902,18 +957,23 @@ class TestResumeFromCheckpoint:
             run_log.append(phase["id"])
             started = datetime.now().isoformat()
             return {
-                "phase_results": state.get("phase_results", []) + [{
-                    "phase_id": phase["id"],
-                    "title": phase.get("title", ""),
-                    "status": PhaseStatus.PASSED.value,
-                    "started_at": started,
-                    "finished_at": datetime.now().isoformat(),
-                }],
+                "phase_results": state.get("phase_results", [])
+                + [
+                    {
+                        "phase_id": phase["id"],
+                        "title": phase.get("title", ""),
+                        "status": PhaseStatus.PASSED.value,
+                        "started_at": started,
+                        "finished_at": datetime.now().isoformat(),
+                    }
+                ],
             }
 
         with patch.object(AutonomousPipeline, "_run_phase", tracking_run):
             p = AutonomousPipeline(
-                dry_run=True, auto=True, project_root=tmp_path,
+                dry_run=True,
+                auto=True,
+                project_root=tmp_path,
             )
             rc = p.run()
 
@@ -921,8 +981,6 @@ class TestResumeFromCheckpoint:
         assert run_log == ["phase-0"]
 
     def test_checkpoint_cleared_on_success(self, tmp_path: Path) -> None:
-        import json
-
         roadmap = tmp_path / "ROADMAP.md"
         roadmap.write_text("## Phase 1: X\nWork\n")
 
@@ -933,11 +991,15 @@ class TestResumeFromCheckpoint:
 
     def test_state_file_custom_name(self, tmp_path: Path) -> None:
         p = AutonomousPipeline(
-            dry_run=True, project_root=tmp_path, state_file="my_state.json",
+            dry_run=True,
+            project_root=tmp_path,
+            state_file="my_state.json",
         )
         state: AutonomousState = {
-            "phases": [{"id": "p-0"}], "current_phase_index": 0,
-            "phase_results": [], "retries": 0,
+            "phases": [{"id": "p-0"}],
+            "current_phase_index": 0,
+            "phase_results": [],
+            "retries": 0,
         }
         p._persist_state(state)
         assert (tmp_path / "my_state.json").exists()

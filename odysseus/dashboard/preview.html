@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AOS Dashboard — Live Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+  #preview-root { height: 100%; }
+</style>
+</head>
+<body>
+<div id="preview-root"></div>
+<script type="module">
+  // ── Override API to hit AOS engine directly (bypass Odysseus proxy) ──
+  const AOS_ENGINE = 'http://localhost:7001';
+
+  class DirectApi {
+    async _get(path) {
+      const resp = await fetch(AOS_ENGINE + '/api' + path);
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+      return resp.json();
+    }
+    async _post(path, body = {}) {
+      const resp = await fetch(AOS_ENGINE + '/api' + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+      return resp.json();
+    }
+    getDashboard()       { return this._get('/dashboard'); }
+    getHarnesses()       { return this._get('/harnesses'); }
+    getSummary()         { return this._get('/summary'); }
+    getPipelineStatus()  { return this._get('/pipeline/status'); }
+    getPipelineHistory() { return this._get('/pipeline/history'); }
+    getApprovals()       { return this._get('/approvals'); }
+    approve(id)          { return this._post(`/approvals/${id}/approve`); }
+    reject(id)           { return this._post(`/approvals/${id}/reject`); }
+    getMemorySummary()   { return this._get('/memory/summary'); }
+    getEvents()          { return this._get('/events'); }
+    getEntityIndex()     { return this._get('/entity-index'); }
+    getSalesStatus()     { return this._get('/sales/status'); }
+    getSystemStatus()    { return this._get('/system/status'); }
+    getAgents()          { return this._get('/agents'); }
+    getHealth()          { return this._get('/health'); }
+    getWsStats()         { return this._get('/ws/stats'); }
+  }
+
+  // Patch the API module before store initializes
+  const directApi = new DirectApi();
+
+  // ── Store (inline, patched to use direct API) ──
+  class DashboardStore {
+    constructor() {
+      this._state = {
+        engineOnline: false, wsConnections: 0, wsMaxConnections: 10,
+        harnessCount: 0, testCount: 0, memoryDomains: 0, entityCount: 0,
+        eventCount: 0, approvalCount: 0, healthScore: null,
+        harnesses: [], pipeline: null, approvals: [], memory: null,
+        sales: null, system: null, agents: [], events: [], entityIndex: null,
+        currentPage: 'overview', loading: false, error: null, lastUpdated: null,
+      };
+      this._listeners = new Set();
+      this._refreshTimer = null;
+    }
+    get state() { return this._state; }
+    subscribe(cb) { this._listeners.add(cb); return () => this._listeners.delete(cb); }
+    _update(p) {
+      this._state = { ...this._state, ...p, lastUpdated: new Date() };
+      this._listeners.forEach(cb => { try { cb(this._state); } catch(e) { console.error(e); } });
+    }
+    async loadDashboard() {
+      this._update({ loading: true, error: null });
+      try {
+        const d = await directApi.getDashboard();
+        this._update({
+          loading: false, engineOnline: true,
+          harnessCount: d.harnesses ?? 0, testCount: d.tests ?? 0,
+          memoryDomains: d.memory_domains ?? 0, entityCount: d.entity_count ?? 0,
+          eventCount: d.event_count ?? 0, approvalCount: d.approval_count ?? 0,
+          healthScore: d.health_score ?? null,
+          wsConnections: d.ws_connections?.active_connections ?? 0,
+          wsMaxConnections: d.ws_connections?.max_connections ?? 10,
+        });
+      } catch(e) { this._update({ loading: false, engineOnline: false, error: e.message }); }
+    }
+    async loadHarnesses() {
+      try { const d = await directApi.getHarnesses(); this._update({ harnesses: Array.isArray(d) ? d : [] }); }
+      catch(e) { console.error('loadHarnesses:', e); }
+    }
+    async loadApprovals() {
+      try { const d = await directApi.getApprovals(); this._update({ approvals: Array.isArray(d) ? d : [] }); }
+      catch(e) { console.error('loadApprovals:', e); }
+    }
+    async loadMemory() {
+      try { const d = await directApi.getMemorySummary(); this._update({ memory: d }); }
+      catch(e) { console.error('loadMemory:', e); }
+    }
+    async loadSystem() {
+      try { const d = await directApi.getSystemStatus(); this._update({ system: d }); }
+      catch(e) { console.error('loadSystem:', e); }
+    }
+    async loadAgents() {
+      try { const d = await directApi.getAgents(); this._update({ agents: Array.isArray(d) ? d : [] }); }
+      catch(e) { console.error('loadAgents:', e); }
+    }
+    async loadEntityIndex() {
+      try { const d = await directApi.getEntityIndex(); this._update({ entityIndex: d }); }
+      catch(e) { console.error('loadEntityIndex:', e); }
+    }
+    async loadSales() {
+      try { const d = await directApi.getSalesStatus(); this._update({ sales: d }); }
+      catch(e) { console.error('loadSales:', e); }
+    }
+    async loadEvents() {
+      try { const d = await directApi.getEvents(); this._update({ events: d }); }
+      catch(e) { console.error('loadEvents:', e); }
+    }
+    setPage(page) { this._update({ currentPage: page }); }
+    startAutoRefresh(ms = 30000) { this.stopAutoRefresh(); this._refreshTimer = setInterval(() => this.loadDashboard(), ms); }
+    stopAutoRefresh() { if (this._refreshTimer) { clearInterval(this._refreshTimer); this._refreshTimer = null; } }
+  }
+
+  const store = new DashboardStore();
+
+  // ── Layout (inline) ──
+  const NAV_ITEMS = [
+    { id: 'overview', icon: '⚡', label: 'Overview' },
+    { id: 'harnesses', icon: '🔗', label: 'Harnesses' },
+    { id: 'pipelines', icon: '🔄', label: 'Pipelines' },
+    { id: 'approvals', icon: '✅', label: 'Approvals' },
+    { id: 'memory', icon: '🧠', label: 'Memory' },
+    { id: 'entities', icon: '🕸️', label: 'Entities' },
+    { id: 'events', icon: '📋', label: 'Events' },
+    { id: 'sales', icon: '💰', label: 'Sales' },
+    { id: 'system', icon: '🖥️', label: 'System' },
+  ];
+
+  function renderLayout(container) {
+    container.innerHTML = `
+      <div class="aos-dash" role="application" aria-label="AOS Mission Control Dashboard">
+        <nav class="aos-sidebar" aria-label="Dashboard navigation">
+          <div class="aos-sidebar-header">
+            <span class="aos-logo-icon">⚡</span>
+            <span class="aos-logo-text">AOS</span>
+          </div>
+          <div class="aos-nav" id="aos-nav" role="menubar"></div>
+          <div class="aos-sidebar-footer">
+            <div class="aos-engine-badge" id="aos-engine-badge" aria-live="polite">
+              <span class="aos-dot"></span>
+              <span class="aos-dot-label">Engine</span>
+            </div>
+          </div>
+        </nav>
+        <main class="aos-main" id="aos-content" tabindex="-1">
+          <header class="aos-header">
+            <h1 class="aos-page-title" id="aos-page-title">Overview</h1>
+            <div class="aos-header-actions">
+              <span class="aos-status-text" id="aos-status-text">Connecting...</span>
+              <button class="aos-btn aos-btn-ghost" id="aos-refresh-btn">↻</button>
+            </div>
+          </header>
+          <div class="aos-content" id="aos-page-content"></div>
+        </main>
+      </div>`;
+
+    const nav = container.querySelector('#aos-nav');
+    nav.innerHTML = NAV_ITEMS.map(i => `
+      <button class="aos-nav-item" data-page="${i.id}" role="menuitem">
+        <span class="aos-nav-icon">${i.icon}</span>
+        <span class="aos-nav-label">${i.label}</span>
+      </button>`).join('');
+
+    nav.addEventListener('click', e => {
+      const btn = e.target.closest('.aos-nav-item');
+      if (!btn) return;
+      const page = btn.dataset.page;
+      store.setPage(page);
+      nav.querySelectorAll('.aos-nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
+      document.getElementById('aos-page-title').textContent = NAV_ITEMS.find(n => n.id === page)?.label || page;
+    });
+
+    container.querySelector('#aos-refresh-btn')?.addEventListener('click', () => store.loadDashboard());
+
+    store.subscribe(s => {
+      const badge = container.querySelector('#aos-engine-badge');
+      if (badge) { badge.classList.toggle('online', s.engineOnline); badge.classList.toggle('offline', !s.engineOnline); }
+      const st = container.querySelector('#aos-status-text');
+      if (st) st.textContent = s.loading ? 'Loading...' : s.engineOnline ? 'Online' : 'Offline';
+    });
+  }
+
+  // ── Overview Page ──
+  function renderOverview(container) {
+    container.innerHTML = '';
+    const kpiStrip = document.createElement('div');
+    kpiStrip.className = 'aos-kpi-strip';
+    container.appendChild(kpiStrip);
+
+    const statusSection = document.createElement('div');
+    statusSection.className = 'aos-section';
+    container.appendChild(statusSection);
+
+    const harnessSection = document.createElement('div');
+    harnessSection.className = 'aos-section';
+    container.appendChild(harnessSection);
+
+    store.subscribe(s => {
+      // KPIs
+      kpiStrip.innerHTML = '';
+      const kpis = [
+        { label: 'Harnesses', value: s.harnessCount, icon: '🔗', accent: true },
+        { label: 'Tests', value: s.testCount, icon: '🧪' },
+        { label: 'Memory', value: s.memoryDomains, icon: '🧠' },
+        { label: 'Entities', value: s.entityCount, icon: '🕸️' },
+        { label: 'Events', value: s.eventCount, icon: '📋' },
+        { label: 'Approvals', value: s.approvalCount, icon: '✅' },
+        { label: 'WS Links', value: `${s.wsConnections}/${s.wsMaxConnections}`, icon: '🔌' },
+        { label: 'Health', value: s.healthScore != null ? `${(s.healthScore * 100).toFixed(0)}%` : '—', icon: '💓' },
+      ];
+      kpis.forEach(k => {
+        const el = document.createElement('div');
+        el.className = `aos-kpi${k.accent ? ' aos-kpi-accent' : ''}`;
+        el.innerHTML = `<div class="aos-kpi-icon">${k.icon}</div><div class="aos-kpi-value">${k.value ?? '—'}</div><div class="aos-kpi-label">${k.label}</div>`;
+        kpiStrip.appendChild(el);
+      });
+
+      // Status section
+      statusSection.innerHTML = '<h3 class="aos-section-title">System Status</h3>';
+      const grid = document.createElement('div');
+      grid.className = 'aos-status-grid';
+      const items = [
+        { label: 'Engine', status: s.engineOnline ? 'online' : 'offline' },
+        { label: 'Pipeline', status: s.pipeline ? 'active' : 'idle' },
+        { label: 'Approvals', status: s.approvalCount > 0 ? 'warning' : 'ok' },
+      ];
+      items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'aos-status-card';
+        const dotColors = { online: '#10B981', offline: '#EF4444', active: '#10B981', idle: '#6E7681', warning: '#F59E0B', ok: '#10B981' };
+        card.innerHTML = `<span class="aos-dot" style="background:${dotColors[item.status] || '#6E7681'}"></span><span class="aos-status-label">${item.label}</span><span class="aos-status-value">${item.status}</span>`;
+        grid.appendChild(card);
+      });
+      statusSection.appendChild(grid);
+
+      // Harness list
+      if (s.harnesses.length > 0) {
+        harnessSection.innerHTML = '<h3 class="aos-section-title">Harnesses</h3>';
+        const hGrid = document.createElement('div');
+        hGrid.className = 'aos-harness-grid';
+        s.harnesses.forEach(h => {
+          const card = document.createElement('div');
+          card.className = 'aos-harness-card';
+          card.innerHTML = `<div class="aos-card-dot" style="background:#10B981"></div><div class="aos-card-name">${h.name}</div><div class="aos-card-id">${h.id}</div><div class="aos-card-venture">${h.venture || '—'}</div>`;
+          hGrid.appendChild(card);
+        });
+        harnessSection.appendChild(hGrid);
+      }
+    });
+  }
+
+  // ── Init ──
+  const root = document.getElementById('preview-root');
+  renderLayout(root);
+
+  const contentEl = document.getElementById('aos-page-content');
+  renderOverview(contentEl);
+
+  store.loadDashboard();
+  store.loadHarnesses();
+  store.startAutoRefresh(15000);
+
+  nav?.querySelector('[data-page="overview"]')?.classList.add('active');
+</script>
+</body>
+</html>

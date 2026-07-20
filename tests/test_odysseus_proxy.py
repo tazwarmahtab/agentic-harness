@@ -55,7 +55,9 @@ class TestAOSHealthProxy:
         body = response.json()
         assert "error" in body
 
-    def test_health_check_handles_unavailable(self, client: TestClient, engine_down) -> None:
+    def test_health_check_handles_unavailable(
+        self, client: TestClient, engine_down
+    ) -> None:
         """Health check returns 502 with engine-unavailable error body."""
         response = client.get("/api/aos/health")
         assert response.status_code == 502

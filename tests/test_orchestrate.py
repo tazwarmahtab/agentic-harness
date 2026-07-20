@@ -688,7 +688,9 @@ class TestAutoFlag:
         assert rc == 0
         assert ctx.results[Phase.AUTOPLAN].status == Status.PASSED
         # Ensure _invoke_skill was called, check it was called for autoplan
-        assert any(call.args[0] == "autoplan" for call in mock_invoke_skill.call_args_list)
+        assert any(
+            call.args[0] == "autoplan" for call in mock_invoke_skill.call_args_list
+        )
         pipeline.gates.check.assert_not_called()
         pipeline.gates.wait_for_decision.assert_not_called()
         if ctx.plan_path and ctx.plan_path.exists():
@@ -712,9 +714,7 @@ class TestAutoFlag:
             )
             # Manually set reviewloop result as PASSED for auto-approval check
             ctx.record(
-                PhaseResult(
-                    phase=Phase.REVIEWLOOP, status=Status.PASSED, started_at=""
-                )
+                PhaseResult(phase=Phase.REVIEWLOOP, status=Status.PASSED, started_at="")
             )
             pipeline = OrchestratePipeline(ctx, MagicMock())
 
@@ -731,6 +731,7 @@ class TestAutoFlag:
     ):
         """--auto should NOT auto-approve review gate if reviewloop failed."""
         mock_invoke_skill.return_value = 0, "", ""  # Simulate skill success
+
         # Mock _run_reviewloop to return True (so it doesn't stop) but Status.FAILED
         # Wait, if it returns True, it continues. If it returns False, it stops.
         # We want it to continue but NOT auto-approve.
@@ -739,10 +740,13 @@ class TestAutoFlag:
         def mock_failed_review(self_pipeline):
             res = PhaseResult(phase=Phase.REVIEWLOOP, status=Status.FAILED)
             self_pipeline.ctx.record(res)
-            return True # Continue to gate
+            return True  # Continue to gate
 
         with patch.object(
-            OrchestratePipeline, "_run_reviewloop", side_effect=mock_failed_review, autospec=True
+            OrchestratePipeline,
+            "_run_reviewloop",
+            side_effect=mock_failed_review,
+            autospec=True,
         ):
             mock_gates = MagicMock()
             # Simulate gate blocking if not auto-approved

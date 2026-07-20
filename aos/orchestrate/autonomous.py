@@ -26,7 +26,7 @@ from typing_extensions import TypedDict
 from aos.llm import RouterLLMClient
 from aos.context import build_prompt
 from aos.orchestrate.gates import Gate, GateDecision, GateManager
-from aos.registry import load_registry, Registry
+from aos.registry import load_registry
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # State
 # ---------------------------------------------------------------------------
+
 
 class PhaseStatus(str, Enum):
     PENDING = "pending"
@@ -92,6 +93,7 @@ class AutonomousState(TypedDict, total=False):
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
+
 
 class AutonomousPipeline:
     """Encapsulates the LangGraph StateGraph for autonomous execution.
@@ -176,7 +178,11 @@ class AutonomousPipeline:
         g.add_conditional_edges(
             "check_phase_result",
             self._after_check_phase,
-            {"passed": "update_state", "failed": "rollback_gate", "error": "audit_complete"},
+            {
+                "passed": "update_state",
+                "failed": "rollback_gate",
+                "error": "audit_complete",
+            },
         )
         g.add_conditional_edges(
             "rollback_gate",
@@ -234,8 +240,10 @@ class AutonomousPipeline:
         if existing:
             idx = state.get("current_phase_index", 0)
             results = state.get("phase_results", [])
-            print(f"[autonomous] discover_phases -- resume: {len(existing)} phases, "
-                  f"at index {idx}, {len(results)} prior results")
+            print(
+                f"[autonomous] discover_phases -- resume: {len(existing)} phases, "
+                f"at index {idx}, {len(results)} prior results"
+            )
             return {
                 "phases": existing,
                 "current_phase_index": idx,
@@ -274,7 +282,9 @@ class AutonomousPipeline:
         for ph in phases:
             criteria = len(ph.get("acceptance_criteria", []))
             deliverables = len(ph.get("deliverables", []))
-            print(f"  - {ph['id']}: {ph['title']} ({criteria} criteria, {deliverables} deliverables)")
+            print(
+                f"  - {ph['id']}: {ph['title']} ({criteria} criteria, {deliverables} deliverables)"
+            )
 
         return {
             "phases": phases,
@@ -302,7 +312,6 @@ class AutonomousPipeline:
                 continue
 
             title = lines[0].lstrip("#").strip()
-            body = "\n".join(lines[1:]).strip()
 
             # Extract description (text before first ** block or bullet list)
             description_lines: list[str] = []
@@ -317,7 +326,10 @@ class AutonomousPipeline:
 
                 # Detect section headers
                 lower = stripped.lower()
-                if "**acceptance criteria**" in lower or "acceptance criteria:" in lower:
+                if (
+                    "**acceptance criteria**" in lower
+                    or "acceptance criteria:" in lower
+                ):
                     current_section = "criteria"
                     continue
                 if "**deliverables**" in lower or "deliverables:" in lower:
@@ -373,7 +385,9 @@ class AutonomousPipeline:
         # Auto-approve in dry-run or --auto mode
         auto = state.get("dry_run") or state.get("auto")
         if auto:
-            print(f"[autonomous] gate_phase -- {phase_id} auto-approved ({'dry-run' if state.get('dry_run') else '--auto'})")
+            print(
+                f"[autonomous] gate_phase -- {phase_id} auto-approved ({'dry-run' if state.get('dry_run') else '--auto'})"
+            )
             return {"pending_gate_item_id": None}
 
         # Check if this gate was already decided (e.g. after resume)
@@ -403,7 +417,9 @@ class AutonomousPipeline:
         # SKIPPED — block until founder decides
         print(f"[autonomous] gate_phase -- {phase_id} waiting for founder decision...")
         wait_result = self.gate_manager.wait_for_decision(
-            result.item_id, Gate.SPEC, timeout_s=self.gate_timeout_s,
+            result.item_id,
+            Gate.SPEC,
+            timeout_s=self.gate_timeout_s,
         )
 
         if wait_result.decision == GateDecision.APPROVED:
@@ -416,7 +432,9 @@ class AutonomousPipeline:
 
         # Timeout
         print(f"[autonomous] gate_phase -- {phase_id} gate timed out")
-        return {"error": f"Phase {phase_id} gate timed out after {self.gate_timeout_s:.0f}s"}
+        return {
+            "error": f"Phase {phase_id} gate timed out after {self.gate_timeout_s:.0f}s"
+        }
 
     def _gate_milestone(self, state: AutonomousState) -> dict[str, Any]:
         """Milestone Completion Gate (POL-AUTO-002).
@@ -429,7 +447,9 @@ class AutonomousPipeline:
         failed = any(r.get("status") == PhaseStatus.FAILED.value for r in results)
 
         if failed:
-            print("[autonomous] gate_milestone -- skipping (phases failed, no sign-off needed)")
+            print(
+                "[autonomous] gate_milestone -- skipping (phases failed, no sign-off needed)"
+            )
             return {}
 
         auto = state.get("dry_run") or state.get("auto")
@@ -443,7 +463,9 @@ class AutonomousPipeline:
             summary="Approve milestone completion sign-off",
             details={
                 "total_phases": len(results),
-                "passed": sum(1 for r in results if r.get("status") == PhaseStatus.PASSED.value),
+                "passed": sum(
+                    1 for r in results if r.get("status") == PhaseStatus.PASSED.value
+                ),
             },
         )
 
@@ -458,7 +480,9 @@ class AutonomousPipeline:
         # Block
         print("[autonomous] gate_milestone -- waiting for founder sign-off...")
         wait_result = self.gate_manager.wait_for_decision(
-            result.item_id, Gate.SHIP, timeout_s=self.gate_timeout_s,
+            result.item_id,
+            Gate.SHIP,
+            timeout_s=self.gate_timeout_s,
         )
 
         if wait_result.decision == GateDecision.APPROVED:
@@ -519,53 +543,61 @@ class AutonomousPipeline:
                     try:
                         # --- Executor ---
                         exec_prompt = build_prompt(
-                            executor, memory_context=phase_context,
+                            executor,
+                            memory_context=phase_context,
                         )
                         resp = self.llm.complete(
                             model="default",
                             system=exec_prompt,
-                            messages=[{
-                                "role": "user",
-                                "content": (
-                                    f"Execute phase: {title}\n\n"
-                                    f"{phase_context}\n\n"
-                                    "Implement the deliverables listed above. "
-                                    "Write tests. Output your result as JSON."
-                                ),
-                            }],
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        f"Execute phase: {title}\n\n"
+                                        f"{phase_context}\n\n"
+                                        "Implement the deliverables listed above. "
+                                        "Write tests. Output your result as JSON."
+                                    ),
+                                }
+                            ],
                         )
                         exec_output = resp.content
-                        print(f"[autonomous]   executor output: {len(exec_output)} chars")
+                        print(
+                            f"[autonomous]   executor output: {len(exec_output)} chars"
+                        )
 
                         # --- Auditor ---
                         audit_prompt = build_prompt(
                             auditor,
                             memory_context=(
-                                f"{phase_context}\n\n"
-                                f"EXECUTOR OUTPUT:\n{exec_output}"
+                                f"{phase_context}\n\nEXECUTOR OUTPUT:\n{exec_output}"
                             ),
                         )
                         audit_resp = self.llm.complete(
                             model="default",
                             system=audit_prompt,
-                            messages=[{
-                                "role": "user",
-                                "content": (
-                                    f"Audit the implementation of phase: {title}\n\n"
-                                    "Verify each acceptance criterion against the "
-                                    "executor's output. Output your audit as JSON "
-                                    "with a 'verdict' field: PASS or FAIL."
-                                ),
-                            }],
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": (
+                                        f"Audit the implementation of phase: {title}\n\n"
+                                        "Verify each acceptance criterion against the "
+                                        "executor's output. Output your audit as JSON "
+                                        "with a 'verdict' field: PASS or FAIL."
+                                    ),
+                                }
+                            ],
                         )
                         audit_output = audit_resp.content
-                        print(f"[autonomous]   auditor output: {len(audit_output)} chars")
+                        print(
+                            f"[autonomous]   auditor output: {len(audit_output)} chars"
+                        )
 
                         # --- Check verdict ---
                         verdict = self._parse_audit_verdict(audit_output)
                         if verdict == "FAIL":
                             error_msg = f"Audit FAILED for {phase_id}"
-                            print(f"[autonomous]   ✗ audit: FAIL")
+                            print("[autonomous]   ✗ audit: FAIL")
 
                     except Exception as exc:
                         error_msg = f"LLM execution failed: {exc}"
@@ -601,7 +633,8 @@ class AutonomousPipeline:
 
     @staticmethod
     def _build_phase_context(
-        phase: dict[str, Any], state: AutonomousState,
+        phase: dict[str, Any],
+        state: AutonomousState,
     ) -> str:
         """Build a rich context string for specialist agents."""
         parts: list[str] = []
@@ -626,8 +659,10 @@ class AutonomousPipeline:
 
         retries = state.get("retries", 0)
         if retries:
-            parts.append(f"\nNOTE: This is retry #{retries}. The previous attempt "
-                         f"failed. Review the prior error and avoid repeating it.")
+            parts.append(
+                f"\nNOTE: This is retry #{retries}. The previous attempt "
+                f"failed. Review the prior error and avoid repeating it."
+            )
 
         prior_results = state.get("phase_results", [])
         if prior_results:
@@ -641,6 +676,7 @@ class AutonomousPipeline:
     def _parse_audit_verdict(audit_output: str) -> str:
         """Extract PASS/FAIL verdict from audit output."""
         import re
+
         # Look for "verdict": "PASS" or "verdict": "FAIL" in JSON-like output
         match = re.search(r'"verdict"\s*:\s*"(PASS|FAIL)"', audit_output, re.IGNORECASE)
         if match:
@@ -734,7 +770,9 @@ class AutonomousPipeline:
         )
 
         if result.decision == GateDecision.APPROVED:
-            print(f"[autonomous] rollback_gate -- {phase_id} approved (retry {retries + 1}/{max_retries})")
+            print(
+                f"[autonomous] rollback_gate -- {phase_id} approved (retry {retries + 1}/{max_retries})"
+            )
             return {"retries": retries + 1}
 
         if result.decision == GateDecision.REJECTED:
@@ -742,13 +780,19 @@ class AutonomousPipeline:
             return {"error": f"Rollback of phase {phase_id} rejected by founder"}
 
         # Block until founder decides
-        print(f"[autonomous] rollback_gate -- {phase_id} waiting for rollback approval...")
+        print(
+            f"[autonomous] rollback_gate -- {phase_id} waiting for rollback approval..."
+        )
         wait_result = self.gate_manager.wait_for_decision(
-            result.item_id, Gate.DOUBT, timeout_s=self.gate_timeout_s,
+            result.item_id,
+            Gate.DOUBT,
+            timeout_s=self.gate_timeout_s,
         )
 
         if wait_result.decision == GateDecision.APPROVED:
-            print(f"[autonomous] rollback_gate -- {phase_id} approved (retry {retries + 1}/{max_retries})")
+            print(
+                f"[autonomous] rollback_gate -- {phase_id} approved (retry {retries + 1}/{max_retries})"
+            )
             return {"retries": retries + 1, "error": None}
 
         if wait_result.decision == GateDecision.REJECTED:
@@ -757,7 +801,9 @@ class AutonomousPipeline:
 
         # Timeout
         print(f"[autonomous] rollback_gate -- {phase_id} gate timed out")
-        return {"error": f"Rollback gate for {phase_id} timed out after {self.gate_timeout_s:.0f}s"}
+        return {
+            "error": f"Rollback gate for {phase_id} timed out after {self.gate_timeout_s:.0f}s"
+        }
 
     def _update_state(self, state: AutonomousState) -> dict[str, Any]:
         """Persist progress and advance the phase index."""
@@ -771,7 +817,11 @@ class AutonomousPipeline:
             f"({'complete' if done else 'next phase'})"
         )
         # Reset retry counter when advancing to a new phase
-        updates: dict[str, Any] = {"current_phase_index": next_index, "is_complete": done, "retries": 0}
+        updates: dict[str, Any] = {
+            "current_phase_index": next_index,
+            "is_complete": done,
+            "retries": 0,
+        }
 
         # Persist checkpoint after each successful phase
         merged = {**state, **updates}
@@ -782,15 +832,13 @@ class AutonomousPipeline:
     def _audit_complete(self, state: AutonomousState) -> dict[str, Any]:
         """Synthesise final results and produce a summary."""
         results = state.get("phase_results", [])
-        passed = sum(
-            1 for r in results if r.get("status") == PhaseStatus.PASSED.value
-        )
-        failed = sum(
-            1 for r in results if r.get("status") == PhaseStatus.FAILED.value
-        )
+        passed = sum(1 for r in results if r.get("status") == PhaseStatus.PASSED.value)
+        failed = sum(1 for r in results if r.get("status") == PhaseStatus.FAILED.value)
 
         print("[autonomous] audit_complete -- summary:")
-        print(f"[autonomous]   total: {len(results)}, passed: {passed}, failed: {failed}")
+        print(
+            f"[autonomous]   total: {len(results)}, passed: {passed}, failed: {failed}"
+        )
 
         if state.get("error"):
             print(f"[autonomous]   error: {state['error']}")
@@ -868,7 +916,9 @@ class AutonomousPipeline:
                 new_lines.append(line)
 
         path.write_text("".join(new_lines))
-        print(f"[autonomous] write_back_roadmap -- updated {writeback_file} ({phase_index} phases)")
+        print(
+            f"[autonomous] write_back_roadmap -- updated {writeback_file} ({phase_index} phases)"
+        )
 
     # ------------------------------------------------------------------
     # Persistent state (checkpoint / resume)
@@ -985,7 +1035,9 @@ class AutonomousPipeline:
             "max_retries": self.max_retries,
             "writeback_file": self.roadmap_file,
             "phases": checkpoint.get("phases", []) if checkpoint else [],
-            "current_phase_index": checkpoint.get("current_phase_index", 0) if checkpoint else 0,
+            "current_phase_index": checkpoint.get("current_phase_index", 0)
+            if checkpoint
+            else 0,
             "phase_results": checkpoint.get("phase_results", []) if checkpoint else [],
             "retries": checkpoint.get("retries", 0) if checkpoint else 0,
             "is_complete": False,

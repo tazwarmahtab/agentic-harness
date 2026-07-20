@@ -89,7 +89,9 @@ class SalesCycleState:
 # ---------------------------------------------------------------------------
 
 
-async def qualify_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
+async def qualify_node(
+    state: SalesCycleState, harness_config: Any = None
+) -> SalesCycleState:
     """Phase 1: Qualify incoming lead.
 
     Reads CRM pipeline, applies ICP matching (Bangladesh RMG, >500kW load),
@@ -174,7 +176,9 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def outreach_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
+async def outreach_node(
+    state: SalesCycleState, harness_config: Any = None
+) -> SalesCycleState:
     """Phase 2: Execute outreach to qualified lead.
 
     Composes personalized message, sends via preferred channel,
@@ -243,7 +247,9 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def propose_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
+async def propose_node(
+    state: SalesCycleState, harness_config: Any = None
+) -> SalesCycleState:
     """Phase 3: Generate commercial proposal.
 
     Uses ground truth constants for all financial calculations:
@@ -337,7 +343,9 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def negotiate_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
+async def negotiate_node(
+    state: SalesCycleState, harness_config: Any = None
+) -> SalesCycleState:
     """Phase 4: Handle objections and negotiate terms.
 
     Manages customer objections using objection_handlers,
@@ -422,7 +430,9 @@ RESPONSE FORMAT (JSON):
 # ---------------------------------------------------------------------------
 
 
-async def close_node(state: SalesCycleState, harness_config: Any = None) -> SalesCycleState:
+async def close_node(
+    state: SalesCycleState, harness_config: Any = None
+) -> SalesCycleState:
     """Phase 5: Close the deal.
 
     Confirms final terms, dispatches to Legal harness for NDA/LOI/PPA,

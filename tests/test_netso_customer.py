@@ -6,10 +6,6 @@ import pytest
 
 from aos.services.netso_customer import (
     GenerationData,
-    SavingsData,
-    BillingData,
-    PortfolioData,
-    FinancialsData,
     get_generation,
     get_savings,
     get_billing,
@@ -72,8 +68,14 @@ class TestGetGeneration:
         assert result is not None
         d = result.to_dict()
         assert set(d.keys()) == {
-            "customer_id", "customer_name", "system_capacity_kw",
-            "current_month", "ytd", "trend", "alerts", "last_updated",
+            "customer_id",
+            "customer_name",
+            "system_capacity_kw",
+            "current_month",
+            "ytd",
+            "trend",
+            "alerts",
+            "last_updated",
         }
 
 
@@ -224,7 +226,10 @@ class TestNetsoEndToEnd:
     def test_generation_savings_consistency(self):
         gen = self.client.get("/api/netso/customers/CGS-001/generation").json()
         sav = self.client.get("/api/netso/customers/CGS-001/savings").json()
-        assert gen["current_month"]["generation_kwh"] == sav["current_month"]["generation_kwh"]
+        assert (
+            gen["current_month"]["generation_kwh"]
+            == sav["current_month"]["generation_kwh"]
+        )
 
     def test_financial_constants_match_ground_truth(self):
         port = self.client.get("/api/netso/portfolio").json()

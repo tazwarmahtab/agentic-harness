@@ -88,7 +88,10 @@ class TestHealthCheck:
         class FakeLLM:
             base_url = "http://localhost:9999"
 
-        with patch("aos.hardening.urllib.request.urlopen", side_effect=urllib.error.URLError("refused")):
+        with patch(
+            "aos.hardening.urllib.request.urlopen",
+            side_effect=urllib.error.URLError("refused"),
+        ):
             result = health_check(llm=FakeLLM())
         assert result["llm"]["status"] == "degraded"
 

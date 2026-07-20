@@ -179,20 +179,16 @@ def get_generation(site_id: str) -> GenerationData | None:
     latest = monthly[-1] if monthly else {}
     total_generation = sum(m.get("generation_kwh", 0) for m in monthly)
     total_export = sum(m.get("grid_export_kwh", 0) for m in monthly)
-    avg_availability = (
-        sum(m.get("availability_pct", 0) for m in monthly) / len(monthly)
-        if monthly
-        else 0
-    )
     capacity_factor = (
-        (latest.get("generation_kwh", 0) / (site["system_capacity_kw"] * 730))
-        * 100
+        (latest.get("generation_kwh", 0) / (site["system_capacity_kw"] * 730)) * 100
         if site["system_capacity_kw"] > 0 and latest
         else 0
     )
     self_consumption = (
-        ((latest.get("generation_kwh", 0) - latest.get("grid_export_kwh", 0))
-         / latest.get("generation_kwh", 1))
+        (
+            (latest.get("generation_kwh", 0) - latest.get("grid_export_kwh", 0))
+            / latest.get("generation_kwh", 1)
+        )
         * 100
         if latest.get("generation_kwh", 0) > 0
         else 0
@@ -293,7 +289,12 @@ def get_savings(site_id: str) -> SavingsData | None:
             "projected_ppa_after_escalation": round(projected_ppa, 2),
         },
         trend=[
-            {"month": t["month"], "savings_bdt": round(t["generation_kwh"] * (TRUE_VARIABLE_RATE - ppa_rate), 2)}
+            {
+                "month": t["month"],
+                "savings_bdt": round(
+                    t["generation_kwh"] * (TRUE_VARIABLE_RATE - ppa_rate), 2
+                ),
+            }
             for t in gen.trend
         ],
     )
@@ -319,7 +320,6 @@ def get_billing(site_id: str) -> BillingData | None:
     if not current and invoices:
         current = invoices[-1]
 
-    paid = [i for i in invoices if i["status"] == "paid"]
     overdue = [i for i in invoices if i["status"] == "overdue"]
     outstanding_total = sum(i["amount_bdt"] for i in invoices if i["status"] != "paid")
 
@@ -379,15 +379,17 @@ def get_portfolio() -> PortfolioData:
         total_revenue_month += rev_month
         total_savings_month += sav_month
 
-        customer_summaries.append({
-            "customer_id": cid,
-            "customer_name": c["customer_name"],
-            "capacity_kw": c.get("system_capacity_kw", 0),
-            "status": c.get("status", "unknown"),
-            "monthly_generation_kwh": gen_month,
-            "monthly_savings_bdt": round(sav_month, 2),
-            "health_score": c.get("health_score", 0),
-        })
+        customer_summaries.append(
+            {
+                "customer_id": cid,
+                "customer_name": c["customer_name"],
+                "capacity_kw": c.get("system_capacity_kw", 0),
+                "status": c.get("status", "unknown"),
+                "monthly_generation_kwh": gen_month,
+                "monthly_savings_bdt": round(sav_month, 2),
+                "health_score": c.get("health_score", 0),
+            }
+        )
 
     invoices_all = []
     for inv_list in billing_data.values():

@@ -895,22 +895,34 @@ class OrchestratePipeline:
         if self.ctx.auto:
             if gate == Gate.SPEC:
                 # Auto-approve spec if plan path exists and has content
-                if self.ctx.plan_path and self.ctx.plan_path.exists() and self.ctx.plan_path.stat().st_size > 0:
+                if (
+                    self.ctx.plan_path
+                    and self.ctx.plan_path.exists()
+                    and self.ctx.plan_path.stat().st_size > 0
+                ):
                     print("  [AUTO] Spec gate auto-approved (valid plan exists)")
                     return True
             elif gate == Gate.PLAN:
                 # Auto-approve plan if plan file exists and has content
-                if self.ctx.plan_path and self.ctx.plan_path.exists() and self.ctx.plan_path.stat().st_size > 0:
+                if (
+                    self.ctx.plan_path
+                    and self.ctx.plan_path.exists()
+                    and self.ctx.plan_path.stat().st_size > 0
+                ):
                     print("  [AUTO] Plan gate auto-approved (valid plan exists)")
                     return True
             elif gate == Gate.REVIEW:
                 # Auto-approve review if the reviewloop passed (0 critical, 0 high findings)
                 review_res = self.ctx.results.get(Phase.REVIEWLOOP)
                 if review_res and review_res.status == Status.PASSED:
-                    print("  [AUTO] Review gate auto-approved (0 critical, 0 high findings)")
+                    print(
+                        "  [AUTO] Review gate auto-approved (0 critical, 0 high findings)"
+                    )
                     return True
                 elif self.ctx.skip_review:
-                    print("  [AUTO] Review gate auto-approved (review phase was skipped)")
+                    print(
+                        "  [AUTO] Review gate auto-approved (review phase was skipped)"
+                    )
                     return True
 
         return False

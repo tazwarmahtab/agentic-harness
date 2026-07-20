@@ -196,7 +196,9 @@ def test_validate_all_executes_successfully(tmp_path: Path) -> None:
     venture_file = venture_dir / "venture.yml"
     venture_file.write_text(yaml.safe_dump(venture_data))
 
-    result = validate_all(harness_dir=harness_dir, venture_path=venture_file, verbose=False)
+    result = validate_all(
+        harness_dir=harness_dir, venture_path=venture_file, verbose=False
+    )
 
     assert result.ok
     assert result.manifests_validated == 2

@@ -218,14 +218,24 @@ class TestSpecialistsNodeTeamShadowing:
         with (
             patch("aos.graph.get_config", return_value=config),
             patch("aos.graph._run_team", return_value=team_result),
-            patch("aos.graph._run_parallel", return_value=[("AGT-TEST-SOLO", solo_result)]),
+            patch(
+                "aos.graph._run_parallel", return_value=[("AGT-TEST-SOLO", solo_result)]
+            ),
         ):
             result = specialists_node(state)
 
-        specialist_results = result.get("specialists_output", {}).get("specialist_results", [])
+        specialist_results = result.get("specialists_output", {}).get(
+            "specialist_results", []
+        )
 
-        team_results = [r for r in specialist_results if r.get("agent_id", "").startswith("TEAM:")]
-        solo_results = [r for r in specialist_results if not r.get("agent_id", "").startswith("TEAM:")]
+        team_results = [
+            r for r in specialist_results if r.get("agent_id", "").startswith("TEAM:")
+        ]
+        solo_results = [
+            r
+            for r in specialist_results
+            if not r.get("agent_id", "").startswith("TEAM:")
+        ]
 
         assert len(team_results) >= 1, (
             f"Team results were discarded! Got {len(specialist_results)} total results "
@@ -243,7 +253,6 @@ class TestGraphCheckpointing:
     def test_build_graph_default_checkpointer(self):
         """build_graph() with no checkpointer arg should use MemorySaver."""
         from aos.graph import build_graph
-        from langgraph.checkpoint.memory import MemorySaver
 
         bundle = _build_registry().harnesses.get("HAR-EXEC-001")
         assert bundle is not None
@@ -284,7 +293,7 @@ class TestGraphCheckpointing:
         assert bundle is not None
 
         saver = MemorySaver()
-        compiled = build_graph(
+        build_graph(
             bundle=bundle,
             llm=MagicMock(),
             checkpointer=saver,
