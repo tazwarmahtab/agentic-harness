@@ -5,7 +5,7 @@
  */
 
 const AOS_ENGINE = 'http://localhost:7001';
-const AOS_BASE = `${AOS_ENGINE}/api/aos`;
+const AOS_BASE = `${AOS_ENGINE}/api`;
 const NETSO_BASE = `${AOS_ENGINE}/api/netso`;
 
 class DirectApi {

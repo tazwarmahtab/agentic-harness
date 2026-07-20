@@ -50,6 +50,7 @@ from aos.schemas.harness import AgentTeam, TeamMember
 from aos.schemas.venture import Venture
 from aos.tools import ToolGateway
 from aos.usage import UsageTracker
+from aos.execution import ExecutionBudget, ExecutionDecision, ExecutionTrace
 
 logger = logging.getLogger("aos.graph")
 
@@ -116,6 +117,8 @@ class CycleState(TypedDict, total=False):
     completion_criteria: dict[str, Any]
     loop_context_summary: str
     iteration_history: Annotated[list[dict[str, Any]], operator.add]
+    # Inspectable execution contract for agentic runs.
+    execution_trace: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
@@ -1745,6 +1748,30 @@ def log_node(state: CycleState) -> dict:
         "handoffs_created": len(state.get("handoffs", [])),
     }
 
+    trace = ExecutionTrace(
+        task_id=state.get("cycle_id", "unknown"),
+        budget=ExecutionBudget(max_steps=max(len(results), 1)),
+        scratchpad={"iteration": iteration, "completion_criteria": state.get("completion_criteria", {})},
+        steps_completed=len(results),
+    )
+    for result in results:
+        if result.get("agent_id"):
+            trace.add_decision(ExecutionDecision(
+                actor=str(result["agent_id"]),
+                decision=str(result.get("status", "unknown")),
+                rationale=str(result.get("error", "step completed")),
+                evidence=[str(result.get("step", ""))],
+            ))
+    for handoff in state.get("handoffs", []):
+        trace.add_handoff(__import__("aos.execution", fromlist=["AgentHandoff"]).AgentHandoff(
+            from_agent=str(handoff.get("source_agent", "dispatcher")),
+            to_agent=str(handoff.get("agent_id", handoff.get("route_to", "unknown"))),
+            task=str(handoff.get("task", "")),
+            acceptance_criteria=list(handoff.get("acceptance_criteria", [])) if isinstance(handoff.get("acceptance_criteria", []), list) else [],
+            status=str(handoff.get("status", "queued")),
+        ))
+    trace.stop("cycle_complete" if not state.get("errors") else "errors_recorded")
+
     memory_summary: dict[str, Any] = {}
     if memory_store:
         audit_records = memory_store.review_pending(auto_store=True)
@@ -1763,7 +1790,8 @@ def log_node(state: CycleState) -> dict:
                 memory_summary["persist_error"] = str(exc)
                 logger.error("log_node: persist_to_disk failed: %s", exc)
 
-    output = {"decision_log_entry": log_entry, "memory_summary": memory_summary}
+    output = {"decision_log_entry": log_entry, "memory_summary": memory_summary,
+              "execution_trace": trace.to_dict()}
     elapsed = int((time.monotonic() - start) * 1000)
     return {
         "step_results": _step_result_to_list(
@@ -1776,6 +1804,7 @@ def log_node(state: CycleState) -> dict:
             }
         ),
         "log_output": output,
+        "execution_trace": trace.to_dict(),
     }
 
 
@@ -2099,6 +2128,7 @@ def run_cycle_graph(
         "completion_criteria": completion_criteria,
         "loop_context_summary": "",
         "iteration_history": [],
+        "execution_trace": {},
     }
 
     config: RunnableConfig = {

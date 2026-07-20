@@ -8,6 +8,8 @@ Usage:
  python -m aos orchestrate --autonomous [--roadmap-file PATH] [--dry-run]
  python -m aos ventures
  python -m aos approvals [list|approve-all|reject-all|approve ID|reject ID]
+ python -m aos audit PATH [--type TYPE]
+ python -m aos systems [list|show ID]
 """
 
 from __future__ import annotations
@@ -366,6 +368,35 @@ def cmd_approvals(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Run a structured audit over a local artifact."""
+    from aos.audit import AuditEngine
+
+    report = AuditEngine.default().audit_path(args.path, args.type)
+    print(f"Audit: {report.target} ({report.target_type})")
+    print(f"Status: {report.status}")
+    print(f"Findings: {len(report.findings)}; blocking: {len(report.blocking_findings)}")
+    for finding in report.findings:
+        location = f" [{finding.location}]" if finding.location else ""
+        print(f"- {finding.severity.value.upper()} {finding.finding_id}{location}: {finding.evidence}")
+        print(f"  Fix: {finding.recommendation}")
+    return 1 if report.status == "blocked" else 0
+
+
+def cmd_systems(args: argparse.Namespace) -> int:
+    """List or inspect declarative reusable systems."""
+    from aos.reusable import ReusableSystemRegistry
+
+    registry = ReusableSystemRegistry.load_dir(find_project_root() / "aos" / "systems")
+    if args.systems_action in (None, "list"):
+        for system in registry.list():
+            print(f"{system.id}: {system.name} — {system.purpose}")
+        return 0
+    system = registry.get(args.system_id)
+    print(yaml.safe_dump(system.to_dict(), sort_keys=False))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="aos",
@@ -488,6 +519,16 @@ def main() -> int:
     reject_one.add_argument("item_id", help="Approval item ID")
     reject_one.add_argument("--note", help="Founder note")
 
+    audit_parser = subparsers.add_parser("audit", help="Audit a local artifact")
+    audit_parser.add_argument("path", help="File to audit")
+    audit_parser.add_argument("--type", default="artifact", help="Target type")
+
+    systems_parser = subparsers.add_parser("systems", help="Manage reusable systems")
+    systems_sub = systems_parser.add_subparsers(dest="systems_action")
+    systems_sub.add_parser("list", help="List reusable systems")
+    show_system = systems_sub.add_parser("show", help="Show a reusable system")
+    show_system.add_argument("system_id")
+
     args = parser.parse_args()
 
     if args.command == "validate":
@@ -502,6 +543,10 @@ def main() -> int:
         return cmd_ventures(args)
     if args.command == "approvals":
         return cmd_approvals(args)
+    if args.command == "audit":
+        return cmd_audit(args)
+    if args.command == "systems":
+        return cmd_systems(args)
 
     parser.print_help()
     return 0
