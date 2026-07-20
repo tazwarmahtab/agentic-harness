@@ -49,12 +49,12 @@ export function render(container) {
     const sav = state.netsoSavings;
     if (!sav) return;
 
-    // KPI strip
+    // KPI strip — backend: grid_rate_bdt_per_kwh, ppa_rate_bdt_per_kwh, current_month.savings_bdt
     renderKpiStrip(kpiStrip, [
-      { label: 'Grid Rate', value: `৳${sav.grid_rate_bdt?.toLocaleString()}`, icon: '🔌', accent: true },
-      { label: 'PPA Rate', value: `৳${sav.ppa_rate_bdt?.toLocaleString()}`, icon: '☀️' },
+      { label: 'Grid Rate', value: `৳${sav.grid_rate_bdt_per_kwh?.toLocaleString()}`, icon: '🔌', accent: true },
+      { label: 'PPA Rate', value: `৳${sav.ppa_rate_bdt_per_kwh?.toLocaleString()}`, icon: '☀️' },
       { label: 'Current Savings', value: `৳${sav.current_month?.savings_bdt?.toLocaleString()}`, icon: '💰' },
-      { label: 'YTD Savings', value: `৳${sav.ytd_savings_bdt?.toLocaleString()}`, icon: '📅' },
+      { label: 'YTD Savings', value: `৳${sav.ytd?.savings_bdt?.toLocaleString()}`, icon: '📅' },
       { label: 'Savings %', value: `${sav.savings_pct?.toFixed(1)}%`, icon: '📈' },
     ]);
 
@@ -81,11 +81,11 @@ function renderSavingsTileSection(container, sav) {
   title.textContent = 'Current Month Savings';
   container.appendChild(title);
 
+  // Fix: match renderSavingsTile signature: (container, { value_bdt, trend_pct, label })
   renderSavingsTile(container, {
-    savings: sav.current_month?.savings_bdt,
-    trend: sav.trends?.savings,
-    gridRate: sav.grid_rate_bdt,
-    ppaRate: sav.ppa_rate_bdt,
+    value_bdt: sav.current_month?.savings_bdt,
+    trend_pct: null,
+    label: 'Monthly Savings',
   });
 }
 
@@ -99,23 +99,32 @@ function renderTrendsSection(container, sav) {
   const grid = document.createElement('div');
   grid.className = 'aos-trend-grid';
 
+  // Backend trend array: [{month, savings_bdt}]
+  const trendData = sav.trend || [];
+  const latest = trendData.length > 0 ? trendData[trendData.length - 1] : null;
+  const prev = trendData.length > 1 ? trendData[trendData.length - 2] : null;
+
+  const savingsTrend = latest && prev
+    ? ((latest.savings_bdt - prev.savings_bdt) / prev.savings_bdt * 100)
+    : null;
+
   const trends = [
     {
       label: 'Savings',
       value: sav.current_month?.savings_bdt?.toLocaleString(),
-      trend: sav.trends?.savings,
+      trend: savingsTrend,
       unit: '৳',
     },
     {
       label: 'Savings %',
       value: sav.savings_pct?.toFixed(1),
-      trend: sav.trends?.savings_pct,
+      trend: null,
       unit: '%',
     },
   ];
 
   trends.forEach(({ label, value, trend, unit }) => {
-    if (value === undefined || trend === undefined) return;
+    if (value === undefined) return;
 
     const card = document.createElement('div');
     card.className = 'aos-trend-card';
@@ -128,14 +137,17 @@ function renderTrendsSection(container, sav) {
     valueEl.className = 'aos-trend-value';
     valueEl.textContent = `${unit}${value}`;
 
-    const trendEl = document.createElement('div');
-    trendEl.className = 'aos-trend-indicator';
-    trendEl.appendChild(renderTrendIndicator(trend, TREND_ICONS, TREND_COLORS));
-    trendEl.appendChild(document.createTextNode(` ${Math.abs(trend)}%`));
-
     card.appendChild(labelEl);
     card.appendChild(valueEl);
-    card.appendChild(trendEl);
+
+    if (trend != null) {
+      const trendEl = document.createElement('div');
+      trendEl.className = 'aos-trend-indicator';
+      trendEl.appendChild(renderTrendIndicator(trend, TREND_ICONS, TREND_COLORS));
+      trendEl.appendChild(document.createTextNode(` ${Math.abs(trend).toFixed(1)}%`));
+      card.appendChild(trendEl);
+    }
+
     grid.appendChild(card);
   });
 
@@ -149,38 +161,57 @@ function renderProjectionSection(container, sav) {
   title.textContent = 'Lifetime Projection';
   container.appendChild(title);
 
-  const projection = sav.lifetime_projection;
+  // Backend lifetime_projected: {total_savings_bdt, payback_years, irr_pct}
+  const projection = sav.lifetime_projected;
   if (!projection) return;
 
   const table = document.createElement('table');
   table.className = 'aos-table';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Year</th>
-        <th>Projected Savings (৳)</th>
-        <th>Cumulative Savings (৳)</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${projection.yearly_projections?.map((p) => `
-        <tr>
-          <td>${p.year}</td>
-          <td>${p.projected_savings_bdt?.toLocaleString()}</td>
-          <td>${p.cumulative_savings_bdt?.toLocaleString()}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  `;
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Metric', 'Value'].forEach((text) => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  const rows = [
+    ['Total Lifetime Savings', `৳${projection.total_savings_bdt?.toLocaleString()}`],
+    ['Payback Period', `${projection.payback_years} yrs`],
+    ['Levered IRR', `${projection.irr_pct?.toFixed(1)}%`],
+  ];
+  rows.forEach(([label, value]) => {
+    const row = document.createElement('tr');
+    const td1 = document.createElement('td');
+    td1.textContent = label;
+    const td2 = document.createElement('td');
+    td2.textContent = value;
+    row.appendChild(td1);
+    row.appendChild(td2);
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
 
   container.appendChild(table);
 
-  // Escalation info
-  const escalation = document.createElement('div');
-  escalation.className = 'aos-escalation-info';
-  escalation.innerHTML = `
-    <p>PPA rate escalates at <strong>${projection.escalation_rate}% annually</strong>.</p>
-    <p>Estimated lifetime savings: <strong>৳${projection.total_lifetime_savings_bdt?.toLocaleString()}</strong>.</p>
-  `;
-  container.appendChild(escalation);
+  // Escalation info — backend: escalation.{rate, next_escalation_date, projected_ppa_after_escalation}
+  const escalation = sav.escalation;
+  if (escalation) {
+    const escalationDiv = document.createElement('div');
+    escalationDiv.className = 'aos-escalation-info';
+
+    const p1 = document.createElement('p');
+    p1.textContent = `PPA rate escalates at ${escalation.rate}% annually.`;
+    escalationDiv.appendChild(p1);
+
+    const p2 = document.createElement('p');
+    p2.textContent = `Next escalation: ${escalation.next_escalation_date}. Projected PPA after escalation: ৳${escalation.projected_ppa_after_escalation}/kWh.`;
+    escalationDiv.appendChild(p2);
+
+    container.appendChild(escalationDiv);
+  }
 }

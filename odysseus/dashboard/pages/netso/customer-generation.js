@@ -43,13 +43,13 @@ export function render(container) {
     const gen = state.netsoGeneration;
     if (!gen) return;
 
-    // KPI strip
+    // KPI strip — backend: current_month.capacity_factor_pct, availability_pct, self_consumption_pct
     renderKpiStrip(kpiStrip, [
       { label: 'System Capacity', value: `${gen.system_capacity_kw?.toLocaleString()} kW`, icon: '⚡', accent: true },
       { label: 'Generation', value: `${gen.current_month?.generation_kwh?.toLocaleString()} kWh`, icon: '☀️' },
-      { label: 'Capacity Factor', value: `${gen.current_month?.capacity_factor?.toFixed(1)}%`, icon: '📊' },
-      { label: 'Availability', value: `${gen.current_month?.availability?.toFixed(1)}%`, icon: '🔄' },
-      { label: 'Self-Consumption', value: `${gen.current_month?.self_consumption?.toFixed(1)}%`, icon: '🏠' },
+      { label: 'Capacity Factor', value: `${gen.current_month?.capacity_factor_pct?.toFixed(1)}%`, icon: '📊' },
+      { label: 'Availability', value: `${gen.current_month?.availability_pct?.toFixed(1)}%`, icon: '🔄' },
+      { label: 'Self-Consumption', value: `${gen.current_month?.self_consumption_pct?.toFixed(1)}%`, icon: '🏠' },
     ]);
 
     // Trends section
@@ -75,35 +75,45 @@ function renderTrendsSection(container, gen) {
   const grid = document.createElement('div');
   grid.className = 'aos-trend-grid';
 
+  // Backend trend array: [{month, generation_kwh}]
+  // Compute trends from the trend array
+  const trendData = gen.trend || [];
+  const latest = trendData.length > 0 ? trendData[trendData.length - 1] : null;
+  const prev = trendData.length > 1 ? trendData[trendData.length - 2] : null;
+
+  const genTrend = latest && prev
+    ? ((latest.generation_kwh - prev.generation_kwh) / prev.generation_kwh * 100)
+    : null;
+
   const trends = [
     {
       label: 'Generation',
       value: gen.current_month?.generation_kwh?.toLocaleString(),
-      trend: gen.trends?.generation,
+      trend: genTrend,
       unit: 'kWh',
     },
     {
       label: 'Capacity Factor',
-      value: gen.current_month?.capacity_factor?.toFixed(1),
-      trend: gen.trends?.capacity_factor,
+      value: gen.current_month?.capacity_factor_pct?.toFixed(1),
+      trend: genTrend,
       unit: '%',
     },
     {
       label: 'Availability',
-      value: gen.current_month?.availability?.toFixed(1),
-      trend: gen.trends?.availability,
+      value: gen.current_month?.availability_pct?.toFixed(1),
+      trend: null,
       unit: '%',
     },
     {
       label: 'Self-Consumption',
-      value: gen.current_month?.self_consumption?.toFixed(1),
-      trend: gen.trends?.self_consumption,
+      value: gen.current_month?.self_consumption_pct?.toFixed(1),
+      trend: null,
       unit: '%',
     },
   ];
 
   trends.forEach(({ label, value, trend, unit }) => {
-    if (value === undefined || trend === undefined) return;
+    if (value === undefined) return;
 
     const card = document.createElement('div');
     card.className = 'aos-trend-card';
@@ -116,14 +126,17 @@ function renderTrendsSection(container, gen) {
     valueEl.className = 'aos-trend-value';
     valueEl.textContent = `${value} ${unit}`;
 
-    const trendEl = document.createElement('div');
-    trendEl.className = 'aos-trend-indicator';
-    trendEl.appendChild(renderTrendIndicator(trend, TREND_ICONS, TREND_COLORS));
-    trendEl.appendChild(document.createTextNode(` ${Math.abs(trend)}%`));
-
     card.appendChild(labelEl);
     card.appendChild(valueEl);
-    card.appendChild(trendEl);
+
+    if (trend != null) {
+      const trendEl = document.createElement('div');
+      trendEl.className = 'aos-trend-indicator';
+      trendEl.appendChild(renderTrendIndicator(trend, TREND_ICONS, TREND_COLORS));
+      trendEl.appendChild(document.createTextNode(` ${Math.abs(trend).toFixed(1)}%`));
+      card.appendChild(trendEl);
+    }
+
     grid.appendChild(card);
   });
 
@@ -137,37 +150,40 @@ function renderYtdSection(container, gen) {
   title.textContent = 'Year-to-Date Summary';
   container.appendChild(title);
 
-  const ytd = gen.ytd_summary;
+  // Backend ytd: {generation_kwh, grid_export_kwh, self_consumption_pct}
+  const ytd = gen.ytd;
   if (!ytd) return;
 
   const table = document.createElement('table');
   table.className = 'aos-table';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Metric</th>
-        <th>Value</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Total Generation</td>
-        <td>${ytd.total_generation_kwh?.toLocaleString()} kWh</td>
-      </tr>
-      <tr>
-        <td>Average Capacity Factor</td>
-        <td>${ytd.avg_capacity_factor?.toFixed(1)}%</td>
-      </tr>
-      <tr>
-        <td>Average Availability</td>
-        <td>${ytd.avg_availability?.toFixed(1)}%</td>
-      </tr>
-      <tr>
-        <td>Average Self-Consumption</td>
-        <td>${ytd.avg_self_consumption?.toFixed(1)}%</td>
-      </tr>
-    </tbody>
-  `;
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Metric', 'Value'].forEach((text) => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  const rows = [
+    ['Total Generation', `${ytd.generation_kwh?.toLocaleString()} kWh`],
+    ['Grid Export', `${ytd.grid_export_kwh?.toLocaleString()} kWh`],
+    ['Self-Consumption', `${ytd.self_consumption_pct?.toFixed(1)}%`],
+  ];
+  rows.forEach(([label, value]) => {
+    const row = document.createElement('tr');
+    const td1 = document.createElement('td');
+    td1.textContent = label;
+    const td2 = document.createElement('td');
+    td2.textContent = value;
+    row.appendChild(td1);
+    row.appendChild(td2);
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
 
   container.appendChild(table);
 }

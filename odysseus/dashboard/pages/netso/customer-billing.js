@@ -41,23 +41,23 @@ export function render(container) {
     const bill = state.netsoBilling;
     if (!bill) return;
 
-    // KPI strip
+    // KPI strip — backend: current_invoice.{amount_bdt, due_date, status}, outstanding.{total_bdt, overdue_count}
     renderKpiStrip(kpiStrip, [
       { label: 'Current Invoice', value: bill.current_invoice ? `৳${bill.current_invoice.amount_bdt?.toLocaleString()}` : '—', icon: '📄', accent: true },
       { label: 'Due Date', value: bill.current_invoice?.due_date || '—', icon: '📅' },
       { label: 'Status', value: bill.current_invoice?.status || '—', icon: getStatusIcon(bill.current_invoice?.status) },
-      { label: 'Outstanding', value: bill.outstanding_summary ? `৳${bill.outstanding_summary.total_bdt?.toLocaleString()}` : '—', icon: '💳' },
-      { label: 'Overdue', value: bill.outstanding_summary?.overdue_count > 0 ? `${bill.outstanding_summary.overdue_count} invoices` : 'None', icon: bill.outstanding_summary?.overdue_count > 0 ? '🚨' : '✅' },
+      { label: 'Outstanding', value: bill.outstanding ? `৳${bill.outstanding.total_bdt?.toLocaleString()}` : '—', icon: '💳' },
+      { label: 'Overdue', value: bill.outstanding?.overdue_count > 0 ? `${bill.outstanding.overdue_count} invoices` : 'None', icon: bill.outstanding?.overdue_count > 0 ? '🚨' : '✅' },
     ]);
 
     // Current invoice
     renderInvoiceSection(invoiceSection, bill.current_invoice);
 
-    // Outstanding summary
-    renderOutstandingSection(outstandingSection, bill.outstanding_summary);
+    // Outstanding summary — backend key: outstanding
+    renderOutstandingSection(outstandingSection, bill.outstanding);
 
-    // Payment history
-    renderHistorySection(historySection, bill.payment_history);
+    // Payment history — backend key: history
+    renderHistorySection(historySection, bill.history);
   });
 
   // Initial load
@@ -103,7 +103,8 @@ function renderInvoiceSection(container, invoice) {
 
   const period = document.createElement('div');
   period.className = 'aos-invoice-period';
-  period.textContent = `Period: ${invoice.period}`;
+  // Backend invoice has 'month' field, not 'period'
+  period.textContent = `Period: ${invoice.month}`;
 
   card.appendChild(amount);
   card.appendChild(status);
@@ -124,11 +125,11 @@ function renderOutstandingSection(container, summary) {
   const grid = document.createElement('div');
   grid.className = 'aos-outstanding-grid';
 
+  // Backend outstanding: {total_bdt, overdue_count, overdue_amount_bdt}
   const items = [
     { label: 'Total Outstanding', value: `৳${summary.total_bdt?.toLocaleString()}` },
-    { label: 'Pending Invoices', value: summary.pending_count },
     { label: 'Overdue Invoices', value: summary.overdue_count },
-    { label: 'Oldest Overdue', value: summary.oldest_overdue_date || 'None' },
+    { label: 'Overdue Amount', value: `৳${summary.overdue_amount_bdt?.toLocaleString()}` },
   ];
 
   items.forEach(({ label, value }) => {
@@ -162,28 +163,49 @@ function renderHistorySection(container, history) {
 
   const table = document.createElement('table');
   table.className = 'aos-table';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>Period</th>
-        <th>Amount</th>
-        <th>Status</th>
-        <th>Due Date</th>
-        <th>Paid Date</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${history.map((invoice) => `
-        <tr>
-          <td>${invoice.period}</td>
-          <td>৳${invoice.amount_bdt?.toLocaleString()}</td>
-          <td><span style="color: ${INVOICE_STATUS_COLORS[invoice.status?.toLowerCase()] || '#6B7280'}">${invoice.status}</span></td>
-          <td>${invoice.due_date}</td>
-          <td>${invoice.paid_date || '—'}</td>
-        </tr>
-      `).join('')}
-    </tbody>
-  `;
+
+  // Build table safely with DOM APIs (no innerHTML for dynamic data)
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Invoice ID', 'Amount', 'Status', 'Generation', 'Paid Date'].forEach((text) => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  // Backend history items: {invoice_id, amount_bdt, status, paid_date, generation_kwh}
+  history.forEach((invoice) => {
+    const row = document.createElement('tr');
+
+    const tdId = document.createElement('td');
+    tdId.textContent = invoice.invoice_id;
+    row.appendChild(tdId);
+
+    const tdAmount = document.createElement('td');
+    tdAmount.textContent = `৳${invoice.amount_bdt?.toLocaleString()}`;
+    row.appendChild(tdAmount);
+
+    const tdStatus = document.createElement('td');
+    const statusSpan = document.createElement('span');
+    statusSpan.textContent = invoice.status;
+    statusSpan.style.color = INVOICE_STATUS_COLORS[invoice.status?.toLowerCase()] || '#6B7280';
+    tdStatus.appendChild(statusSpan);
+    row.appendChild(tdStatus);
+
+    const tdGen = document.createElement('td');
+    tdGen.textContent = `${invoice.generation_kwh?.toLocaleString()} kWh`;
+    row.appendChild(tdGen);
+
+    const tdPaid = document.createElement('td');
+    tdPaid.textContent = invoice.paid_date || '—';
+    row.appendChild(tdPaid);
+
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
 
   container.appendChild(table);
 }

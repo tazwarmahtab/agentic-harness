@@ -19,7 +19,7 @@ import uuid
 from datetime import date
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from aos.discover import find_venture
@@ -790,8 +790,6 @@ async def _stream_graph(
 async def netso_generation(site_id: str) -> dict:
     data = get_generation(site_id)
     if data is None:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail=f"Site {site_id} not found")
     return data.to_dict()
 
@@ -800,8 +798,6 @@ async def netso_generation(site_id: str) -> dict:
 async def netso_savings(site_id: str) -> dict:
     data = get_savings(site_id)
     if data is None:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail=f"Site {site_id} not found")
     return data.to_dict()
 
@@ -810,8 +806,6 @@ async def netso_savings(site_id: str) -> dict:
 async def netso_billing(site_id: str) -> dict:
     data = get_billing(site_id)
     if data is None:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail=f"Site {site_id} not found")
     return data.to_dict()
 

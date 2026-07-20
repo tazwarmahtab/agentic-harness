@@ -2,6 +2,7 @@
  * Netso Overview — landing page for all Netso roles.
  * Customer view: generation + savings + billing summary.
  * Internal view: portfolio + financials summary.
+ * Uses textContent for all dynamic values (XSS-safe).
  */
 
 import store from '../../stores/dashboard.js';
@@ -41,6 +42,9 @@ function renderCustomerOverview(kpiStrip, detailSection, state) {
   const sav = state.netsoSavings;
   const bill = state.netsoBilling;
 
+  // Backend generation: system_capacity_kw, current_month.generation_kwh
+  // Backend savings: current_month.savings_bdt, savings_pct
+  // Backend billing: current_invoice.amount_bdt
   renderKpiStrip(kpiStrip, [
     { label: 'System', value: gen ? `${gen.system_capacity_kw} kW` : '—', icon: '⚡', accent: true },
     { label: 'Generation', value: gen ? `${gen.current_month?.generation_kwh?.toLocaleString()} kWh` : '—', icon: '☀️' },
@@ -56,9 +60,9 @@ function renderCustomerOverview(kpiStrip, detailSection, state) {
   detailSection.appendChild(title);
 
   const links = [
-    { page: 'netso-generation', label: '📊 View detailed generation data' },
-    { page: 'netso-savings', label: '💰 View savings breakdown' },
-    { page: 'netso-billing', label: '📄 View billing history' },
+    { page: 'netso-generation', label: 'View detailed generation data' },
+    { page: 'netso-savings', label: 'View savings breakdown' },
+    { page: 'netso-billing', label: 'View billing history' },
   ];
 
   links.forEach(({ page, label }) => {
@@ -72,9 +76,12 @@ function renderCustomerOverview(kpiStrip, detailSection, state) {
 
 function renderInternalOverview(kpiStrip, detailSection, state) {
   const port = state.netsoPortfolio;
+  if (!port) return;
 
+  // Backend: total_customers, total_capacity_kw, financial_summary.monthly_revenue_bdt,
+  // generation_summary.current_month_kwh, alerts.dscr_breaches
   renderKpiStrip(kpiStrip, [
-    { label: 'Customers', value: port?.total_customers ?? '—', icon: '🏢', accent: true },
+    { label: 'Customers', value: port.total_customers ?? '—', icon: '🏢', accent: true },
     { label: 'Capacity', value: port ? `${port.total_capacity_kw?.toLocaleString()} kW` : '—', icon: '⚡' },
     { label: 'Monthly Revenue', value: port ? `৳${port.financial_summary?.monthly_revenue_bdt?.toLocaleString()}` : '—', icon: '💰' },
     { label: 'Monthly Gen', value: port ? `${port.generation_summary?.current_month_kwh?.toLocaleString()} kWh` : '—', icon: '☀️' },
@@ -87,21 +94,51 @@ function renderInternalOverview(kpiStrip, detailSection, state) {
   title.textContent = 'Portfolio Status';
   detailSection.appendChild(title);
 
+  // Build table safely with DOM APIs
   if (port?.customers) {
     const table = document.createElement('table');
     table.className = 'aos-table';
-    table.innerHTML = `
-      <thead><tr><th>Customer</th><th>Capacity</th><th>Status</th><th>Monthly Gen</th><th>Health</th></tr></thead>
-      <tbody>${port.customers.map((c) => `
-        <tr>
-          <td>${c.customer_name}</td>
-          <td>${c.capacity_kw} kW</td>
-          <td>${c.status}</td>
-          <td>${c.monthly_generation_kwh?.toLocaleString()} kWh</td>
-          <td>${(c.health_score * 100).toFixed(0)}%</td>
-        </tr>
-      `).join('')}</tbody>
-    `;
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Customer', 'Capacity', 'Status', 'Monthly Gen', 'Health'].forEach((text) => {
+      const th = document.createElement('th');
+      th.textContent = text;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    // Backend customers: {customer_id, customer_name, capacity_kw, status, monthly_generation_kwh, health_score}
+    port.customers.forEach((c) => {
+      const row = document.createElement('tr');
+
+      const tdName = document.createElement('td');
+      tdName.textContent = c.customer_name;
+      row.appendChild(tdName);
+
+      const tdCap = document.createElement('td');
+      tdCap.textContent = `${c.capacity_kw} kW`;
+      row.appendChild(tdCap);
+
+      const tdStatus = document.createElement('td');
+      tdStatus.textContent = c.status;
+      row.appendChild(tdStatus);
+
+      const tdGen = document.createElement('td');
+      tdGen.textContent = `${c.monthly_generation_kwh?.toLocaleString()} kWh`;
+      row.appendChild(tdGen);
+
+      const tdHealth = document.createElement('td');
+      // health_score is 0-1, display as percentage
+      tdHealth.textContent = `${(c.health_score * 100).toFixed(0)}%`;
+      row.appendChild(tdHealth);
+
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+
     detailSection.appendChild(table);
   }
 }
