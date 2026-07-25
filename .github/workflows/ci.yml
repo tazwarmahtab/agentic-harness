@@ -1,30 +1,118 @@
-name: CI
+name: AOS CI/CD
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, develop]
   pull_request:
-    branches: [main, master]
-  workflow_dispatch:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
 
 jobs:
-  regression-test:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        python-version: ["3.12"]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: pip
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run regression tests
-        run: pytest tests/test_regression.py -q
+      - name: Run tests
+        run: |
+          python -m pytest -q --tb=short
+
+      - name: Check coverage
+        run: |
+          python -m pytest --cov=aos --cov=odysseus --cov-report=term-missing --cov-fail-under=60
+
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Check format (ruff)
+        run: |
+          ruff format --check .
+
+      - name: Check lint (ruff)
+        run: |
+          ruff check .
+
+      - name: Type check (mypy)
+        run: |
+          mypy aos/
+
+  evaluator:
+    name: Evaluator Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run evaluator gate
+        run: |
+          python -m aos.evaluator --golden-dir tests/golden --fail-on-regression
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [test, lint, evaluator]
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploy to staging server..."
+          # ssh deploy@staging "cd /opt/aos && git pull && ./deploy/update.sh"
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [test, lint, evaluator]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          echo "Deploy to production server..."
+          # ssh deploy@prod "cd /opt/aos && git pull && ./deploy/update.sh"
+          # systemctl reload aos-engine aos-dashboard

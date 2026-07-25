@@ -24,6 +24,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 
+from aos.enforcement import EnforcementEngine, EnforcementSeverity
+
+logger = logging.getLogger(__name__)
+
 
 # ---------------------------------------------------------------------------
 # Tool execution result
@@ -121,7 +125,12 @@ class FileProvider:
         inputs: dict[str, Any],
         agent_id: str,
     ) -> dict[str, Any]:
-        if capability in ("read_dashboard", "read_file", "read_any_data"):
+        if capability in (
+            "read_dashboard",
+            "read_file",
+            "read_any_data",
+            "rate_limited_read",
+        ):
             return self._read_file(inputs, agent_id)
         if capability in ("write_dashboard", "write_file"):
             return self._write_file(inputs)
@@ -422,6 +431,7 @@ class ToolGateway:
         self.providers: dict[str, ToolProvider] = providers or {}
         self._rate_counters: dict[str, list[datetime]] = {}
         self._approval_provider: ApprovalProvider | None = None
+        self._enforcement: EnforcementEngine = EnforcementEngine()
 
         # Default providers
         if "file" not in self.providers:
@@ -562,6 +572,24 @@ class ToolGateway:
                     approval_required=True,
                     approval_id=approval_result["approval_id"],
                 )
+
+        # Enforcement rule check
+        enforcement_results = self._enforcement.evaluate(capability, inputs)
+        if self._enforcement.has_blocks(enforcement_results):
+            blocked = [r for r in enforcement_results if not r.passed and r.severity == EnforcementSeverity.BLOCK]
+            messages = "; ".join(r.message for r in blocked)
+            logger.warning("Enforcement BLOCK: %s — %s", capability, messages)
+            return ToolResult(
+                tool_id=tool.id,
+                capability=capability,
+                agent_id=agent_id,
+                status="denied",
+                error=f"Enforcement rules blocked: {messages}",
+            )
+        # Log warnings but continue
+        warnings = self._enforcement.get_warnings(enforcement_results)
+        for w in warnings:
+            logger.info("Enforcement WARN [%s]: %s — %s", w.rule_id, capability, w.message)
 
         # Resolve provider
         provider = self._resolve_provider(capability)

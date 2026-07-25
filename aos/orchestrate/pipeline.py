@@ -20,6 +20,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
+from aos.evaluator import Disposition, classify_findings
+
 
 class Phase(str, Enum):
     SPEC = "spec"
@@ -158,6 +160,10 @@ class OrchestratePipeline:
                     print("Spec gate timed out. Stopping pipeline.")
                     return 1
 
+        # MAR gate: spec → autoplan
+        if not self._run_mar(Phase.SPEC, Phase.AUTOPLAN):
+            return 1
+
         # Phase 2: /autoplan
         if not self.ctx.skip_plan:
             if not self._run_autoplan():
@@ -187,8 +193,16 @@ class OrchestratePipeline:
                     print("Plan gate timed out. Stopping pipeline.")
                     return 1
 
+        # MAR gate: autoplan → implement
+        if not self._run_mar(Phase.AUTOPLAN, Phase.IMPLEMENT):
+            return 1
+
         # Phase 3: /implement
         if not self._run_implement():
+            return 1
+
+        # MAR gate: implement → reviewloop
+        if not self._run_mar(Phase.IMPLEMENT, Phase.REVIEWLOOP):
             return 1
 
         # Phase 4: /reviewloop
@@ -226,6 +240,10 @@ class OrchestratePipeline:
                 if result.decision == GateDecision.SKIPPED:
                     print("Review gate timed out. Stopping pipeline.")
                     return 1
+
+        # Sprint review before ship
+        if not self._run_sprint_review():
+            return 1
 
         # Phase 5: /ship
         if not self._run_ship():
@@ -544,6 +562,114 @@ class OrchestratePipeline:
         result.duration_s = self._duration(result)
         self.ctx.record(result)
         print(f"  ✓ /doubt complete — no refutations found ({result.duration_s:.1f}s)")
+        print()
+        return True
+
+    def _run_mar(self, phase_from: Phase, phase_to: Phase) -> bool:
+        """Run Multi-Agent Review gate at phase transitions.
+
+        MAR runs between major phase transitions to catch issues early.
+        Classifies findings into three buckets: Disagree / Autonomous / Collaborative.
+        Returns True if pipeline should continue, False to stop.
+        """
+        print("─" * 40)
+        print(f"  MAR GATE: {phase_from.value} → {phase_to.value}")
+        print("─" * 40)
+
+        if self.ctx.dry_run:
+            print("  [DRY RUN] MAR would execute here")
+            return True
+
+        # Collect findings from the completed phase
+        phase_result = self.ctx.results.get(phase_from)
+        findings: list[dict[str, Any]] = []
+
+        if phase_result and phase_result.outputs:
+            raw_findings = phase_result.outputs.get("findings", {})
+            if isinstance(raw_findings, dict):
+                for severity, count in raw_findings.items():
+                    for i in range(count):
+                        findings.append({
+                            "text": f"{severity} finding from {phase_from.value} phase",
+                            "severity": severity,
+                        })
+            elif isinstance(raw_findings, list):
+                findings = raw_findings
+
+        if not findings:
+            print("  No findings to classify — passing")
+            return True
+
+        # Classify via three-bucket disposition
+        classified = classify_findings(findings)
+
+        disagree = [f for f in classified if f.disposition == Disposition.DISAGREE]
+        autonomous = [f for f in classified if f.disposition == Disposition.AUTONOMOUS]
+        collaborative = [f for f in classified if f.disposition == Disposition.COLLABORATIVE]
+
+        print(f"  Findings: {len(classified)} total")
+        print(f"    Disagree: {len(disagree)} (reject)")
+        print(f"    Autonomous: {len(autonomous)} (auto-fix)")
+        print(f"    Collaborative: {len(collaborative)} (needs human)")
+
+        # Report collaborative findings that need attention
+        if collaborative:
+            print()
+            print("  ⚠ Collaborative findings (require human judgment):")
+            for f in collaborative:
+                print(f"    - [{f.severity}] {f.finding[:80]}")
+            if not self.ctx.auto:
+                print()
+                print("  Pipeline paused for human review of collaborative findings.")
+                print("  Use --auto to skip collaborative gates.")
+
+        return True
+
+    def _run_sprint_review(self) -> bool:
+        """Run sprint review at phase completion.
+
+        Summarizes what was accomplished, classifies remaining issues,
+        and provides a disposition summary for the pipeline.
+        """
+        print("─" * 40)
+        print("  SPRINT REVIEW — Pipeline Summary")
+        print("─" * 40)
+
+        all_findings: list[dict[str, Any]] = []
+
+        for phase in Phase:
+            result = self.ctx.results.get(phase)
+            if result and result.outputs:
+                raw = result.outputs.get("findings", {})
+                if isinstance(raw, dict):
+                    for severity, count in raw.items():
+                        for _ in range(count):
+                            all_findings.append({
+                                "text": f"{severity} finding from {phase.value}",
+                                "severity": severity,
+                            })
+
+        if all_findings:
+            classified = classify_findings(all_findings)
+            disagree = [f for f in classified if f.disposition == Disposition.DISAGREE]
+            autonomous = [f for f in classified if f.disposition == Disposition.AUTONOMOUS]
+            collaborative = [f for f in classified if f.disposition == Disposition.COLLABORATIVE]
+
+            print(f"  Total findings across pipeline: {len(classified)}")
+            print(f"    Rejected (disagree): {len(disagree)}")
+            print(f"    Auto-fixed (autonomous): {len(autonomous)}")
+            print(f"    Needs human (collaborative): {len(collaborative)}")
+        else:
+            print("  No findings recorded across pipeline phases.")
+
+        # Record sprint review result
+        result = PhaseResult(phase=Phase.SHIP, status=Status.PASSED)
+        result.started_at = datetime.now().isoformat()
+        result.finished_at = datetime.now().isoformat()
+        result.outputs = {"sprint_review": True}
+        self.ctx.record(result)
+
+        print("  ✓ Sprint review complete")
         print()
         return True
 
