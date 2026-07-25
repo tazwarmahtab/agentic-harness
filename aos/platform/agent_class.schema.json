@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aos/platform/agent_class.schema.json",
+  "title": "TAZ OS AgentClass",
+  "description": "Structured role definition for a harness agent. Defines permissions, enforcement rules, escalation paths, and review responsibilities.",
+  "type": "object",
+  "required": ["id", "name", "harness", "role"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^ACL-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "harness": { "type": "string", "description": "Owning harness ID", "pattern": "^HAR-" },
+    "version": { "type": "string", "default": "1.0.0" },
+    "status": { "type": "string", "enum": ["draft", "deployed", "retired"] },
+    "role": { "type": "string", "description": "Functional role: planner, specialist, reviewer, dispatcher, etc." },
+    "description": { "type": "string" },
+    "allowed_tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["capability", "permission"],
+        "properties": {
+          "capability": { "type": "string" },
+          "permission": { "type": "string" }
+        }
+      }
+    },
+    "allowed_memory_read": { "type": "array", "items": { "type": "string" } },
+    "allowed_memory_write": { "type": "array", "items": { "type": "string" } },
+    "denied_actions": { "type": "array", "items": { "type": "string" } },
+    "enforcement_rules": { "type": "array", "items": { "type": "string" } },
+    "escalation_targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["failure_mode", "target"],
+        "properties": {
+          "failure_mode": { "type": "string" },
+          "target": { "type": "string" }
+        }
+      }
+    },
+    "review_requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_type", "reviewer"],
+        "properties": {
+          "artifact_type": { "type": "string" },
+          "reviewer": { "type": "string" }
+        }
+      }
+    },
+    "constraints": { "type": "array", "items": { "type": "string" } }
+  }
+}

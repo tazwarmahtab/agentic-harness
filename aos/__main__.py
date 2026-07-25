@@ -9,7 +9,6 @@ Usage:
  python -m aos ventures
  python -m aos approvals [list|approve-all|reject-all|approve ID|reject ID]
 """
-
 from __future__ import annotations
 
 import argparse
@@ -28,8 +27,11 @@ from aos.registry import load_registry
 from aos.validator import validate_all
 from aos.discover import discover_ventures, find_venture
 
-logger = logging.getLogger(__name__)
+# Load .env from project root
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent.parent / ".env")
 
+logger = logging.getLogger(__name__)
 
 def find_project_root() -> Path:
     """Find the aos project root (where aos/ package lives)."""
@@ -178,13 +180,16 @@ def cmd_run(args: argparse.Namespace) -> int:
     # Resolve venture artifacts
     venture_artifacts: dict[str, Path] = {}
     if vp:
-        venture_root = vp.parent.parent if vp else None
+        # Use venture.root_path if specified, otherwise fall back to venture config dir
+        if registry.venture and registry.venture.root_path:
+            venture_root = Path(registry.venture.root_path).expanduser()
+        else:
+            venture_root = vp.parent.parent if vp else None
         if venture_root and registry.venture:
             for key, art in registry.venture.artifacts.items():
                 art_path = venture_root / art.path
                 if art_path.exists():
                     venture_artifacts[key] = art_path
-
     state = run_cycle_graph(
         bundle=bundle,
         venture_id=venture_id,
