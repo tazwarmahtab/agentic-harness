@@ -1,0 +1,6 @@
+id: POL-NETSO-001
+name: Netso Legacy Approvals
+harness: HAR-NETSO-001
+status: production
+version: 1.0.0
+rules: []

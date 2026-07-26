@@ -1,0 +1,180 @@
+# Netso Legacy — Tool Registry (schema-compliant)
+# Tools available to legacy agents
+
+id: TOL-NETSO-001
+name: Netso Legacy Tool Registry
+harness: HAR-NETSO-001
+version: 1.0.0
+tools:
+  # Dashboard operations
+  - id: TOOL-NETSO-001
+    name: Read Dashboard
+    capability: read_dashboard
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  - id: TOOL-NETSO-002
+    name: Write Dashboard
+    capability: write_dashboard
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-ATLAS]
+      write: [AGT-NETSO-ATLAS]
+      execute: [AGT-NETSO-ATLAS]
+
+  - id: TOOL-NETSO-003
+    name: Write Weekly Plan
+    capability: write_weekly_plan
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ]
+      write: [AGT-NETSO-LILTAZ]
+      execute: [AGT-NETSO-LILTAZ]
+
+  - id: TOOL-NETSO-004
+    name: Write Backlog
+    capability: write_backlog
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ]
+      write: [AGT-NETSO-LILTAZ]
+      execute: [AGT-NETSO-LILTAZ]
+
+  - id: TOOL-NETSO-005
+    name: Write Task Router
+    capability: write_task_router
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ]
+      write: [AGT-NETSO-LILTAZ]
+      execute: [AGT-NETSO-LILTAZ]
+
+  - id: TOOL-NETSO-006
+    name: Write Agents Registry
+    capability: write_agents_registry
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ]
+      write: [AGT-NETSO-LILTAZ]
+      execute: [AGT-NETSO-LILTAZ]
+
+  - id: TOOL-NETSO-007
+    name: Write Decision Log
+    capability: write_decision_log
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ]
+      write: [AGT-NETSO-LILTAZ]
+      execute: [AGT-NETSO-LILTAZ]
+
+  - id: TOOL-NETSO-008
+    name: Write Blockers
+    capability: write_blockers
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-ATLAS, AGT-NETSO-LILTAZ]
+      write: [AGT-NETSO-ATLAS]
+      execute: [AGT-NETSO-ATLAS]
+
+  - id: TOOL-NETSO-009
+    name: Read Handoffs
+    capability: read_handoffs
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  - id: TOOL-NETSO-010
+    name: Write Handoff
+    capability: write_handoff
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  - id: TOOL-NETSO-011
+    name: Read Weekly Plan
+    capability: read_weekly_plan
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  - id: TOOL-NETSO-012
+    name: Read Backlog
+    capability: read_backlog
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  - id: TOOL-NETSO-013
+    name: Read CRM
+    capability: read_crm
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  - id: TOOL-NETSO-014
+    name: Read Calendar
+    capability: read_calendar
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  - id: TOOL-NETSO-015
+    name: Read Email
+    capability: read_email
+    category: internal
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ]
+      write: []
+      execute: [AGT-NETSO-LILTAZ]
+
+  # Approval gates (for gated tools)
+  - id: TOOL-NETSO-016
+    name: Request Approval
+    capability: request_approval
+    category: governance
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+
+  # Escalation alerts
+  - id: TOOL-NETSO-017
+    name: Send Escalation Alert
+    capability: send_escalation_alert
+    category: governance
+    status: registered
+    permissions:
+      read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+      write: []
+      execute: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]

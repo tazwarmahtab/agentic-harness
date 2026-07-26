@@ -1,0 +1,124 @@
+id: EVAL-NETSO-001
+name: Netso Legacy Evaluation
+harness: HAR-NETSO-001
+version: 1.0.0
+harness_metrics:
+  - name: specialist_dispatch_success_rate
+    target: "100%"
+    frequency: weekly
+    owner: AGT-NETSO-ATLAS
+    measurement: "count"
+  - name: avg_latency_ms
+    target: "<5000"
+    frequency: realtime
+    owner: AGT-NETSO-LILTAZ
+    measurement: "gauge"
+  - name: handoff_quality_score
+    target: ">0.7"
+    frequency: weekly
+    owner: AGT-NETSO-COUNCIL
+    measurement: "gauge"
+  - name: memory_persistence_rate
+    target: "100%"
+    frequency: daily
+    owner: AGT-NETSO-LILTAZ
+    measurement: "percentage"
+specialist_metrics:
+  AGT-NETSO-LILTAZ:
+    metrics:
+      - name: planning_quality
+        weight: 0.30
+        hard_fail_if: "no weekly plan by Monday 09:00"
+      - name: dispatch_accuracy
+        weight: 0.25
+      - name: session_protocol_compliance
+        weight: 0.20
+      - name: artifact_currency
+        weight: 0.25
+  AGT-NETSO-ATLAS:
+    metrics:
+      - name: dashboard_currency
+        weight: 0.30
+        hard_fail_if: "dashboard not updated after action"
+      - name: deadline_hit_rate
+        weight: 0.25
+      - name: blocker_resolution_speed
+        weight: 0.20
+      - name: p0_completion_rate
+        weight: 0.25
+        hard_fail_if: "zero P0 items DONE in week"
+  AGT-NETSO-MINERVA:
+    metrics:
+      - name: rate_accuracy
+        weight: 0.30
+        hard_fail_if: "blended rate used for savings"
+      - name: dscr_monitoring
+        weight: 0.25
+        hard_fail_if: "DSCR < 2.0 not flagged"
+      - name: scenario_discipline
+        weight: 0.20
+      - name: investor_report_quality
+        weight: 0.25
+  AGT-NETSO-SHIELD:
+    metrics:
+      - name: contract_review_coverage
+        weight: 0.30
+      - name: risk_identification_rate
+        weight: 0.25
+      - name: compliance_tracking
+        weight: 0.25
+      - name: escalation_timeliness
+        weight: 0.20
+  AGT-NETSO-LENS:
+    metrics:
+      - name: kpi_coverage
+        weight: 0.30
+      - name: anomaly_detection_precision
+        weight: 0.25
+      - name: report_timeliness
+        weight: 0.25
+      - name: insight_actionability
+        weight: 0.20
+  AGT-NETSO-COUNCIL:
+    metrics:
+      - name: perspective_completeness
+        weight: 0.30
+      - name: dissent_capture_rate
+        weight: 0.25
+      - name: recommendation_actionability
+        weight: 0.25
+      - name: decision_quality_post_mortem
+        weight: 0.20
+continuous_improvement:
+  cycle:
+    - step: "collect_feedback"
+      owner: AGT-NETSO-COUNCIL
+      input: "evaluation_results"
+      output: "feedback_items"
+      frequency: weekly
+    - step: "adjust_thresholds"
+      owner: AGT-NETSO-MINERVA
+      input: "feedback_items"
+      output: "threshold_adjustments"
+      frequency: monthly
+  improvement_sources:
+    - specialist_output
+    - harness_results
+    - founder_review
+  metrics_tracked:
+    - specialist_dispatch_success_rate
+    - avg_latency_ms
+    - handoff_quality_score
+    - memory_persistence_rate
+    - evaluation_accuracy
+evaluation_schedule:
+  - frequency: realtime
+    trigger: on_output
+    templates: [EVAL-NETSO-001]
+  - frequency: weekly
+    trigger: monday_09:00
+    templates: [EVAL-NETSO-001]
+thresholds:
+  production_ready: 0.80
+  alert_threshold: 0.60
+  hard_fail_threshold: 0.40

@@ -1,0 +1,13 @@
+{
+  "agent_id": "AGT-EXEC-RSK",
+  "output": {
+    "dscr": 1.5,
+    "savings_pct": 23.0
+  },
+  "expected": {
+    "passed": false,
+    "violations": [
+      "DSCR 1.5 is below alert floor 2.0. Must flag as immediate alert. Hard-fail rule: dscr_below_floor_not_flagged"
+    ]
+  }
+}
