@@ -36,13 +36,15 @@ a.txt
 b.txt
 c.txt
 diff.txt
-]
 
 # Session reports (large HTML files)
 session-report-*.html
 
-# Hermes plans (generated, not source)
-.hermes/plans/
+# Temp / agent scratch
+.antigravitycli/
+.hermes/
+.mcp.json
+aos/llm.py:*
 
 # Claude Code skills (external, not project-owned)
 .claude/skills/
