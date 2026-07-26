@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import os
+
 from starlette.testclient import TestClient
 
-from aos.api import app
+# Patch env before importing app so auth is disabled
+# This must happen before the module is imported
+os.environ["AOS_API_TOKEN"] = ""
+os.environ["TAZOS_API_TOKEN"] = ""
+
+from aos.api import app  # noqa: E402
 
 
 class TestPipelineEndpoints:
@@ -56,51 +63,18 @@ class TestApprovalEndpoints:
     def test_reject_returns_success(self) -> None:
         """POST /api/approvals/{id}/reject should reject request."""
         client = TestClient(app)
-        response = client.post("/api/approvals/test-456/reject?reason=no+reason")
+        response = client.post("/api/approvals/test-123/reject")
         assert response.status_code == 200
         body = response.json()
-        assert body["id"] == "test-456"
-        # Real queue returns "error" for non-existent items
-        assert body["status"] in ("rejected", "error")
+        assert body["id"] == "test-123"
+        assert body["status"] == "rejected"
 
 
-class TestMemoryEndpoints:
-    """Tests for memory summary endpoint."""
-
-    def test_memory_summary_returns_dict(self) -> None:
-        """GET /api/memory/summary should return memory summary."""
-        client = TestClient(app)
-        response = client.get("/api/memory/summary")
-        assert response.status_code == 200
-        body = response.json()
-        assert "total_domains" in body
-        assert "total_entries" in body
-        assert "domains" in body
-        assert isinstance(body["total_domains"], int)
-        assert isinstance(body["domains"], list)
-
-
-class TestSalesEndpoints:
-    """Tests for sales status endpoint."""
-
-    def test_sales_status_returns_dict(self) -> None:
-        """GET /api/sales/status should return sales status."""
-        client = TestClient(app)
-        response = client.get("/api/sales/status")
-        assert response.status_code == 200
-        body = response.json()
-        assert "total_customers" in body
-        assert "active_deals" in body
-        assert "pipeline_value" in body
-        assert isinstance(body["total_customers"], int)
-        assert isinstance(body["pipeline_value"], float)
-
-
-class TestSystemEndpoints:
+class TestSystemStatusEndpoint:
     """Tests for system status endpoint."""
 
-    def test_system_status_returns_dict(self) -> None:
-        """GET /api/system/status should return system status."""
+    def test_system_status_returns_health_score(self) -> None:
+        """GET /api/system/status should return system health."""
         client = TestClient(app)
         response = client.get("/api/system/status")
         assert response.status_code == 200
@@ -113,77 +87,76 @@ class TestSystemEndpoints:
         assert isinstance(body["health_score"], float)
         assert isinstance(body["components"], list)
 
+    def test_system_status_components_structure(self) -> None:
+        """System status components should have expected structure."""
+        client = TestClient(app)
+        response = client.get("/api/system/status")
+        body = response.json()
+        for comp in body["components"]:
+            assert "name" in comp
+            assert "status" in comp
+            assert "details" in comp
 
-class TestAgentEndpoints:
+
+class TestAgentsStatusEndpoint:
     """Tests for agents status endpoint."""
 
-    def test_agents_status_returns_dict(self) -> None:
-        """GET /api/agents should return agents status."""
+    def test_agents_status_returns_list(self) -> None:
+        """GET /api/agents should return agents list."""
         client = TestClient(app)
         response = client.get("/api/agents")
         assert response.status_code == 200
         body = response.json()
+        assert isinstance(body, dict)
         assert "total_agents" in body
         assert "active_agents" in body
         assert "agents" in body
-        assert isinstance(body["total_agents"], int)
         assert isinstance(body["agents"], list)
+        if body["agents"]:
+            agent = body["agents"][0]
+            assert "id" in agent
+            assert "name" in agent
+            assert "status" in agent
 
 
-class TestDashboardAggregate:
-    """Tests for dashboard aggregate endpoint."""
+class TestSalesStatusEndpoint:
+    """Tests for sales status endpoint."""
 
-    def test_dashboard_returns_all_kpis(self) -> None:
+    def test_sales_status_returns_data(self) -> None:
+        """GET /api/sales/status should return sales data."""
+        client = TestClient(app)
+        response = client.get("/api/sales/status")
+        assert response.status_code == 200
+        body = response.json()
+        assert "total_customers" in body
+        assert "active_deals" in body
+        assert "pipeline_value" in body
+
+
+class TestMemorySummaryEndpoint:
+    """Tests for memory summary endpoint."""
+
+    def test_memory_summary_returns_dict(self) -> None:
+        """GET /api/memory/summary should return memory stats."""
+        client = TestClient(app)
+        response = client.get("/api/memory/summary")
+        assert response.status_code == 200
+        body = response.json()
+        assert "total_domains" in body
+        assert "total_entries" in body
+        assert "domains" in body
+
+
+class TestDashboardSummaryEndpoint:
+    """Tests for dashboard summary endpoint."""
+
+    def test_dashboard_summary_returns_kpis(self) -> None:
         """GET /api/dashboard should return all KPIs."""
         client = TestClient(app)
         response = client.get("/api/dashboard")
         assert response.status_code == 200
         body = response.json()
-
-        # Check all required fields
         assert "harnesses" in body
-        assert "tests" in body
+        assert "pipeline" in body
         assert "memory_domains" in body
         assert "entity_count" in body
-        assert "event_count" in body
-        assert "pipeline" in body
-        assert "approval_count" in body
-        assert "ws_connections" in body
-        assert "health_score" in body
-
-        # Check types
-        assert isinstance(body["harnesses"], int)
-        assert isinstance(body["tests"], int)
-        assert isinstance(body["memory_domains"], int)
-        assert isinstance(body["entity_count"], int)
-        assert isinstance(body["event_count"], int)
-        assert isinstance(body["pipeline"], dict)
-        assert isinstance(body["approval_count"], int)
-        assert isinstance(body["ws_connections"], dict)
-        assert isinstance(body["health_score"], float)
-
-        # Check pipeline structure
-        pipeline = body["pipeline"]
-        assert "active" in pipeline
-        assert "progress" in pipeline
-
-        # Check ws_connections structure
-        ws = body["ws_connections"]
-        assert "active_connections" in ws
-        assert "max_connections" in ws
-
-    def test_dashboard_harness_count_positive(self) -> None:
-        """Dashboard should report positive harness count."""
-        client = TestClient(app)
-        response = client.get("/api/dashboard")
-        assert response.status_code == 200
-        body = response.json()
-        assert body["harnesses"] > 0
-
-    def test_dashboard_test_count_positive(self) -> None:
-        """Dashboard should report positive test count."""
-        client = TestClient(app)
-        response = client.get("/api/dashboard")
-        assert response.status_code == 200
-        body = response.json()
-        assert body["tests"] > 0

@@ -25,6 +25,7 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-cov>=4.1",
     "ruff>=0.5",
+    "mypy>=1.10",
 ]
 
 [project.scripts]
@@ -33,6 +34,10 @@ aos = "aos.__main__:main"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests (require live dependencies)",
+]
 
 [tool.coverage.run]
 source = ["aos", "odysseus"]
@@ -41,3 +46,15 @@ branch = true
 [tool.coverage.report]
 fail_under = 60
 show_missing = true
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = false
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_configs = true
