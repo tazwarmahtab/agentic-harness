@@ -30,3 +30,9 @@ __pycache__/
 graphify-out/
 out/
 .coverage
+
+# Temp / agent scratch
+.antigravitycli/
+.hermes/
+.mcp.json
+aos/llm.py:*
