@@ -13,6 +13,9 @@ description: >
   BOO/OPEX rooftop solar developer for Bangladesh RMG sector.
   Priority #1 venture in Taz's 2026 stack. Primary PPA customer: CGS.
 
+# Base path for artifact resolution (where Netso_HQ lives)
+root_path: "/Users/tazwarmahtab/Documents/10-Projects/Netso_HQ"
+
 # ---------------------------------------------------------------------------
 # Identity — humans with seats in this venture
 # ---------------------------------------------------------------------------

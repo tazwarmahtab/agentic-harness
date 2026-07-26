@@ -19,7 +19,14 @@ import uuid
 from datetime import date
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
 
 from aos.discover import find_venture
@@ -94,11 +101,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Token auth — if AOS_API_TOKEN env var is set, WebSocket requires it as ?token=
+# Read at import time; tests reload module to pick up env changes
 AOS_API_TOKEN = os.getenv("AOS_API_TOKEN", "") or os.getenv("TAZOS_API_TOKEN", "")
 TAZOS_API_TOKEN = AOS_API_TOKEN  # backward-compat alias
 
+# Also provide a function for dynamic reads (used by auth deps)
+def get_aos_api_token() -> str:
+    """Get the API token from environment (reads fresh each call)."""
+    return os.getenv("AOS_API_TOKEN", "") or os.getenv("TAZOS_API_TOKEN", "")
 # WebSocket connection limiter — caps concurrent connections per server instance
 _ws_limiter = ConnectionLimiter(max_connections=10)
 
@@ -106,8 +117,6 @@ _ws_limiter = ConnectionLimiter(max_connections=10)
 # ---------------------------------------------------------------------------
 # REST auth dependency — mirrors WebSocket token gating for REST endpoints
 # ---------------------------------------------------------------------------
-
-
 def _require_auth(
     authorization: str | None = Header(None),
 ) -> None:
@@ -118,7 +127,8 @@ def _require_auth(
     """
     from fastapi import HTTPException
 
-    if not AOS_API_TOKEN:
+    token = get_aos_api_token()
+    if not token:
         return  # no token configured — local dev, allow all
 
     if not authorization:
@@ -128,9 +138,8 @@ def _require_auth(
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(status_code=401, detail="Invalid Authorization format")
 
-    if parts[1] != AOS_API_TOKEN:
+    if parts[1] != token:
         raise HTTPException(status_code=401, detail="Invalid token")
-
 
 def _check_llm_providers() -> dict[str, str | list[str] | bool]:
     """Check which LLM providers are configured and available."""

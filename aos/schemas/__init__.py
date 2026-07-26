@@ -6,6 +6,7 @@ Each model validates against its corresponding JSON Schema in aos/platform/.
 from aos.schemas.identity import Identity, IdentityType, IdentityStatus, Classification
 from aos.schemas.harness import Harness, HarnessStatus, Criticality
 from aos.schemas.agent import Agent, AgentStatus, ToolPermission
+from aos.schemas.agent_class import AgentClass, AgentClassStatus
 from aos.schemas.venture import Venture, VentureStatus
 from aos.schemas.memory import Memory
 from aos.schemas.tool import ToolRegistry
@@ -25,6 +26,8 @@ __all__ = [
     "Agent",
     "AgentStatus",
     "ToolPermission",
+    "AgentClass",
+    "AgentClassStatus",
     "Venture",
     "VentureStatus",
     "Memory",

@@ -1520,10 +1520,17 @@ def approval_gates_node(state: CycleState) -> dict:
                 logger.info(
                     "approval_gates_node: resolved Chief of Staff via cross-harness registry fallback"
                 )
-
-    approval_items = state.get("approval_queue", [])
-    resolved_ids = set(state.get("resolved_approval_ids", []))
-
+    # Flatten and filter approval items (handle nested lists from agent outputs)
+    raw_items = state.get("approval_queue") or []
+    approval_items = []
+    for item in raw_items:
+        if item is None:
+            continue
+        if isinstance(item, list):
+            approval_items.extend([i for i in item if i is not None and isinstance(i, dict)])
+        elif isinstance(item, dict):
+            approval_items.append(item)
+    resolved_ids = set(state.get("resolved_approval_ids") or [])
     # Cross-reference against ApprovalQueue persistence to resolve
     from aos.approval_queue import ApprovalQueue
 

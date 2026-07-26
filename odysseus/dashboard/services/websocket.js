@@ -12,25 +12,28 @@ class AosWebSocket {
     this._reconnectDelay = 1000;
     this._maxReconnectDelay = 30000;
     this._harnessName = null;
+
+    // Message queue for offline support
+    this._messageQueue = [];
+    this._connectionState = 'disconnected'; // 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
   }
 
-  /**
-   * Connect to a harness execution stream.
-   * @param {string} harnessName - The harness to stream
-   * @param {object} opts - { token?: string }
-   */
   connect(harnessName, opts = {}) {
     this.disconnect();
     this._harnessName = harnessName;
+    this._setConnectionState('connecting');
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     let url = `${protocol}//${window.location.host}/ws/harness/${encodeURIComponent(harnessName)}`;
-    if (opts.token) url += `?token=${opts.token}`;
+    if (opts.token) url += `?token=${encodeURIComponent(opts.token)}`;
 
     this._ws = new WebSocket(url);
+    this._ws.binaryType = 'arraybuffer';
 
     this._ws.onopen = () => {
       this._reconnectDelay = 1000;
+      this._setConnectionState('connected');
+      this._flushQueue();
       this._emit('connected', { harness: harnessName });
     };
 
@@ -48,8 +51,10 @@ class AosWebSocket {
     };
 
     this._ws.onclose = (evt) => {
+      this._setConnectionState('disconnected');
       this._emit('disconnected', { code: evt.code, reason: evt.reason });
       if (evt.code !== 1000 && this._harnessName) {
+        this._setConnectionState('reconnecting');
         this._scheduleReconnect();
       }
     };
@@ -66,6 +71,7 @@ class AosWebSocket {
       this._ws.close(1000);
       this._ws = null;
     }
+    this._setConnectionState('disconnected');
   }
 
   on(event, callback) {
@@ -78,6 +84,39 @@ class AosWebSocket {
     this._listeners.get(event)?.forEach((cb) => {
       try { cb(data); } catch (e) { console.error('WS listener error:', e); }
     });
+  }
+
+  _setConnectionState(state) {
+    if (this._connectionState !== state) {
+      this._connectionState = state;
+      this._emit('connectionStateChange', { state, timestamp: Date.now() });
+    }
+  }
+
+  get connectionState() {
+    return this._connectionState;
+  }
+
+  onConnectionStateChange(callback) {
+    return this.on('connectionStateChange', callback);
+  }
+
+  send(data) {
+    const message = typeof data === 'string' ? data : JSON.stringify(data);
+    if (this.isConnected) {
+      this._ws.send(message);
+      return true;
+    } else {
+      this._messageQueue.push(message);
+      return false;
+    }
+  }
+
+  _flushQueue() {
+    while (this._messageQueue.length > 0 && this.isConnected) {
+      const message = this._messageQueue.shift();
+      try { this._ws.send(message); } catch (e) { console.error('Flush queue error:', e); }
+    }
   }
 
   _scheduleReconnect() {
