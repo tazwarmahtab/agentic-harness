@@ -1,0 +1,18 @@
+[Unit]
+Description=AOS Dashboard — Odysseus Mission Control
+After=network.target aos-engine.service
+Requires=aos-engine.service
+
+[Service]
+Type=simple
+User=tazwarmahtab
+WorkingDirectory=/Users/tazwarmahtab/orca/agentic-harness
+EnvironmentFile=/Users/tazwarmahtab/orca/agentic-harness/.env
+ExecStart=/Users/tazwarmahtab/orca/agentic-harness/.venv/bin/python -m uvicorn odysseus.server:app --host 0.0.0.0 --port 3000
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

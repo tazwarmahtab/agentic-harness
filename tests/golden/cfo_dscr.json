@@ -1,0 +1,20 @@
+{
+  "agent_id": "AGT-EXEC-CFO",
+  "output": {
+    "blended_rate": 14.81,
+    "true_variable_rate": 12.98,
+    "savings_pct": 23.0,
+    "dscr": 1.8,
+    "ppa_rate": 7.0,
+    "capex_per_kw": 55000,
+    "nem_export_rate": 6.4523,
+    "scenario": "A"
+  },
+  "expected": {
+    "passed": false,
+    "violations": [
+      "DSCR 1.8 is below alert floor 2.0. Must flag as immediate alert. Hard-fail rule: dscr_below_floor_not_flagged",
+      "PPA rate 7.0 differs from ground truth 10.00 BDT/kWh. Hard-fail rule: wrong_ppa_rate"
+    ]
+  }
+}

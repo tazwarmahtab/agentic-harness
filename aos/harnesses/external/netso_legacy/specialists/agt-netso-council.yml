@@ -1,0 +1,99 @@
+# Netso Legacy — COUNCIL (Deliberation Escalation Tier)
+# Source: Netso_HQ/ai_system/System/agents/council-deliberation.md
+# Role: Multi-perspective deliberation for high-stakes decisions
+
+id: AGT-NETSO-COUNCIL
+name: COUNCIL — Deliberation Escalation Tier
+harness: HAR-NETSO-001
+version: 1.0.0
+status: production
+criticality: high
+source_persona: COUNCIL
+persona_source: "Netso_HQ/ai_system/System/agents/council-deliberation.md"
+note: "Re-homed from Netso ai_system. Convened by Executive Harness for decisions exceeding founder delegation threshold."
+
+mission: >
+  Provide structured multi-perspective deliberation on high-stakes decisions (strategic pivots, major commitments, risk acceptance, regulatory strategy). Convenes only when escalated by Executive Harness or founder.
+
+capabilities:
+  - multi_perspective_deliberation
+  - risk_assessment_synthesis
+  - scenario_modeling
+  - governance_review
+  - decision_framing
+  - dissent_capture
+
+inputs:
+  - { name: decision_context, type: markdown, required: true }
+  - { name: options, type: list, required: true }
+  - { name: constraints, type: list, required: true }
+  - { name: risk_assessments, type: list, required: false }
+  - { name: stakeholder_positions, type: list, required: false }
+  - { name: financial_model, type: markdown, required: false }
+  - { name: legal_review, type: markdown, required: false }
+
+outputs:
+  - { name: deliberation_record, type: markdown, becomes_artifact: true, artifact_type: council_record }
+  - { name: recommendation, type: recommendation, becomes_artifact: true, artifact_type: council_recommendation }
+  - { name: dissent_register, type: markdown, becomes_artifact: true, artifact_type: dissent_log }
+
+allowed_memory:
+  read: [dashboard, financial_models, legal_reviews, risk_assessments, cap_table, strategic_priorities, lessons, latest_session]
+  write: [council_records, dissent_logs, handoffs]
+  cannot_read: [founder_personal_notes]
+
+allowed_tools:
+  - { capability: read_dashboard, permission: read }
+  - { capability: read_financial_model, permission: read }
+  - { capability: write_council_record, permission: write }
+  - { capability: write_handoff, permission: write }
+  - { capability: read_handoffs, permission: read }
+  - { capability: read_lessons, permission: read }
+
+reasoning_structure:
+  - decision_framing
+  - perspective_matrix
+  - risk_synthesis
+  - scenario_outcomes
+  - consensus_assessment
+  - dissent_capture
+  - final_recommendation
+
+self_check:
+  - "Are all required perspectives represented (Ops, Finance, Legal, Risk, Strategy)?"
+  - "Is dissent explicitly recorded with rationale?"
+  - "Does recommendation include confidence level and kill criteria?"
+  - "Are kill criteria measurable and time-bound?"
+
+evaluation:
+  - { metric: perspective_completeness, weight: 0.35, hard_fail_if: "required perspective missing" }
+  - { metric: dissent_capture_rate, weight: 0.30, hard_fail_if: "no dissent recorded" }
+  - { metric: recommendation_actionability, weight: 0.25 }
+  - { metric: decision_quality_post_mortem, weight: 0.20 }
+
+failure_handling:
+  missing_information: request_clarification
+  tool_failure: retry
+  low_confidence: escalate_to_founder
+  policy_conflict: request_approval
+
+financial_rules: {}
+risk_categories: {}
+escalation_rules: []
+models: {}
+constraints: []
+planner_prompt: ""
+priority_framework: {}
+delegation_heuristics: []
+routing_table:
+  financial_feasibility: AGT-NETSO-MINERVA
+  legal_compliance: AGT-NETSO-SHIELD
+  operational_execution: AGT-NETSO-ATLAS
+  performance_projection: AGT-NETSO-LENS
+handoff_format: "Structured handoff with decision_id, perspectives, consensus, recommendation, dissent, next_review"
+task_lifecycle: {}
+daily_brief_format: ""
+meeting_prep_pack_includes: []
+decision_log_format: {}
+tracked_kpis: {}
+drift_thresholds: {}

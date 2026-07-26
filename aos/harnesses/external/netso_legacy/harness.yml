@@ -1,0 +1,95 @@
+# Netso Legacy — Harness Manifest (Schema-Compliant)
+# Re-homes the Netso_HQ/ai_system/ workforce into AOS as cross-harness specialists.
+# These agents are DISPATCHED TO by the Executive Harness — they do not orchestrate.
+
+id: HAR-NETSO-001
+name: Netso Legacy Agent Bundle
+venture: VEN-NETSO-001
+version: 1.0.0
+status: production
+criticality: high
+
+mission: >
+  Provide specialist execution capability for Netso operations by exposing the original AI workforce (LILTAZ, ATLAS, MINERVA, SHIELD, LENS, COUNCIL) as cross-harness agents dispatchable by the Executive Harness.
+
+scope:
+  in_scope:
+    - COO operations execution (ATLAS)
+    - CFO financial modeling & validation (MINERVA)
+    - Legal & risk compliance (SHIELD)
+    - Performance analysis & KPI tracking (LENS)
+    - Strategic deliberation & escalation (COUNCIL)
+    - Planning & dispatch coordination (LILTAZ)
+  out_of_scope:
+    - Founder-facing briefing generation (owned by Executive Harness)
+    - Approval gate management (owned by Executive Harness)
+    - Cross-harness task routing logic (owned by Executive Dispatcher)
+    - Memory storage mechanics (owned by platform Memory layer)
+
+kpis:
+  - name: Specialist dispatch success rate
+    target: "100%"
+    frequency: daily
+    owner: AGT-NETSO-ATLAS
+  - name: Cross-harness handoff latency
+    target: "<5 minutes"
+    frequency: realtime
+    owner: AGT-NETSO-LILTAZ
+  - name: Specialist output quality score
+    target: ">0.85"
+    frequency: weekly
+    owner: AGT-NETSO-COUNCIL
+
+inputs:
+  - source: knowledge
+    items:
+      - dispatch_orders
+      - context_refs
+      - success_criteria
+  - source: venture_artifact
+    ref: dashboard
+  - source: venture_artifact
+    ref: weekly_plan
+  - source: venture_artifact
+    ref: backlog
+  - source: venture_artifact
+    ref: blockers
+  - source: venture_artifact
+    ref: lessons
+  - source: venture_artifact
+    ref: latest_session
+
+outputs:
+  - name: Specialist Deliverable
+    type: artifact
+    artifact_type: handoff
+    frequency: realtime
+    owner: AGT-NETSO-ATLAS
+    classification: internal
+    description: "Task-specific output (updated dashboard, financial model, legal review, performance analysis)"
+
+  - name: Escalation Alert
+    type: event
+    artifact_type: escalation
+    frequency: realtime
+    owner: AGT-NETSO-SHIELD
+    description: "Risk-triggered alerts (compliance breach, financial threshold, legal risk)"
+
+components:
+  specialists_dir: specialists/
+  tools: tools.yml
+  memory: memory.yml
+  approvals: approvals.yml
+  evaluation: evaluation.yml
+  sops_dir: sops/
+
+execution_cycle:
+  name: On-Demand Specialist Execution
+  trigger: dispatch_event
+  steps:
+    - receive_handoff
+    - validate_inputs
+    - run_agent
+    - produce_outputs
+    - write_memory
+    - return_handoff
