@@ -144,19 +144,29 @@ class ApprovalQueue:
         return result
 
     def approve_all(self, founder_note: Optional[str] = None) -> list[ApprovalResult]:
-        """Approve all pending items."""
+        """Approve all pending items. Thread-safe — holds lock across batch."""
         results = []
-        for item in self.pending():
-            result = self.decide(item.id, ApprovalDecision.APPROVE, founder_note)
+        with self._lock:
+            pending_ids = [
+                item.id for item in self._items.values()
+                if item.status == "pending"
+            ]
+        for item_id in pending_ids:
+            result = self.decide(item_id, ApprovalDecision.APPROVE, founder_note)
             if result:
                 results.append(result)
         return results
 
     def reject_all(self, founder_note: Optional[str] = None) -> list[ApprovalResult]:
-        """Reject all pending items."""
+        """Reject all pending items. Thread-safe — holds lock across batch."""
         results = []
-        for item in self.pending():
-            result = self.decide(item.id, ApprovalDecision.REJECT, founder_note)
+        with self._lock:
+            pending_ids = [
+                item.id for item in self._items.values()
+                if item.status == "pending"
+            ]
+        for item_id in pending_ids:
+            result = self.decide(item_id, ApprovalDecision.REJECT, founder_note)
             if result:
                 results.append(result)
         return results

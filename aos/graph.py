@@ -278,16 +278,17 @@ def _fallback_threadpool(
     fn: Callable[[Any], _T],
     max_workers: int | None = None,
 ) -> list[_T]:
-    """Bounded ThreadPoolExecutor fallback for sync contexts."""
+    """Bounded ThreadPoolExecutor fallback for sync contexts.
+
+    Returns results in the same order as input items.
+    """
     if not items:
         return []
     workers = max_workers or min(len(items), MAX_CONCURRENCY)
-    results: list[_T] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(fn, item) for item in items]
-        for future in concurrent.futures.as_completed(futures):
-            results.append(future.result())
-    return results
+        # Preserve input order — iterate futures in submission order
+        return [f.result() for f in futures]
 
 
 # ---------------------------------------------------------------------------

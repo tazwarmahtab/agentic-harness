@@ -213,10 +213,10 @@ class HandoffStore:
                 data = json.loads(path.read_text())
                 handoff = SessionHandoff.from_dict(data)
                 if handoff.is_expired:
-                    path.unlink()
+                    path.unlink(missing_ok=True)
                     deleted += 1
                     logger.info("Expired handoff cleaned: %s", path.name)
-            except (json.JSONDecodeError, KeyError):
+            except (json.JSONDecodeError, KeyError, FileNotFoundError):
                 continue
         return deleted
 

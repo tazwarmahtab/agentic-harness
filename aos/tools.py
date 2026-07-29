@@ -681,7 +681,10 @@ class ToolGateway:
         dict with at least ``{"ok": bool}`` plus type-specific fields.
         """
         action_type = action.get("action_type", "")
-        agent_id = action.get("agent_id", "system")
+        agent_id = action.get("agent_id", "")
+
+        if not agent_id:
+            return {"ok": False, "error": "agent_id is required in action dict"}
 
         handler = getattr(self, f"_exec_{action_type}", None)
         if handler is None:
@@ -699,6 +702,10 @@ class ToolGateway:
                 "error": f"Agent {agent_id} not authorized for action_type={action_type} (requires write permission)",
             }
 
+        # --- Rate limit check (mirrors ToolGateway.call) ---
+        if not self.check_rate_limit(action_type):
+            return {"ok": False, "error": f"Rate limit exceeded for action_type={action_type}"}
+
         # --- Enforcement rules (path traversal, shell metacharacters, etc.) ---
         enforcement_results = self._enforcement.evaluate(action_type, action)
         if self._enforcement.has_blocks(enforcement_results):
@@ -712,7 +719,13 @@ class ToolGateway:
 
         # --- Dispatch to handler ---
         try:
-            return handler(action)
+            result = handler(action)
+            # Record rate limit usage on success
+            with self._rate_lock:
+                if action_type not in self._rate_counters:
+                    self._rate_counters[action_type] = []
+                self._rate_counters[action_type].append(datetime.now())
+            return result
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
 
