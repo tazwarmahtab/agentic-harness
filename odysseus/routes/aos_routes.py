@@ -8,6 +8,7 @@ Includes a WebSocket proxy for live harness execution streaming.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 from typing import Any
@@ -116,6 +117,45 @@ async def proxy_status() -> Any:
             {"error": "AOS engine not running", "url": AOS_ENGINE_URL},
             status_code=502,
         )
+
+
+# ── Deals Pipeline (local, no engine proxy needed) ──────────────────────────
+
+
+@router.get("/deals")
+async def get_deals(venture: str = "netso") -> Any:
+    """Return deal pipeline for the given venture."""
+    from pathlib import Path
+    deals_path = Path(__file__).resolve().parent.parent.parent / "aos" / "ventures" / venture / "deals.json"
+    if not deals_path.exists():
+        return JSONResponse(content={"venture": venture, "deals": []})
+    try:
+        with open(deals_path) as f:
+            data = json.load(f)
+        return JSONResponse(content=data)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@router.get("/deals/summary")
+async def get_deals_summary(venture: str = "netso") -> Any:
+    """Return deal pipeline summary (count per stage + total value)."""
+    from pathlib import Path
+    deals_path = Path(__file__).resolve().parent.parent.parent / "aos" / "ventures" / venture / "deals.json"
+    if not deals_path.exists():
+        return JSONResponse(content={"venture": venture, "stages": {}, "total_value": 0})
+    try:
+        with open(deals_path) as f:
+            data = json.load(f)
+        stages: dict[str, int] = {}
+        total_value = 0.0
+        for d in data.get("deals", []):
+            s = d.get("stage", "unknown")
+            stages[s] = stages.get(s, 0) + 1
+            total_value += d.get("capacity_kw", 0) * d.get("ppa_rate", 0)
+        return JSONResponse(content={"venture": venture, "stages": stages, "total_value": total_value})
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 # ── WebSocket Proxy ─────────────────────────────────────────────────────────
