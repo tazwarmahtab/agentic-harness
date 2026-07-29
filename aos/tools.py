@@ -19,6 +19,7 @@ import logging
 import re
 import shlex
 import subprocess
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -430,6 +431,7 @@ class ToolGateway:
         self.tools: dict[str, ToolDef] = {}
         self.providers: dict[str, ToolProvider] = providers or {}
         self._rate_counters: dict[str, list[datetime]] = {}
+        self._rate_lock = threading.Lock()
         self._approval_provider: ApprovalProvider | None = None
         self._enforcement: EnforcementEngine = EnforcementEngine()
 
@@ -494,23 +496,24 @@ class ToolGateway:
         return False
 
     def check_rate_limit(self, capability: str, limit: int | None = None) -> bool:
-        """Check if tool is within rate limits."""
+        """Check if tool is within rate limits. Thread-safe."""
         tool = self.tools.get(capability)
         if not tool or not tool.rate_limit:
             return True
 
-        now = datetime.now()
-        hour_ago = now.timestamp() - 3600
-        key = capability
-        if key not in self._rate_counters:
-            self._rate_counters[key] = []
+        with self._rate_lock:
+            now = datetime.now()
+            hour_ago = now.timestamp() - 3600
+            key = capability
+            if key not in self._rate_counters:
+                self._rate_counters[key] = []
 
-        # Prune old entries
-        self._rate_counters[key] = [
-            t for t in self._rate_counters[key] if t.timestamp() > hour_ago
-        ]
+            # Prune old entries
+            self._rate_counters[key] = [
+                t for t in self._rate_counters[key] if t.timestamp() > hour_ago
+            ]
 
-        return len(self._rate_counters[key]) < tool.rate_limit
+            return len(self._rate_counters[key]) < tool.rate_limit
 
     def call(
         self,
@@ -605,11 +608,12 @@ class ToolGateway:
         # Execute
         try:
             output = provider.execute(capability, inputs, agent_id)
-            # Record rate limit usage
+            # Record rate limit usage (thread-safe)
             if tool.rate_limit:
-                if capability not in self._rate_counters:
-                    self._rate_counters[capability] = []
-                self._rate_counters[capability].append(datetime.now())
+                with self._rate_lock:
+                    if capability not in self._rate_counters:
+                        self._rate_counters[capability] = []
+                    self._rate_counters[capability].append(datetime.now())
 
             return ToolResult(
                 tool_id=tool.id,
@@ -792,7 +796,9 @@ class ToolGateway:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
-        return {"ok": True, "path": str(path), "bytes_written": len(content.encode())}
+        # Return relative path to avoid leaking absolute filesystem layout
+        display_path = path_str if Path(path_str).is_absolute() else path_str
+        return {"ok": True, "path": display_path, "bytes_written": len(content.encode())}
 
     def _resolve_provider(self, capability: str) -> ToolProvider | None:
         """Resolve a capability to its provider."""

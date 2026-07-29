@@ -10,11 +10,14 @@ Every entity has: id, venture_id, created_at, created_by, status, version.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class EntityType(str, Enum):
@@ -82,8 +85,20 @@ class EntityIndex:
         self._by_type: dict[EntityType, list[str]] = {}
 
     def register(self, entity: Entity) -> Entity:
+        """Register an entity. Warns on duplicate ID registration."""
+        if entity.id in self._store:
+            existing = self._store[entity.id]
+            logger.warning(
+                "Duplicate entity registration: %s (%s) already exists — "
+                "overwriting with new version %d",
+                entity.id,
+                existing.name,
+                entity.version,
+            )
         self._store[entity.id] = entity
-        self._by_type.setdefault(entity.type, []).append(entity.id)
+        # Avoid duplicating ID in type index
+        if entity.id not in self._by_type.get(entity.type, []):
+            self._by_type.setdefault(entity.type, []).append(entity.id)
         return entity
 
     def get(self, entity_id: str) -> Entity | None:

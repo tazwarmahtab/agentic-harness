@@ -8,6 +8,7 @@ Decisions are persisted to disk for audit trail.
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -72,6 +73,7 @@ class ApprovalQueue:
     ):
         self._items: dict[str, ApprovalItem] = {}
         self._counter = 0
+        self._lock = threading.Lock()
         self._persistence_path = persistence_path
         self._decision_log_path = decision_log_path
 
@@ -80,8 +82,9 @@ class ApprovalQueue:
             self._load()
 
     def _next_id(self) -> str:
-        self._counter += 1
-        return f"APR-{self._counter:04d}"
+        with self._lock:
+            self._counter += 1
+            return f"APR-{self._counter:04d}"
 
     def add(
         self,
@@ -90,7 +93,7 @@ class ApprovalQueue:
         rationale: str,
         risk_assessment: str,
     ) -> ApprovalItem:
-        """Add a new approval request to the queue."""
+        """Add a new approval request to the queue. Thread-safe."""
         item = ApprovalItem(
             id=self._next_id(),
             agent_id=agent_id,
@@ -98,7 +101,8 @@ class ApprovalQueue:
             rationale=rationale,
             risk_assessment=risk_assessment,
         )
-        self._items[item.id] = item
+        with self._lock:
+            self._items[item.id] = item
         self._save()
         return item
 

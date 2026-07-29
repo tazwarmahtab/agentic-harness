@@ -93,10 +93,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow dashboard preview from any local origin
+# CORS — explicit origin allowlist (override via AOS_CORS_ORIGINS env var, comma-separated)
+_DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8080",
+]
+_cors_origins_raw = os.getenv("AOS_CORS_ORIGINS", "")
+_cors_origins = (
+    [o.strip() for o in _cors_origins_raw.split(",") if o.strip()]
+    if _cors_origins_raw
+    else _DEFAULT_ORIGINS
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

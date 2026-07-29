@@ -50,92 +50,24 @@ from aos.schemas.harness import AgentTeam, TeamMember
 from aos.schemas.venture import Venture
 from aos.tools import ToolGateway
 from aos.usage import UsageTracker
-from aos.execution import ExecutionBudget, ExecutionDecision, ExecutionTrace
 
 logger = logging.getLogger("aos.graph")
 
 # ---------------------------------------------------------------------------
-# Constants — extracted from inline magic numbers
+# Constants and state — delegated to graph_state module
 # ---------------------------------------------------------------------------
 
-MAX_CONCURRENCY = 8  # asyncio.Semaphore cap + ThreadPoolExecutor default
-MEMORY_CONTEXT_CHAR_LIMIT = 3000  # char budget for vector memory context
-ARTIFACT_READ_LIMIT_CHARS = 2000  # max chars read from venture artifact files
-CONSENSUS_WEIGHT_THRESHOLD = 0.67  # voting strategy: fraction of weight needed
-
-
-# ---------------------------------------------------------------------------
-# Graph state — TypedDict with reducers for accumulating fields
-# ---------------------------------------------------------------------------
-
-
-class CycleState(TypedDict, total=False):
-    """LangGraph state for one execution cycle.
-
-    Fields with ``Annotated[..., operator.add]`` use list concatenation as
-    their reducer — each node returns a single-element list that gets
-    appended to the accumulated list.  Scalar / dict fields are overwritten
-    by each node's partial return.
-
-    Loop Engineering Fields:
-        iteration_count: Current iteration number (0-indexed)
-        max_iterations: Maximum allowed iterations (default: 1 for single-pass)
-        completion_criteria: Dict defining when loop should terminate
-        loop_context_summary: Compressed summary from previous iteration
-        iteration_history: List of iteration summaries for tracking progress
-    """
-
-    # --- Identity (set once at init) ---
-    venture_id: str
-    harness_id: str
-    cycle_id: str
-
-    # --- Input data ---
-    venture_artifacts: dict[str, Any]  # key → str(Path)
-    inputs: dict[str, Any]
-
-    # --- Accumulated results (reducer: list concat) ---
-    step_results: Annotated[list[dict[str, Any]], operator.add]
-    approval_queue: Annotated[list[dict[str, Any]], operator.add]
-    resolved_approval_ids: Annotated[list[str], operator.add]
-    handoffs: Annotated[list[dict[str, Any]], operator.add]
-    errors: Annotated[list[str], operator.add]
-
-    # --- Per-step outputs (overwritten each step) ---
-    review_output: dict[str, Any]
-    prioritize_output: dict[str, Any]
-    delegate_output: dict[str, Any]
-    specialists_output: dict[str, Any]
-    summarize_output: dict[str, Any]
-    approval_gates_output: dict[str, Any]
-    execute_output: dict[str, Any]
-    log_output: dict[str, Any]
-
-    # --- Loop Engineering (for multi-iteration execution) ---
-    iteration_count: int
-    max_iterations: int
-    completion_criteria: dict[str, Any]
-    loop_context_summary: str
-    iteration_history: Annotated[list[dict[str, Any]], operator.add]
-    # Inspectable execution contract for agentic runs.
-    execution_trace: dict[str, Any]
-
-
-# ---------------------------------------------------------------------------
-# Infrastructure config — passed via RunnableConfig.configurable
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class GraphConfig:
-    """Infrastructure objects that nodes need but don't belong in state."""
-
-    bundle: HarnessBundle
-    llm: LLMClient
-    tool_gateway: ToolGateway | None = None
-    memory_store: MemoryStore | None = None
-    usage_tracker: UsageTracker | None = None
-    registry: Registry | None = None  # for cross-harness dispatch
+from aos.graph_state import (  # noqa: E402
+    MAX_CONCURRENCY,
+    MEMORY_CONTEXT_CHAR_LIMIT,
+    ARTIFACT_READ_LIMIT_CHARS,
+    CONSENSUS_WEIGHT_THRESHOLD,
+    CycleState,
+    GraphConfig,
+    _step_result_to_list,
+    _get_errors,
+    _get_step_output,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -364,17 +296,36 @@ def _fallback_threadpool(
 
 
 def _extract_json(text: str) -> dict[str, Any] | None:
-    """Extract the first JSON object from text that may contain markdown."""
-    # Raw parse
+    """Extract the first JSON object from text that may contain markdown.
+
+    Layers:
+      1. Direct parse (fast path)
+      2. Fenced code block extraction (```json ... ```)
+      3. Brace-matching with truncation recovery
+      4. None (caller falls back to regex extraction)
+    """
+    if not text or not text.strip():
+        return None
+
+    # Strip common LLM preamble/postamble
+    cleaned = text.strip()
+    # Remove "Here is..." prefixes
+    cleaned = re.sub(r"^(Here(?:'s| is)[^.]*:\s*\n?)", "", cleaned, count=1)
+    # Remove trailing explanation after last }
+    last_brace = cleaned.rfind("}")
+    if last_brace >= 0:
+        cleaned = cleaned[: last_brace + 1]
+
+    # Layer 1: Direct parse
     try:
-        result = json.loads(text)
+        result = json.loads(cleaned)
         if isinstance(result, dict):
             return result
     except (json.JSONDecodeError, ValueError):
         pass
 
-    # Extract from ```json ... ``` blocks
-    code_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+    # Layer 2: Fenced code block extraction
+    code_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)```", cleaned, re.DOTALL)
     for block in code_blocks:
         try:
             result = json.loads(block.strip())
@@ -383,10 +334,10 @@ def _extract_json(text: str) -> dict[str, Any] | None:
         except (json.JSONDecodeError, ValueError):
             continue
 
-    # Find first complete { ... }
+    # Layer 3: Brace-matching with truncation recovery
     depth = 0
     start_idx = -1
-    for i, c in enumerate(text):
+    for i, c in enumerate(cleaned):
         if c == "{":
             if depth == 0:
                 start_idx = i
@@ -395,14 +346,25 @@ def _extract_json(text: str) -> dict[str, Any] | None:
             depth -= 1
             if depth == 0 and start_idx >= 0:
                 try:
-                    result = json.loads(text[start_idx : i + 1])
+                    result = json.loads(cleaned[start_idx : i + 1])
                     if isinstance(result, dict):
                         return result
                 except (json.JSONDecodeError, ValueError):
                     start_idx = -1
 
-    # Last resort: try to extract assignments from free-form text
-    # by matching agent mentions against known patterns
+    # Layer 3b: Try to recover truncated JSON by closing open braces
+    if start_idx >= 0 and depth > 0:
+        fragment = cleaned[start_idx:]
+        recovery = fragment + "}" * depth
+        try:
+            result = json.loads(recovery)
+            if isinstance(result, dict):
+                logger.debug("Recovered truncated JSON (closed %d braces)", depth)
+                return result
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    logger.debug("No JSON found in LLM response (%d chars)", len(text))
     return None
 
 
@@ -567,23 +529,16 @@ def _run_agent_node(
     agent_model = None
     if agent.models and agent.models.preferred:
         agent_model = agent.models.preferred
-
-    # Extract venture name from venture_id (e.g., "VEN-NETSO-001" -> "netso")
-    venture = venture_id.split("-")[1].lower() if venture_id else "netso"
-    model = resolve_model(agent.criticality.value, venture, override=agent_model)
+    model = resolve_model(agent.criticality.value, override=agent_model)
     temperature = 0.1 if agent.id == "AGT-EXEC-DISPATCH" else 0.3
 
-    logger.debug("_run_agent_node: agent=%s model=%s step=%s", agent.id, model, step_name)
-
     try:
-        logger.debug("_run_agent_node: calling llm.complete for agent=%s", agent.id)
         response = llm.complete(
             model=model,
             system=system_prompt,
             messages=[{"role": "user", "content": task_prompt}],
             temperature=temperature,
         )
-        logger.debug("_run_agent_node: llm.complete returned for agent=%s", agent.id)
 
         extracted = _extract_json(response.content)
         output: dict[str, Any] = (
@@ -625,29 +580,6 @@ def _run_agent_node(
             "duration_ms": elapsed,
             "_errors": [f"{agent.id}: {e}"],
         }
-
-
-def _step_result_to_list(result: dict[str, Any]) -> list[dict[str, Any]]:
-    """Convert a step result dict into a one-element list for the reducer."""
-    clean = {k: v for k, v in result.items() if k != "_errors"}
-    return [clean]
-
-
-def _get_errors(result: dict[str, Any]) -> list[str]:
-    """Extract errors from a step result."""
-    return result.get("_errors", [])
-
-
-def _get_step_output(state: CycleState, step_name: str) -> dict[str, Any]:
-    """Get the output of the most recent successful step by name."""
-    output_field = f"{step_name}_output"
-    if output_field in state and state[output_field]:
-        return state[output_field]
-    # Fallback: search step_results in reverse
-    for r in reversed(state.get("step_results", [])):
-        if r.get("step") == step_name and r.get("status") == "success":
-            return r.get("output", {})
-    return {}
 
 
 def _expand_team_assignments(
@@ -937,7 +869,12 @@ def review_node(state: CycleState) -> dict:
     else:
         for key, path_str in artifacts.items():
             try:
-                p = Path(path_str)
+                from aos.hardening import sanitize_path
+                safe = sanitize_path(path_str)
+                if safe is None:
+                    inputs[key] = f"(blocked: path traversal in {key})"
+                    continue
+                p = Path(safe)
                 if p.exists():
                     inputs[key] = p.read_text()[:ARTIFACT_READ_LIMIT_CHARS]
                 else:
@@ -947,20 +884,6 @@ def review_node(state: CycleState) -> dict:
                     "review_node: failed to read artifact %s: %s", path_str, exc
                 )
                 inputs[key] = f"(could not read {path_str}: {exc})"
-
-    # Load data from adapters (calendar, email, crm, finance, etc.)
-    try:
-        from aos.adapters import load_venture_data
-
-        venture_dir = Path(__file__).parent / "ventures" / "netso"
-        if venture_dir.exists():
-            venture_data = load_venture_data(venture_dir)
-            for source, data in venture_data.items():
-                if data and "error" not in data:
-                    inputs[source] = data
-            logger.debug("Loaded venture data sources: %s", list(venture_data.keys()))
-    except Exception as e:
-        logger.warning("Failed to load venture data adapters: %s", e)
 
     coo = (
         bundle.specialists.get("AGT-EXEC-COO")
@@ -1776,30 +1699,6 @@ def log_node(state: CycleState) -> dict:
         "handoffs_created": len(state.get("handoffs", [])),
     }
 
-    trace = ExecutionTrace(
-        task_id=state.get("cycle_id", "unknown"),
-        budget=ExecutionBudget(max_steps=max(len(results), 1)),
-        scratchpad={"iteration": iteration, "completion_criteria": state.get("completion_criteria", {})},
-        steps_completed=len(results),
-    )
-    for result in results:
-        if result.get("agent_id"):
-            trace.add_decision(ExecutionDecision(
-                actor=str(result["agent_id"]),
-                decision=str(result.get("status", "unknown")),
-                rationale=str(result.get("error", "step completed")),
-                evidence=[str(result.get("step", ""))],
-            ))
-    for handoff in state.get("handoffs", []):
-        trace.add_handoff(__import__("aos.execution", fromlist=["AgentHandoff"]).AgentHandoff(
-            from_agent=str(handoff.get("source_agent", "dispatcher")),
-            to_agent=str(handoff.get("agent_id", handoff.get("route_to", "unknown"))),
-            task=str(handoff.get("task", "")),
-            acceptance_criteria=list(handoff.get("acceptance_criteria", [])) if isinstance(handoff.get("acceptance_criteria", []), list) else [],
-            status=str(handoff.get("status", "queued")),
-        ))
-    trace.stop("cycle_complete" if not state.get("errors") else "errors_recorded")
-
     memory_summary: dict[str, Any] = {}
     if memory_store:
         audit_records = memory_store.review_pending(auto_store=True)
@@ -1818,8 +1717,7 @@ def log_node(state: CycleState) -> dict:
                 memory_summary["persist_error"] = str(exc)
                 logger.error("log_node: persist_to_disk failed: %s", exc)
 
-    output = {"decision_log_entry": log_entry, "memory_summary": memory_summary,
-              "execution_trace": trace.to_dict()}
+    output = {"decision_log_entry": log_entry, "memory_summary": memory_summary}
     elapsed = int((time.monotonic() - start) * 1000)
     return {
         "step_results": _step_result_to_list(
@@ -1832,7 +1730,6 @@ def log_node(state: CycleState) -> dict:
             }
         ),
         "log_output": output,
-        "execution_trace": trace.to_dict(),
     }
 
 
@@ -2009,9 +1906,6 @@ def build_graph(
     )
 
     # Compile — use provided checkpointer or MemorySaver for crash recovery
-    # Pass checkpointer=False to disable checkpointer entirely
-    if checkpointer is False:
-        return graph.compile()
     if checkpointer is None:
         checkpointer = MemorySaver()
     return graph.compile(checkpointer=checkpointer)
@@ -2034,9 +1928,8 @@ def run_cycle_graph(
     max_iterations: int = 1,
     completion_criteria: dict[str, Any] | None = None,
     registry: Registry | None = None,
-    checkpointer: Any | None = False,
+    checkpointer: Any | None = None,
     thread_id: str | None = None,
-    resolved_approval_ids: list[str] | None = None,
 ) -> CycleState:
     """Execute the full daily harness cycle via LangGraph.
 
@@ -2081,20 +1974,6 @@ def run_cycle_graph(
         for path in venture_artifacts.values():
             venture_root = path.parent
             break
-
-    # Load seed data from venture directory (if available)
-    seed_context = ""
-    if venture_root:
-        try:
-            from aos.ventures.netso.loader import load_seed_data, format_seed_context
-
-            venture_dir = venture_root / "netso" if venture_root.name != "netso" else venture_root
-            if venture_dir.exists():
-                seed_data = load_seed_data(venture_dir)
-                seed_context = format_seed_context(seed_data)
-                logger.info("Loaded seed data from %s", venture_dir)
-        except Exception as e:
-            logger.warning("Failed to load seed data: %s", e)
 
     # Derive venture constants from Venture object (None for planning ventures)
     venture_constants: dict[str, Any] | None = None
@@ -2162,10 +2041,10 @@ def run_cycle_graph(
         "harness_id": harness_id,
         "cycle_id": cycle_id,
         "venture_artifacts": {k: str(v) for k, v in (venture_artifacts or {}).items()},
-        "inputs": {"seed_context": seed_context} if seed_context else {},
+        "inputs": {},
         "step_results": [],
         "approval_queue": [],
-        "resolved_approval_ids": resolved_approval_ids or [],
+        "resolved_approval_ids": [],
         "handoffs": [],
         "errors": [],
         # Loop engineering fields
@@ -2174,7 +2053,6 @@ def run_cycle_graph(
         "completion_criteria": completion_criteria,
         "loop_context_summary": "",
         "iteration_history": [],
-        "execution_trace": {},
     }
 
     config: RunnableConfig = {

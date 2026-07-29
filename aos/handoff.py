@@ -181,7 +181,10 @@ class HandoffStore:
             return None
 
     def list_pending(self, agent_id: str | None = None) -> list[SessionHandoff]:
-        """List non-expired handoffs, optionally filtered by agent_id."""
+        """List non-expired handoffs, optionally filtered by agent_id.
+
+        Automatically deletes expired handoff files during listing (TTL cleanup).
+        """
         if not self._handoffs_dir.exists():
             return []
         handoffs: list[SessionHandoff] = []
@@ -190,6 +193,8 @@ class HandoffStore:
                 data = json.loads(path.read_text())
                 handoff = SessionHandoff.from_dict(data)
                 if handoff.is_expired:
+                    path.unlink(missing_ok=True)
+                    logger.debug("Auto-cleaned expired handoff: %s", path.name)
                     continue
                 if agent_id and handoff.agent_id != agent_id:
                     continue
