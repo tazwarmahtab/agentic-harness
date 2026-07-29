@@ -22,7 +22,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, ClassVar, Protocol
 
 from aos.enforcement import EnforcementEngine, EnforcementSeverity
 
@@ -650,12 +650,21 @@ class ToolGateway:
         (re.compile(r"exec\s*\("), "exec() execution"),
     ]
 
+    # Action types that require execute permission (shell, subprocess)
+    _EXECUTE_ACTION_TYPES: ClassVar[set[str]] = {"shell"}
+    # Action types that require write permission (file mutations)
+    _WRITE_ACTION_TYPES: ClassVar[set[str]] = {"file_write"}
+
     def execute(self, action: dict[str, Any]) -> dict[str, Any]:
-        """Execute a concrete action dict and return real results.
+        """Execute a concrete action dict with permission and enforcement checks.
 
         Supported action types:
           - ``shell``: run a subprocess command (with blocklist guard)
           - ``file_write``: write content to a file path
+
+        Approval gating for dangerous actions is enforced at the graph level
+        (``should_execute`` + ``approval_gates_node``) — not here, to avoid
+        double-gating safe commands like ``ls`` or ``git status``.
 
         Parameters
         ----------
@@ -668,13 +677,67 @@ class ToolGateway:
         dict with at least ``{"ok": bool}`` plus type-specific fields.
         """
         action_type = action.get("action_type", "")
+        agent_id = action.get("agent_id", "system")
+
         handler = getattr(self, f"_exec_{action_type}", None)
         if handler is None:
             return {"ok": False, "error": f"Unknown action_type: {action_type}"}
+
+        # --- Permission check (mirrors ToolGateway.call) ---
+        if action_type in self._EXECUTE_ACTION_TYPES and not self._check_action_permission(action_type, agent_id, "execute"):
+            return {
+                "ok": False,
+                "error": f"Agent {agent_id} not authorized for action_type={action_type} (requires execute permission)",
+            }
+        elif action_type in self._WRITE_ACTION_TYPES and not self._check_action_permission(action_type, agent_id, "write"):
+            return {
+                "ok": False,
+                "error": f"Agent {agent_id} not authorized for action_type={action_type} (requires write permission)",
+            }
+
+        # --- Enforcement rules (path traversal, shell metacharacters, etc.) ---
+        enforcement_results = self._enforcement.evaluate(action_type, action)
+        if self._enforcement.has_blocks(enforcement_results):
+            blocked = [
+                r for r in enforcement_results
+                if not r.passed and r.severity == EnforcementSeverity.BLOCK
+            ]
+            messages = "; ".join(r.message for r in blocked)
+            logger.warning("Enforcement BLOCK [%s]: %s", action_type, messages)
+            return {"ok": False, "error": f"Enforcement rules blocked: {messages}"}
+
+        # --- Dispatch to handler ---
         try:
             return handler(action)
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
+
+    def _check_action_permission(
+        self, action_type: str, agent_id: str, mode: str
+    ) -> bool:
+        """Check if an agent has permission for an action_type.
+
+        Unlike ``check_permission`` which looks up registered ToolDef entries,
+        this method enforces a baseline policy for raw action execution:
+        shell requires execute permission, file_write requires write permission.
+        """
+        # If tools are registered, check against them
+        for tool in self.tools.values():
+            if tool.capability == action_type:
+                return self.check_permission(action_type, agent_id, mode)
+
+        # Baseline policy: allow known agents, block unknown
+        # This prevents unregistered handoffs from executing without identity
+        _KNOWN_EXECUTORS = {"system", "AGT-EXEC-COO", "AGT-EXEC-COS", "AGT-DISPATCHER"}
+        if agent_id in _KNOWN_EXECUTORS:
+            return True
+
+        self._logger.warning(
+            "Permission denied: unknown agent %s for action_type=%s",
+            agent_id,
+            action_type,
+        )
+        return False
 
     def _exec_shell(self, action: dict[str, Any]) -> dict[str, Any]:
         """Run a shell command via subprocess with regex-based safety blocklist."""
