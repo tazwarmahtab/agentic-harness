@@ -1,0 +1,32 @@
+{
+  "venture": "netso",
+  "deals": [
+    {
+      "id": "DEAL-CGS-001",
+      "customer": "Chittagong Grammar School",
+      "stage": "loi_signed",
+      "venture": "netso",
+      "capacity_kw": 80,
+      "ppa_rate": 10.0,
+      "notes": ["LOI signed Jun 24", "PPA at 60% draft", "Troy contact"]
+    },
+    {
+      "id": "DEAL-ZIA-001",
+      "customer": "Zia Chowdhury — Dhaka meeting",
+      "stage": "lead",
+      "venture": "netso",
+      "capacity_kw": 0,
+      "ppa_rate": 10.0,
+      "notes": ["Meeting ~Jul 25", "Reach out to Md. Mahfuzul Kabir"]
+    },
+    {
+      "id": "DEAL-STEVEN-001",
+      "customer": "Steven Pemberton — $500K SAFE",
+      "stage": "qualified",
+      "venture": "netso",
+      "capacity_kw": 0,
+      "ppa_rate": 10.0,
+      "notes": ["$500K SAFE @ $3M cap", "Investor reply pending"]
+    }
+  ]
+}
