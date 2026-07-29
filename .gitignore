@@ -30,3 +30,19 @@ __pycache__/
 graphify-out/
 out/
 .coverage
+
+# Scratch files
+a.txt
+b.txt
+c.txt
+diff.txt
+]
+
+# Session reports (large HTML files)
+session-report-*.html
+
+# Hermes plans (generated, not source)
+.hermes/plans/
+
+# Claude Code skills (external, not project-owned)
+.claude/skills/

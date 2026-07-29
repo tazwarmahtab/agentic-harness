@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { id: 'overview',     icon: '⚡', label: 'Overview' },
   { id: 'harnesses',    icon: '🔗', label: 'Harnesses' },
   { id: 'pipelines',    icon: '🔄', label: 'Pipelines' },
+  { id: 'deals',        icon: '📋', label: 'Deal Pipeline' },
   { id: 'approvals',    icon: '✅', label: 'Approvals' },
   { id: 'memory',       icon: '🧠', label: 'Memory' },
   { id: 'entities',     icon: '🕸️', label: 'Entities' },

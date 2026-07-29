@@ -20,6 +20,7 @@ import { initKeyboardShortcuts, destroyKeyboardShortcuts } from './services/keyb
 import * as overviewPage from './pages/overview.js';
 import * as harnessesPage from './pages/harnesses.js';
 import * as pipelinesPage from './pages/pipelines.js';
+import * as dealsPage from './pages/pipeline.js';
 import * as approvalsPage from './pages/approvals.js';
 import * as memoryPage from './pages/memory.js';
 import * as entitiesPage from './pages/entities.js';
@@ -37,6 +38,7 @@ const PAGES = {
   overview:   overviewPage,
   harnesses:  harnessesPage,
   pipelines:  pipelinesPage,
+  deals:      dealsPage,
   approvals:  approvalsPage,
   memory:     memoryPage,
   entities:   entitiesPage,
