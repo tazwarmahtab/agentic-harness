@@ -193,8 +193,8 @@ python -m aos run --venture netso              # execute
 
 **Check approvals:**
 ```bash
-python -m tazos approvals list
-python -m tazos approvals approve <item_id>
+python -m aos approvals list
+python -m aos approvals approve <item_id>
 ```
 
 **Validate manifests:**

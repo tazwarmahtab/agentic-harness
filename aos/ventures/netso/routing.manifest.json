@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "venture": "netso",
+  "dag": [
+    ["reasoning", "default"],
+    ["default", "fast"],
+    ["fast", "free"]
+  ],
+  "criticality_map": {
+    "critical": "reasoning",
+    "high": "default",
+    "medium": "fast",
+    "low": "free"
+  },
+  "fallback_path": ["reasoning", "default", "fast", "free"],
+  "circuit_breaker": {
+    "reasoning": {
+      "failure_threshold": 3,
+      "recovery_window_sec": 600
+    },
+    "default": {
+      "failure_threshold": 5,
+      "recovery_window_sec": 300
+    },
+    "fast": {
+      "failure_threshold": 10,
+      "recovery_window_sec": 180
+    }
+  }
+}

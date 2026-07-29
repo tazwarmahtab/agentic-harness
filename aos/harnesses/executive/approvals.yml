@@ -2,7 +2,7 @@
 # Declarative approval rules. Gated actions cannot execute without
 # matching approval. Auto actions flow through without gate.
 # Source: GROUND_TRUTH_CONSTANTS.md + TASK_ROUTER.md escalation rules.
-# Validates against: tazos/platform/policy.schema.json
+# Validates against: aos/platform/policy.schema.json
 
 id: POL-EXEC-001
 name: Executive Approval Gates

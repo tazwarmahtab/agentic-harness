@@ -567,7 +567,10 @@ def _run_agent_node(
     agent_model = None
     if agent.models and agent.models.preferred:
         agent_model = agent.models.preferred
-    model = resolve_model(agent.criticality.value, override=agent_model)
+
+    # Extract venture name from venture_id (e.g., "VEN-NETSO-001" -> "netso")
+    venture = venture_id.split("-")[1].lower() if venture_id else "netso"
+    model = resolve_model(agent.criticality.value, venture, override=agent_model)
     temperature = 0.1 if agent.id == "AGT-EXEC-DISPATCH" else 0.3
 
     try:

@@ -1,5 +1,5 @@
 """
-TazOS Engine — FastAPI application.
+AOS Engine — FastAPI application.
 
 Exposes:
   - GET  /health              — liveness probe
@@ -96,8 +96,7 @@ app.add_middleware(
 )
 
 # Token auth — if AOS_API_TOKEN env var is set, WebSocket requires it as ?token=
-AOS_API_TOKEN = os.getenv("AOS_API_TOKEN", "") or os.getenv("TAZOS_API_TOKEN", "")
-TAZOS_API_TOKEN = AOS_API_TOKEN  # backward-compat alias
+AOS_API_TOKEN = os.getenv("AOS_API_TOKEN", "")
 
 # WebSocket connection limiter — caps concurrent connections per server instance
 _ws_limiter = ConnectionLimiter(max_connections=10)

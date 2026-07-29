@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VentureRoutingManifest",
+  "description": "Routing manifest for a venture, defining allowed model transitions, criticality mappings, and fallback paths.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "description": "Schema version (currently 1.0).",
+      "type": "string",
+      "pattern": "^1\\.0$"
+    },
+    "venture": {
+      "description": "Venture identifier (e.g., 'netso', 'transitbd').",
+      "type": "string"
+    },
+    "dag": {
+      "description": "Directed Acyclic Graph of allowed model transitions. Each edge is a tuple [source, target].",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "string",
+          "description": "Model ID (e.g., 'cu/claude-4.5-sonnet', 'free')."
+        }
+      }
+    },
+    "criticality_map": {
+      "description": "Mapping from criticality levels to model tiers.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "description": "Model tier (e.g., 'default', 'fast', 'free')."
+      }
+    },
+    "fallback_path": {
+      "description": "Ordered fallback path through the DAG. Must be a valid Hamiltonian path.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Model ID."
+      }
+    },
+    "shadow": {
+      "description": "If true, log routing decisions without affecting production traffic (canary mode).",
+      "type": "boolean",
+      "default": false
+    },
+    "circuit_breaker": {
+      "description": "Per-model circuit breaker thresholds.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "failure_threshold": {
+            "description": "Number of failures before circuit breaker trips.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "recovery_window_sec": {
+            "description": "Time window (seconds) for recovery before allowing retries.",
+            "type": "integer",
+            "minimum": 60
+          }
+        },
+        "required": ["failure_threshold", "recovery_window_sec"]
+      }
+    }
+  },
+  "required": ["version", "venture", "dag", "criticality_map", "fallback_path"]
+}

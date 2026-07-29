@@ -1,4 +1,4 @@
-"""Tests for TAZ OS multi-harness dispatch — Phase 9."""
+"""Tests for AOS multi-harness dispatch — Phase 9."""
 
 from __future__ import annotations
 import sys

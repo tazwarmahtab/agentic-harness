@@ -1,7 +1,7 @@
 # TAZ OS EXECUTIVE HARNESS — Planner
 # Re-homes LILTAZ orchestrator logic. Determines objectives for today.
 # The planner prioritizes and plans; it does not execute.
-# Validates against: tazos/platform/agent.schema.json
+# Validates against: aos/platform/agent.schema.json
 
 id: AGT-EXEC-PLAN
 name: Executive Planner

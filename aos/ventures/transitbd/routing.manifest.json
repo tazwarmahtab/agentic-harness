@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "venture": "transitbd",
+  "dag": [
+    ["default", "fast"],
+    ["fast", "free"],
+    ["default", "free"]
+  ],
+  "criticality_map": {
+    "critical": "default",
+    "high": "default",
+    "medium": "fast",
+    "low": "free"
+  },
+  "fallback_path": ["default", "fast", "free"],
+  "circuit_breaker": {
+    "default": {
+      "failure_threshold": 5,
+      "recovery_window_sec": 300
+    },
+    "fast": {
+      "failure_threshold": 10,
+      "recovery_window_sec": 180
+    },
+    "free": {
+      "failure_threshold": 15,
+      "recovery_window_sec": 120
+    }
+  }
+}

@@ -46,7 +46,7 @@ curl http://localhost:8000/health/ready
 # Sample response:
 {
   "status": "healthy",
-  "service": "tazos-engine",
+  "service": "aos-engine",
   "llm_providers": {
     "anthropic": true,
     "local_router": false,

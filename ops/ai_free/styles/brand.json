@@ -1,0 +1,37 @@
+# Brand Design System — Netso Energy / Aesthetic Baseline
+
+Use this file as the canonical style anchor for all AI-generated work.
+Goal: recognizable consistency across social, product, brand, and web assets.
+
+## Voice
+- Executive, technical, clean, confident, no hype.
+- Solar + commercial + Bangladeshi market context.
+- Keywords to weave in naturally: clean energy, C&I solar, PPA, IDCOL, DSCR, BDT, kilowatt, rooftop, commissioning.
+
+## Color
+- Primary: deep navy `#0B1D2E`
+- Accent: solar amber `#F5A623`
+- Surface: cool gray `#F3F4F6`
+- Text: near-black `#111827`
+
+## Typography feel
+- Sans, geometric, high legibility, tight tracking on headlines.
+- Generous whitespace, right-aligned labels, left-aligned body.
+
+## Image style
+- Pricing: cinematic studio lighting, softboxes, minimal shadows.
+- Editorial: news/magazine style, clean desk, MacBook/print collateral optional.
+- Product: 45-degree elevated, matte finishes, concrete or soft-gray surface, slim depth of field.
+
+## Composition
+- Negative space rule: at least 40% breathing room for copy overlay.
+- Rule of thirds for product placement.
+- Brand mark always top-left or bottom-right, never center.
+
+## Format rules by channel
+- Instagram carousel: 4:5 portrait, 1080x1350
+- Instagram square: 1:1
+- LinkedIn feed: 1:1 or 16:9
+- LinkedIn cover: 4:1 banner
+- X/Twitter: 16:9
+- TikTok: 9:16

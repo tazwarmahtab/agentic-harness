@@ -1,4 +1,4 @@
-"""Tests for TAZ OS Investor Relations Harness — Phase 16."""
+"""Tests for AOS Investor Relations Harness — Phase 16."""
 
 from __future__ import annotations
 import sys

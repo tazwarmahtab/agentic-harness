@@ -151,7 +151,7 @@ class TestSystemHealth:
             "ANTHROPIC_API_KEY",
             "ANTHROPIC_AUTH_TOKEN",
             "AOS_LLM_BASE_URL",
-            "TAZOS_LLM_BASE_URL",
+            "AOS_LLM_BASE_URL",
             "NVIDIA_NIM_API_KEY",
         ):
             monkeypatch.delenv(var, raising=False)

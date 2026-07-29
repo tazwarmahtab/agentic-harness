@@ -16,7 +16,7 @@ class TestTokenAuth:
     """Tests for WebSocket token-based authentication."""
 
     def test_token_env_var_reads_correctly(self) -> None:
-        """TAZOS_API_TOKEN should reflect the environment variable."""
+        """AOS_API_TOKEN should reflect the environment variable."""
         with patch.dict(os.environ, {"AOS_API_TOKEN": "test-secret-123"}):
             # Re-import to pick up the env var
             import importlib
@@ -28,11 +28,11 @@ class TestTokenAuth:
             importlib.reload(aos.api)
 
     def test_token_defaults_to_empty(self) -> None:
-        """When TAZOS_API_TOKEN is unset, it defaults to empty string."""
+        """When AOS_API_TOKEN is unset, it defaults to empty string."""
         with patch.dict(os.environ, {}, clear=True):
             # Remove the key entirely
             os.environ.pop("AOS_API_TOKEN", None)
-            os.environ.pop("TAZOS_API_TOKEN", None)
+            os.environ.pop("AOS_API_TOKEN", None)
             import importlib
             import aos.api
 
@@ -368,7 +368,7 @@ class TestRESTAuthMiddleware:
         """GET /api/approvals should return 200 when AOS_API_TOKEN is not set (dev mode)."""
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("AOS_API_TOKEN", None)
-            os.environ.pop("TAZOS_API_TOKEN", None)
+            os.environ.pop("AOS_API_TOKEN", None)
             import importlib
             import aos.api
 

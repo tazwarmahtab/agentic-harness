@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 AOS_ENGINE_URL = os.getenv("AOS_ENGINE_URL", "http://127.0.0.1:7001")
 AOS_ENGINE_WS_URL = AOS_ENGINE_URL.replace("http", "ws")
-AOS_API_TOKEN = os.getenv("AOS_API_TOKEN", "") or os.getenv("TAZOS_API_TOKEN", "")
+AOS_API_TOKEN = os.getenv("AOS_API_TOKEN", "")
 
 _http_client: httpx.AsyncClient | None = None
 

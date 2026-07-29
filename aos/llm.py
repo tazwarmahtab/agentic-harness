@@ -23,13 +23,38 @@ import json
 import logging
 import os
 import threading
+import time
 import urllib.request
 import urllib.error
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, Dict, List, Tuple, Optional
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Pydantic models for routing manifest
+# ---------------------------------------------------------------------------
+
+from pydantic import BaseModel, ValidationError
+import networkx as nx
+
+class CircuitBreakerConfig(BaseModel):
+    """Circuit breaker configuration for a model."""
+    failure_threshold: int
+    recovery_window_sec: int
+
+
+class VentureRoutingManifest(BaseModel):
+    """Routing manifest for a venture, defining allowed model transitions, criticality mappings, and fallback paths."""
+    version: str
+    venture: str
+    dag: List[Tuple[str, str]]
+    criticality_map: Dict[str, str]
+    fallback_path: List[str]
+    shadow: bool = False
+    circuit_breaker: Dict[str, CircuitBreakerConfig] = {}
+
 
 # ---------------------------------------------------------------------------
 # Model routing table — mirrors CLAUDE.md / 9router config
@@ -75,8 +100,48 @@ _free_model_lock = threading.Lock()
 _free_model_idx = 0
 
 # Free-tier env var: AOS_FREE_TIER is the canonical name.
-# TAZOS_FREE_TIER (deprecated) is accepted as a fallback for backward compat.
-AOS_FREE_TIER = os.getenv("AOS_FREE_TIER") or os.getenv("TAZOS_FREE_TIER")
+
+AOS_FREE_TIER = os.getenv("AOS_FREE_TIER")
+
+
+def validate_manifest(manifest: VentureRoutingManifest) -> None:
+    """Validate routing manifest DAG and fallback path."""
+    graph = nx.DiGraph()
+    graph.add_edges_from(manifest.dag)
+
+    # Check for cycles
+    if not nx.is_directed_acyclic_graph(graph):
+        raise ValueError(f"Manifest DAG for {manifest.venture} contains cycles")
+
+    # Check fallback path is a Hamiltonian path
+    if not nx.is_simple_path(graph, manifest.fallback_path):
+        raise ValueError(f"Fallback path for {manifest.venture} is not a valid path in DAG")
+
+    # Check all criticality levels are mapped
+    for criticality in ["critical", "high", "medium", "low"]:
+        if criticality not in manifest.criticality_map:
+            raise ValueError(f"Missing criticality mapping for {criticality} in {manifest.venture}")
+
+    # Check all models in criticality_map exist in DAG
+    all_models = set(graph.nodes())
+    for model in manifest.criticality_map.values():
+        if model not in all_models:
+            raise ValueError(f"Model {model} in criticality_map not found in DAG for {manifest.venture}")
+
+
+def load_manifest(venture: str) -> VentureRoutingManifest:
+    """Load and validate routing manifest for a venture."""
+    manifest_path = Path(f"aos/ventures/{venture}/routing.manifest.json")
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"No routing manifest found for venture {venture}")
+
+    try:
+        manifest_data = json.loads(manifest_path.read_text())
+        manifest = VentureRoutingManifest(**manifest_data)
+        validate_manifest(manifest)
+        return manifest
+    except (ValidationError, ValueError) as e:
+        raise ValueError(f"Invalid manifest for {venture}: {str(e)}")
 
 
 def _next_free_model() -> str:
@@ -250,6 +315,41 @@ def _detect_anthropic_key() -> str:
 # ---------------------------------------------------------------------------
 
 
+class CircuitBreaker:
+    """Circuit breaker for LLM clients."""
+
+    def __init__(self, failure_threshold: int = 5, recovery_window_sec: int = 300):
+        self.failure_threshold = failure_threshold
+        self.recovery_window_sec = recovery_window_sec
+        self.failure_count = 0
+        self.last_failure_time = 0
+        self.lock = threading.Lock()
+
+    def is_open(self) -> bool:
+        """Check if circuit breaker is open (tripped)."""
+        with self.lock:
+            if self.failure_count < self.failure_threshold:
+                return False
+
+            # Check if recovery window has passed
+            if time.time() - self.last_failure_time > self.recovery_window_sec:
+                self.failure_count = 0  # Reset on recovery
+                return False
+
+            return True
+
+    def record_failure(self) -> None:
+        """Record a failure and trip circuit if threshold exceeded."""
+        with self.lock:
+            self.failure_count += 1
+            self.last_failure_time = time.time()
+
+    def record_success(self) -> None:
+        """Record a success and reset failure count."""
+        with self.lock:
+            self.failure_count = 0
+
+
 class RouterLLMClient:
     """LLM client that talks to 9router / OpenAI-compatible endpoint.
 
@@ -280,6 +380,40 @@ class RouterLLMClient:
             or _detect_9router_key()
         )
         self.timeout = timeout
+        self.circuit_breakers: Dict[str, CircuitBreaker] = {}
+
+    def _get_circuit_breaker(self, model: str, venture: str) -> CircuitBreaker:
+        """Get circuit breaker for a model, configured from venture manifest."""
+        key = f"{venture}:{model}"
+        if key not in self.circuit_breakers:
+            try:
+                manifest = load_manifest(venture)
+                config = manifest.circuit_breaker.get(model)
+                if config:
+                    self.circuit_breakers[key] = CircuitBreaker(
+                        failure_threshold=config.failure_threshold,
+                        recovery_window_sec=config.recovery_window_sec,
+                    )
+                else:
+                    # Default circuit breaker settings
+                    self.circuit_breakers[key] = CircuitBreaker()
+            except FileNotFoundError:
+                # No manifest — use default circuit breaker
+                self.circuit_breakers[key] = CircuitBreaker()
+
+        return self.circuit_breakers[key]
+
+    def _get_venture_from_context(self, messages: list[dict[str, str]]) -> str:
+        """Extract venture from messages context."""
+        # Look for venture in system message or first user message
+        for msg in messages:
+            if msg.get("role") == "system" and "venture:" in msg.get("content", "").lower():
+                return msg["content"].lower().split("venture:")[1].strip().split()[0]
+            if msg.get("role") == "user" and "venture:" in msg.get("content", "").lower():
+                return msg["content"].lower().split("venture:")[1].strip().split()[0]
+
+        # Default to netso if not found
+        return "netso"
 
     def complete(
         self,
@@ -303,8 +437,7 @@ class RouterLLMClient:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        import time as _time
-
+        venture = self._get_venture_from_context(messages)
         last_error = None
         models_to_try = [model]
 
@@ -315,6 +448,12 @@ class RouterLLMClient:
                 models_to_try.append(fallback)
 
         for current_model in models_to_try:
+            # Check circuit breaker
+            circuit_breaker = self._get_circuit_breaker(current_model, venture)
+            if circuit_breaker.is_open():
+                logger.warning(f"Circuit breaker open for {current_model} in {venture}, skipping")
+                continue
+
             current_payload = {**payload, "model": current_model}
             current_data = json.dumps(current_payload).encode("utf-8")
 
@@ -330,6 +469,7 @@ class RouterLLMClient:
                         body = _parse_first_json(raw)
 
                         if "error" in body:
+                            circuit_breaker.record_failure()
                             raise ConnectionError(f"9router error: {body['error']}")
 
                         choice = body["choices"][0]
@@ -337,6 +477,9 @@ class RouterLLMClient:
                         content = msg.get("content") or ""
                         if not content and msg.get("reasoning"):
                             content = msg["reasoning"]
+
+                        # Record success and return
+                        circuit_breaker.record_success()
                         return LLMResponse(
                             content=content,
                             model=body.get("model", current_model),
@@ -345,13 +488,15 @@ class RouterLLMClient:
                         )
                 except (urllib.error.URLError, ConnectionError) as e:
                     last_error = e
+                    circuit_breaker.record_failure()
                     if attempt < 2:
-                        _time.sleep(2**attempt)
+                        time.sleep(2**attempt)
                         continue
                     # 404 means model not found — try next model
                     if hasattr(e, "code") and e.code == 404:
                         break
-                    raise
+                    # For other errors, continue to next model
+                    break
 
         raise last_error or ConnectionError("All model attempts failed")
 
@@ -371,6 +516,40 @@ class AnthropicLLMClient:
         if not self.api_key:
             raise ValueError("No Anthropic API key found. Set ANTHROPIC_API_KEY.")
         self.timeout = timeout
+        self.circuit_breakers: Dict[str, CircuitBreaker] = {}
+
+    def _get_circuit_breaker(self, model: str, venture: str) -> CircuitBreaker:
+        """Get circuit breaker for a model, configured from venture manifest."""
+        key = f"{venture}:{model}"
+        if key not in self.circuit_breakers:
+            try:
+                manifest = load_manifest(venture)
+                config = manifest.circuit_breaker.get(model)
+                if config:
+                    self.circuit_breakers[key] = CircuitBreaker(
+                        failure_threshold=config.failure_threshold,
+                        recovery_window_sec=config.recovery_window_sec,
+                    )
+                else:
+                    # Default circuit breaker settings
+                    self.circuit_breakers[key] = CircuitBreaker()
+            except FileNotFoundError:
+                # No manifest — use default circuit breaker
+                self.circuit_breakers[key] = CircuitBreaker()
+
+        return self.circuit_breakers[key]
+
+    def _get_venture_from_context(self, messages: list[dict[str, str]]) -> str:
+        """Extract venture from messages context."""
+        # Look for venture in system message or first user message
+        for msg in messages:
+            if msg.get("role") == "system" and "venture:" in msg.get("content", "").lower():
+                return msg["content"].lower().split("venture:")[1].strip().split()[0]
+            if msg.get("role") == "user" and "venture:" in msg.get("content", "").lower():
+                return msg["content"].lower().split("venture:")[1].strip().split()[0]
+
+        # Default to netso if not found
+        return "netso"
 
     def complete(
         self,
@@ -393,6 +572,13 @@ class AnthropicLLMClient:
                 tier, "claude-sonnet-4-20250514"
             )
 
+        venture = self._get_venture_from_context(messages)
+        circuit_breaker = self._get_circuit_breaker(model, venture)
+
+        # Check circuit breaker
+        if circuit_breaker.is_open():
+            raise ConnectionError(f"Circuit breaker open for {model} in {venture}")
+
         payload = {
             "model": anthropic_model,
             "max_tokens": max_tokens,
@@ -412,18 +598,23 @@ class AnthropicLLMClient:
             self.API_URL, data=data, headers=headers, method="POST"
         )
 
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-            content_parts = body.get("content", [])
-            text = "".join(
-                p.get("text", "") for p in content_parts if p.get("type") == "text"
-            )
-            return LLMResponse(
-                content=text,
-                model=body.get("model", anthropic_model),
-                usage=body.get("usage", {}),
-                provider="anthropic",
-            )
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+                content_parts = body.get("content", [])
+                text = "".join(
+                    p.get("text", "") for p in content_parts if p.get("type") == "text"
+                )
+                circuit_breaker.record_success()
+                return LLMResponse(
+                    content=text,
+                    model=body.get("model", anthropic_model),
+                    usage=body.get("usage", {}),
+                    provider="anthropic",
+                )
+        except (urllib.error.URLError, ConnectionError) as e:
+            circuit_breaker.record_failure()
+            raise
 
 
 # ---------------------------------------------------------------------------
@@ -446,6 +637,40 @@ class NvidiaLLMClient:
         if not self.api_key:
             raise ValueError("No NVIDIA NIM key found. Set NVIDIA_NIM_API_KEY.")
         self.timeout = timeout
+        self.circuit_breakers: Dict[str, CircuitBreaker] = {}
+
+    def _get_circuit_breaker(self, model: str, venture: str) -> CircuitBreaker:
+        """Get circuit breaker for a model, configured from venture manifest."""
+        key = f"{venture}:{model}"
+        if key not in self.circuit_breakers:
+            try:
+                manifest = load_manifest(venture)
+                config = manifest.circuit_breaker.get(model)
+                if config:
+                    self.circuit_breakers[key] = CircuitBreaker(
+                        failure_threshold=config.failure_threshold,
+                        recovery_window_sec=config.recovery_window_sec,
+                    )
+                else:
+                    # Default circuit breaker settings
+                    self.circuit_breakers[key] = CircuitBreaker()
+            except FileNotFoundError:
+                # No manifest — use default circuit breaker
+                self.circuit_breakers[key] = CircuitBreaker()
+
+        return self.circuit_breakers[key]
+
+    def _get_venture_from_context(self, messages: list[dict[str, str]]) -> str:
+        """Extract venture from messages context."""
+        # Look for venture in system message or first user message
+        for msg in messages:
+            if msg.get("role") == "system" and "venture:" in msg.get("content", "").lower():
+                return msg["content"].lower().split("venture:")[1].strip().split()[0]
+            if msg.get("role") == "user" and "venture:" in msg.get("content", "").lower():
+                return msg["content"].lower().split("venture:")[1].strip().split()[0]
+
+        # Default to netso if not found
+        return "netso"
 
     def complete(
         self,
@@ -464,6 +689,13 @@ class NvidiaLLMClient:
             "stream": False,
         }
 
+        venture = self._get_venture_from_context(messages)
+        circuit_breaker = self._get_circuit_breaker(model, venture)
+
+        # Check circuit breaker
+        if circuit_breaker.is_open():
+            raise ConnectionError(f"Circuit breaker open for {model} in {venture}")
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
@@ -474,22 +706,28 @@ class NvidiaLLMClient:
             self.API_URL, data=data, headers=headers, method="POST"
         )
 
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            raw = resp.read().decode("utf-8")
-            body = json.loads(raw)
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                raw = resp.read().decode("utf-8")
+                body = json.loads(raw)
 
-            if "error" in body:
-                raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
+                if "error" in body:
+                    circuit_breaker.record_failure()
+                    raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
 
-            choice = body["choices"][0]
-            msg = choice.get("message", {})
-            content = msg.get("content", "")
-            return LLMResponse(
-                content=content,
-                model=body.get("model", model),
-                usage=body.get("usage", {}),
-                provider="nvidia-nim",
-            )
+                choice = body["choices"][0]
+                msg = choice.get("message", {})
+                content = msg.get("content", "")
+                circuit_breaker.record_success()
+                return LLMResponse(
+                    content=content,
+                    model=body.get("model", model),
+                    usage=body.get("usage", {}),
+                    provider="nvidia-nim",
+                )
+        except (urllib.error.URLError, ConnectionError) as e:
+            circuit_breaker.record_failure()
+            raise
 
 
 # ---------------------------------------------------------------------------
@@ -588,19 +826,34 @@ def create_llm_client(
 
 def resolve_model(
     agent_criticality: str,
+    venture: str,
     override: str | None = None,
     use_anthropic_ids: bool = False,
 ) -> str:
-    """Resolve model ID from agent criticality or explicit override.
+    """Resolve model ID from agent criticality, venture manifest, and override.
 
     In free-tier mode (AOS_FREE_TIER=1), medium and low criticality
     agents are routed across the FREE_MODEL_POOL round-robin to spread
     load and avoid per-endpoint rate limits during parallel fan-out.
+
+    Uses venture-specific routing manifest if available, falling back
+    to the global CRITICALITY_TO_MODEL table.
     """
     if override:
         return override
 
-    tier = CRITICALITY_TO_MODEL.get(agent_criticality, "default")
+    # Load venture-specific manifest if available
+    try:
+        manifest = load_manifest(venture)
+        tier = manifest.criticality_map.get(agent_criticality, "default")
+        graph = nx.DiGraph()
+        graph.add_edges_from(manifest.dag)
+        if tier not in graph.nodes():
+            raise ValueError(f"Model tier {tier} not found in DAG for venture {venture}")
+    except FileNotFoundError:
+        # No manifest — fall back to global mapping
+        tier = CRITICALITY_TO_MODEL.get(agent_criticality, "default")
+
     table = ANTHROPIC_MODEL_TABLE if use_anthropic_ids else MODEL_TABLE
     model_id = table[tier]
 

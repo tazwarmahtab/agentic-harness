@@ -1,4 +1,4 @@
-"""Tests for TAZ OS multi-venture support."""
+"""Tests for AOS multi-venture support."""
 
 from __future__ import annotations
 import sys

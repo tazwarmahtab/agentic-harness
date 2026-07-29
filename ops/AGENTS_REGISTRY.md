@@ -1,4 +1,4 @@
-# TAZ OS — Agents Registry
+# AOS — Agents Registry
 
 **Venture:** VEN-NETSO-001 (Netso Energy)
 **Last Updated:** 2026-07-01

@@ -30,7 +30,7 @@
 │    └─ .env.example (106 lines, 13 vars documented)     │
 ├─────────────────────────────────────────────────────────┤
 │ 2. ✅ Startup Health Check                              │
-│    └─ tazos/api.py (+70 lines, /health/ready endpoint) │
+│    └─ aos/api.py (+70 lines, /health/ready endpoint) │
 ├─────────────────────────────────────────────────────────┤
 │ 3. ✅ Cross-Harness Integration Tests                   │
 │    └─ test_cross_harness_integration.py (287 lines)    │
@@ -74,8 +74,8 @@ TOTAL:                              1,178 lines
 
 ### Files Modified (3)
 ```
-tazos/api.py                          +70 lines  ✅
-tazos/llm.py                          4 changes  ✅
+aos/api.py                          +70 lines  ✅
+aos/llm.py                          4 changes  ✅
 tazos/__main__.py                     6 changes  ✅
 ```
 
@@ -129,7 +129,7 @@ python3 -m pytest tests/ -v
 ```bash
 # Basic health check
 curl http://localhost:8000/health
-# → {"status": "ok", "service": "tazos-engine"}
+# → {"status": "ok", "service": "aos-engine"}
 
 # Detailed readiness check
 curl http://localhost:8000/health/ready
@@ -142,7 +142,7 @@ curl http://localhost:8000/health/ready
 cat .env.example
 
 # Validate manifests
-python3 -m tazos validate --venture netso
+python3 -m aos validate --venture netso
 # → 19 manifests validated, 0 errors, 0 warnings
 ```
 
@@ -227,7 +227,7 @@ These are **non-blocking** and can be addressed incrementally.
 
 ### Quick Links
 - Tests: `tests/test_cross_harness_integration.py`, `tests/test_error_paths.py`
-- Health: `tazos/api.py` (lines 47-117)
+- Health: `aos/api.py` (lines 47-117)
 - Config: `.env.example`
 
 ---

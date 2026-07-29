@@ -1,4 +1,4 @@
-"""Tests for TAZ OS memory system — layers, permissions, candidates, persistence."""
+"""Tests for AOS memory system — layers, permissions, candidates, persistence."""
 
 from __future__ import annotations
 

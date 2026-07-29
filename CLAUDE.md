@@ -135,6 +135,36 @@ pytest -m integration  # integration only (requires live deps)
 ## 9router Model Routing
 All LLM calls route through 9router (localhost:20128) unless overridden.
 
+### Routing Manifest System (New)
+AOS now uses **venture-specific routing manifests** to define model routing logic. Each venture declares:
+
+1. **DAG of allowed model transitions** — prevents invalid fallback paths
+2. **Criticality-to-model mapping** — venture-specific overrides
+3. **Fallback path** — guaranteed Hamiltonian path through the DAG
+4. **Circuit breaker thresholds** — per-model failure limits
+
+Manifests are validated at harness load time and stored in `aos/ventures/[venture]/routing.manifest.json`.
+
+**Example (Netso Energy):**
+```json
+{
+  "version": "1.0",
+  "venture": "netso",
+  "dag": [["reasoning", "default"], ["default", "fast"], ["fast", "free"]],
+  "criticality_map": {
+    "critical": "reasoning",
+    "high": "default",
+    "medium": "fast",
+    "low": "free"
+  },
+  "fallback_path": ["reasoning", "default", "fast", "free"],
+  "circuit_breaker": {
+    "reasoning": {"failure_threshold": 3, "recovery_window_sec": 600},
+    "default": {"failure_threshold": 5, "recovery_window_sec": 300}
+  }
+}
+```
+
 **Primary models (via MODEL_TABLE lookup):**
 - `cu/claude-4.5-sonnet` — default (critical + high criticality)
 - `cu/claude-4.5-opus-high-thinking` — reasoning (direct lookup only, never via criticality)
@@ -143,7 +173,7 @@ All LLM calls route through 9router (localhost:20128) unless overridden.
 **Free-tier round-robin (CRITICALITY_TO_MODEL for medium/low agents):**
 FREE_MODEL_POOL cycles through 6 models: openrouter/google/gemma-4-31b-it:free, openrouter/nvidia/stepfun-ai/step-3.7-flash, openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free, openrouter/qwen/qwen3-next-80b-a3b-instruct:free, openrouter/meta/llama-4-scout-17b-16e-instruct, openrouter/google/gemini-2.5-flash. Thread-safe counter with Lock.
 
-**Criticality mapping:**
+**Criticality mapping (fallback when no manifest):**
 - critical → default (paid Sonnet)
 - high → default (paid Sonnet)
 - medium → free (round-robin)

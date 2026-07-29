@@ -111,7 +111,7 @@ tools:
 ### Implementation Example
 
 ```python
-from tazos.hardening import RateLimiter
+from aos.hardening import RateLimiter
 
 # Create limiter: 100 requests per minute
 limiter = RateLimiter(max_requests=100, window_seconds=60)
@@ -162,7 +162,7 @@ tools:
 
 ```python
 # In tool execution
-from tazos.hardening import RateLimiter
+from aos.hardening import RateLimiter
 
 # Get current usage
 usage = limiter.current_usage("agent-123")

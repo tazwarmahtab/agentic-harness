@@ -23,7 +23,7 @@ Added `ProceduralMemory` class for storing and retrieving skills, SOPs, and inst
 
 ### Usage Example
 ```python
-from tazos.memory import ProceduralMemory
+from aos.memory import ProceduralMemory
 from pathlib import Path
 
 proc_mem = ProceduralMemory(sop_root=Path("./sops"))
@@ -230,7 +230,7 @@ Created comprehensive examples: `/Users/tazwarmahtab/Documents/10-Projects/Agent
 ### Running Examples
 ```bash
 cd /Users/tazwarmahtab/Documents/10-Projects/Agentic\ Harness
-python -m tazos.memory_usage_examples
+python -m aos.memory_usage_examples
 ```
 
 ---
@@ -271,7 +271,7 @@ All changes made with minimal diffs to preserve existing functionality:
 
 ### 1. Basic Usage (Existing Features)
 ```python
-from tazos.memory import MemoryStore
+from aos.memory import MemoryStore
 
 store = MemoryStore(permissions=perms)
 store.submit_candidate(agent_id="agent", layer="episodic", domain="events", content="...")

@@ -1,4 +1,4 @@
-"""Tests for TAZ OS output evaluator — validates agent output against ground truth."""
+"""Tests for AOS output evaluator — validates agent output against ground truth."""
 
 from __future__ import annotations
 

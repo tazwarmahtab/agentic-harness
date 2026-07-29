@@ -1,4 +1,4 @@
-"""Tests for TAZ OS usage tracker — cost visibility."""
+"""Tests for AOS usage tracker — cost visibility."""
 
 from __future__ import annotations
 

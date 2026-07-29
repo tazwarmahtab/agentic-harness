@@ -48,7 +48,7 @@ def check_system_health(memory_store=None) -> SystemHealth:
     anthropic_ok = bool(
         os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")
     )
-    local_ok = bool(os.getenv("AOS_LLM_BASE_URL") or os.getenv("TAZOS_LLM_BASE_URL"))
+    local_ok = bool(os.getenv("AOS_LLM_BASE_URL"))
     nvidia_ok = bool(os.getenv("NVIDIA_NIM_API_KEY"))
 
     if anthropic_ok or local_ok or nvidia_ok:
@@ -75,7 +75,7 @@ def check_system_health(memory_store=None) -> SystemHealth:
         )
 
     # Auth token
-    token = os.getenv("AOS_API_TOKEN") or os.getenv("TAZOS_API_TOKEN")
+    token = os.getenv("AOS_API_TOKEN")
     health.components.append(
         ComponentHealth(
             "api_token",

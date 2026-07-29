@@ -1,4 +1,4 @@
-"""Tests for TAZ OS approval queue — interactive approval management."""
+"""Tests for AOS approval queue — interactive approval management."""
 
 from __future__ import annotations
 import sys

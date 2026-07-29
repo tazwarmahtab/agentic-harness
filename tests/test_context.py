@@ -1,4 +1,4 @@
-"""Tests for TAZ OS context builder — full prompt construction."""
+"""Tests for AOS context builder — full prompt construction."""
 
 from __future__ import annotations
 

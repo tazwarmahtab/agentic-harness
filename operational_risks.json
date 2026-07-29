@@ -1,0 +1,44 @@
+[
+  {
+    "id": "RISK-01",
+    "risk_name": "Grid Lockout and Meter Disconnection",
+    "category": "Operational Default / Grid Integration",
+    "description": "Utility service provider (BPDB) executes an unscheduled physical line disconnect or smart-meter lockout during off-peak hours due to localized grid instability. Reconnection requires physical utility inspection and regulatory clearances, breaching the 48-hour SLA and curtailing 100% of solar generation.",
+    "mitigant_efficacy": "Step-in rights allow Netso to deploy regional technician with utility authorization, but bureaucratic delays typically extend lockout to 5-7 business days, exhausting ~3% of the BDT 578k escrow buffer per event."
+  },
+  {
+    "id": "RISK-02",
+    "risk_name": "Escrow Drawdown Judicial Stay",
+    "category": "Collection Bottleneck / Financial Recovery",
+    "description": "Upon a payment default, the customer files a preemptive dispute in local court and obtains a temporary injunction/stay order on the BDT 578k escrow account and bank guarantee. This freezes Netso's access to the 6-month O&M and debt service coverage buffer during litigation.",
+    "mitigant_efficacy": "Personal/corporate guarantees from directors remain enforceable, but legal execution in local courts typically requires 12-18 months, leading to technical default on IDCOL debt service."
+  },
+  {
+    "id": "RISK-03",
+    "risk_name": "3 AM Physical Step-In Refusal",
+    "category": "Emergency Logistics / Operational Control",
+    "description": "A critical night electrical fault (e.g., inverter thermal runaway or breaker fire) triggers a automatic system shutdown at 3 AM. Host site security denies entry to Netso's emergency response team, citing nighttime security protocols and lack of corporate clearing, resulting in prolonged downtime and collateral plant damage.",
+    "mitigant_efficacy": "PPA step-in rights are legally clear but operationally toothless during the critical first hours without pre-authorized physical site access passes for designated O&M staff."
+  },
+  {
+    "id": "RISK-04",
+    "risk_name": "Mobile Financial Services (MFS) Settlement Lag",
+    "category": "Collection Bottleneck",
+    "description": "Customer pays PPA invoice via mobile financial services (bKash/Nagad), but systemic transaction caps, tariff disputes, or gateway settlement lags delay the transfer of cash to the joint escrow account beyond the monthly bank deadline.",
+    "mitigant_efficacy": "Triggers minor liquidity friction; escrow account holds 6 months of debt service, mitigating immediate default risk, but administrative overhead increases."
+  },
+  {
+    "id": "RISK-05",
+    "risk_name": "Telemetry Loss and Invoice Dispute",
+    "category": "Collection Bottleneck",
+    "description": "A midnight lightning strike or power surge destroys the on-site SCADA gateway and net-metering RTU (Remote Terminal Unit). In the absence of billing-grade generation telemetry, the customer refuses to pay estimated bills, delaying PPA cash collection by 45+ days.",
+    "mitigant_efficacy": "Requires manual meter reading and manual verification, delaying billing cycle and stretching working capital requirements."
+  },
+  {
+    "id": "RISK-06",
+    "risk_name": "Guarantor Asset Stripping / Corporate Restructuring",
+    "category": "Operational Default / Legal Recovery",
+    "description": "The local operating entity of the school/factory defaults on PPA payments while the parent guarantor undergoes corporate restructuring, transferring valuable assets to a new corporate shell, making personal and corporate guarantees virtually unrecoverable.",
+    "mitigant_efficacy": "Allows Netso to exercise step-in rights to decommission and salvage the BDT 4.4M (80kW) solar asset, but asset liquidation and redeployment costs consume 40-50% of the recovered asset value."
+  }
+]

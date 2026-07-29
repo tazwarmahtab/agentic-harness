@@ -1,7 +1,7 @@
 # TAZ OS HARNESS — Executive
 # Canonical template: Mission, Scope, KPIs, Inputs, Outputs.
 # Reference implementation. All future harnesses inherit this structure.
-# Validates against: tazos/platform/harness.schema.json
+# Validates against: aos/platform/harness.schema.json
 
 id: HAR-EXEC-001
 name: Executive Harness
