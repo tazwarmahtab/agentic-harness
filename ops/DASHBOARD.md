@@ -4,7 +4,7 @@
 
 **Cycle:** 2026-07-02-executive
 **Venture:** VEN-NETSO-001
-**Status:** PRODUCTION — all 11 harnesses fully componentized (520 tests passing)
+**Status:** BETA — all 11 harnesses fully componentized (520 tests passing)
 **Last Updated:** 2026-07-02T05:45:00
 
 ---
