@@ -1,20 +1,22 @@
 """LLM client abstraction with model routing and provider fallback.
 
 Routes tasks to the right model based on agent criticality.
-Supports three backends (tried in order):
-1. 9router (localhost:20128) — model routing via cu/claude-4.5-* IDs
-2. Direct Anthropic API — claude-sonnet-4-20250514 / claude-haiku-4-5
-3. DryRunLLMClient — mock for testing (no API calls)
+Supports multiple backends (tried in order):
+1. NVIDIA NIM direct API — nvidia/* models (if NVIDIA_NIM_API_KEY set)
+2. Bytez direct API — meta-llama/* models (if BYTEZ_API_KEY set)
+3. 9router (localhost:20128) — model routing via cu/claude-4.5-* IDs
+4. Direct Anthropic API — claude-sonnet-4-20250514 / claude-haiku-4-5
+5. DryRunLLMClient — mock for testing (no API calls)
 
 Model routing table mirrors CLAUDE.md / 9router config.
 
 Free-tier subagent dispatch:
 - CRITICALITY_TO_MODEL maps low/medium criticality agents to the "fast"
-tier by default.
+  tier by default.
 - When AOS_FREE_TIER is set in the environment, those agents are
-redirected to the "free" tier which rotates across a pool of verified
-OpenRouter free models (via 9router) — this avoids rate-limiting on
-paid Claude endpoints during parallel fan-out.
+  redirected to the "free" tier which rotates across a pool of verified
+  free models (via 9router) — this avoids rate-limiting on
+  paid Claude endpoints during parallel fan-out.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import time as _time
 import urllib.request
@@ -67,6 +70,15 @@ NVIDIA_MODEL_TABLE: dict[str, str] = {
     "fast": "nvidia/nemotron-3-ultra-550b-a55b",           # fast = best
     "subagent": "nvidia/nemotron-3-ultra-550b-a55b",       # subagents = best
     "free": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",  # free pool entry
+}
+
+# Bytez model table (used when BytezLLMClient is active)
+BYTEZ_MODEL_TABLE: dict[str, str] = {
+    "default": "meta-llama/Meta-Llama-3.1-405B-Instruct",
+    "reasoning": "meta-llama/Meta-Llama-3.1-405B-Instruct",
+    "fast": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    "subagent": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    "free": "meta-llama/Meta-Llama-3.1-8B-Instruct",
 }
 
 # Primary model table — NVIDIA NIM models (best free tier)
@@ -153,7 +165,6 @@ def load_manifest(venture: str) -> VentureRoutingManifest:
         return manifest
     except (ValidationError, ValueError) as e:
         raise ValueError(f"Invalid manifest for {venture}: {str(e)}")
-
 
 # ---------------------------------------------------------------------------
 # Free-tier model health tracking
@@ -357,8 +368,6 @@ def _parse_first_json(raw: str) -> dict:
         pass
 
     # Try extracting from ```json ... ``` blocks
-    import re
-
     code_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)```", raw, re.DOTALL)
     for block in code_blocks:
         try:
@@ -673,14 +682,10 @@ class AnthropicLLMClient:
         # Map 9router model IDs to Anthropic model IDs
         anthropic_model = model
         if model.startswith("cu/"):
-            tier = "default"
-            for t, m in MODEL_TABLE.items():
-                if m == model:
-                    tier = t
-                    break
-            anthropic_model = ANTHROPIC_MODEL_TABLE.get(
-                tier, "claude-sonnet-4-20250514"
-            )
+            anthropic_model = model[3:]  # strip "cu/" prefix
+        elif model.startswith("nvidia/"):
+            # NVIDIA models not supported on direct Anthropic API
+            raise ValueError(f"Model {model} not supported on direct Anthropic API")
 
         venture = self._get_venture_from_context(messages)
         circuit_breaker = self._get_circuit_breaker(model, venture)
@@ -697,34 +702,36 @@ class AnthropicLLMClient:
             "messages": messages,
         }
 
-        headers = {
-            "Content-Type": "application/json",
-            "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01",
-        }
-
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
-            self.API_URL, data=data, headers=headers, method="POST"
+            self.API_URL,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
         )
 
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                body = json.loads(resp.read().decode("utf-8"))
-                content_parts = body.get("content", [])
-                text = "".join(
-                    p.get("text", "") for p in content_parts if p.get("type") == "text"
-                )
-                circuit_breaker.record_success()
-                return LLMResponse(
-                    content=text,
-                    model=body.get("model", anthropic_model),
-                    usage=body.get("usage", {}),
-                    provider="anthropic",
-                )
-        except (urllib.error.URLError, ConnectionError) as e:
-            circuit_breaker.record_failure()
-            raise
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read().decode("utf-8")
+            body = json.loads(raw)
+
+        if "error" in body:
+            raise ConnectionError(f"Anthropic error: {body['error']}")
+
+        content = ""
+        for block in body.get("content", []):
+            if block.get("type") == "text":
+                content += block.get("text", "")
+
+        return LLMResponse(
+            content=content,
+            model=body.get("model", anthropic_model),
+            usage=body.get("usage", {}),
+            provider="anthropic",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -821,24 +828,84 @@ class NvidiaLLMClient:
                 raw = resp.read().decode("utf-8")
                 body = json.loads(raw)
 
-                if "error" in body:
-                    circuit_breaker.record_failure()
-                    raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
+        if "error" in body:
+            raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
 
-                choice = body["choices"][0]
-                msg = choice.get("message", {})
-                # Handle models that return reasoning_content instead of content
-                content = msg.get("content") or msg.get("reasoning_content") or ""
-                circuit_breaker.record_success()
-                return LLMResponse(
-                    content=content,
-                    model=body.get("model", model),
-                    usage=body.get("usage", {}),
-                    provider="nvidia-nim",
-                )
-        except (urllib.error.URLError, ConnectionError) as e:
-            circuit_breaker.record_failure()
-            raise
+        choice = body["choices"][0]
+        msg = choice.get("message", {})
+        content = msg.get("content", "")
+        return LLMResponse(
+            content=content,
+            model=body.get("model", model),
+            usage=body.get("usage", {}),
+            provider="nvidia-nim",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Bytez client (direct to Bytez API)
+# ---------------------------------------------------------------------------
+
+
+class BytezLLMClient:
+    """Direct Bytez API client (OpenAI-compatible endpoint).
+
+    Used for Bytez-hosted models (meta-llama/* and other Bytez-supported IDs).
+    Reads key from BYTEZ_API_KEY env var.
+    """
+
+    API_URL = "https://api.bytez.io/v1/chat/completions"
+
+    def __init__(self, api_key: str | None = None, timeout: int = 300):
+        self.api_key = api_key or os.getenv("BYTEZ_API_KEY", "")
+        if not self.api_key:
+            raise ValueError("No Bytez API key found. Set BYTEZ_API_KEY.")
+        self.timeout = timeout
+
+    def complete(
+        self,
+        *,
+        model: str,
+        system: str,
+        messages: list[dict[str, str]],
+        max_tokens: int = 4096,
+        temperature: float = 0.3,
+    ) -> LLMResponse:
+        payload = {
+            "model": model,
+            "messages": [{"role": "system", "content": system}] + messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": False,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            self.API_URL, data=data, headers=headers, method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read().decode("utf-8")
+            body = json.loads(raw)
+
+        if "error" in body:
+            raise ConnectionError(f"Bytez error: {body['error']}")
+
+        choice = body["choices"][0]
+        msg = choice.get("message", {})
+        content = msg.get("content", "")
+        return LLMResponse(
+            content=content,
+            model=body.get("model", model),
+            usage=body.get("usage", {}),
+            provider="bytez",
+        )
+>>>>>>> 337e7e2 (feat: add Bytez and NVIDIA NIM backends to LLM client)
 
 
 # ---------------------------------------------------------------------------
@@ -881,10 +948,12 @@ def create_llm_client(
     """Create the best available LLM client.
 
     Priority:
-    1. prefer="router" → RouterLLMClient
-    2. prefer="anthropic" → AnthropicLLMClient
-    3. Auto-detect: try 9router (with fallback), then Anthropic, then dry run
-    4. dry_run=True → DryRunLLMClient
+    1. dry_run=True → DryRunLLMClient
+    2. prefer="router" → RouterLLMClient
+    3. prefer="anthropic" → AnthropicLLMClient
+    4. prefer="nvidia" → NvidiaLLMClient
+    5. prefer="bytez" → BytezLLMClient
+    6. Auto-detect: try NVIDIA NIM → Bytez → 9router → Anthropic → dry run
     """
     if dry_run:
         return DryRunLLMClient()
@@ -893,12 +962,17 @@ def create_llm_client(
         return RouterLLMClient()
     if prefer == "anthropic":
         return AnthropicLLMClient()
+    if prefer == "bytez":
+        return BytezLLMClient()
+    if prefer == "nvidia":
+        return NvidiaLLMClient()
 
-    # Auto-detect: check NVIDIA NIM first (if key available), then 9router, then Anthropic, then dry run
+    # Auto-detect: check NVIDIA NIM first (if key available), then Bytez, then 9router, then Anthropic, then dry run
     router_base = os.getenv("AOS_LLM_BASE_URL", "")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
     has_auth_token = bool(os.getenv("ANTHROPIC_AUTH_TOKEN", ""))
     has_nvidia_key = bool(os.getenv("NVIDIA_NIM_API_KEY", ""))
+    has_bytez_key = bool(os.getenv("BYTEZ_API_KEY", ""))
 
     # NVIDIA NIM direct API — best rate limits for NVIDIA models
     if has_nvidia_key:
@@ -906,6 +980,15 @@ def create_llm_client(
             if verbose:
                 logger.info("Using NVIDIA NIM direct API")
             return NvidiaLLMClient()
+        except ValueError:
+            pass  # fall through
+
+    # Bytez direct API
+    if has_bytez_key:
+        try:
+            if verbose:
+                logger.info("Using Bytez direct API")
+            return BytezLLMClient()
         except ValueError:
             pass  # fall through
 
