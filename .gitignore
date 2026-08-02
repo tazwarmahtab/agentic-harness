@@ -45,9 +45,9 @@ session-report-*.html
 .hermes/
 .mcp.json
 aos/llm.py:*
-
-# Claude Code skills (external, not project-owned)
+.agents/skills/
 .claude/skills/
+skills-lock.json
 
 # Remember handoff notes
 .remember/
