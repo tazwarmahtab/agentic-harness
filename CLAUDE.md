@@ -9,6 +9,8 @@ Governance-first, multi-venture agentic operating system (Python 3.12+, Pydantic
 
 ## Quick Start
 <!-- See README.md for setup instructions -->
+**Important:** Always activate the venv first: `source .venv/bin/activate`
+Tests: `python -m pytest -q` (~7 min for 1050 tests)
 
 
 ## Code Style
@@ -169,7 +171,13 @@ Run `/sync-gbrain` to force-refresh, `/sync-gbrain --full` for full reindex.
 
 <!-- gstack-gbrain-search-guidance:end -->
 
+## Permissions
+- Auto mode enabled as default (`permissions.defaultMode: auto` in `~/.claude/settings.json`)
+- Revert: set `defaultMode` back to `"default"` in settings
+
 ## Skill routing
+
+**Context budget note:** gstack skills inject ~30-55KB each at invocation. If context fills fast, disable unused gstack skills via `/doctor` or reduce SessionStart hooks.
 
 When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
 
