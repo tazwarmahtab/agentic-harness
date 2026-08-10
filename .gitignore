@@ -46,3 +46,6 @@ session-report-*.html
 
 # Claude Code skills (external, not project-owned)
 .claude/skills/
+
+# Remember handoff notes
+.remember/
