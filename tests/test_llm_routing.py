@@ -130,13 +130,13 @@ def test_resolve_model_with_manifest():
     """Test resolve_model uses venture manifest."""
     from aos.llm import resolve_model
 
-    # Criticality "high" for Netso should use "default" tier (Sonnet)
+    # Criticality "high" for Netso should use "default" tier
     model = resolve_model("high", "netso")
-    assert model == "cu/claude-4.5-sonnet"
+    assert model == "meta/llama-3.1-8b-instruct"
 
     # Criticality "critical" for Netso uses "reasoning" tier
     model = resolve_model("critical", "netso")
-    assert model == "cu/claude-4.5-opus-high-thinking"
+    assert model == "meta/llama-3.1-8b-instruct"
 
 
 def test_resolve_model_fallback_without_manifest():
@@ -145,4 +145,4 @@ def test_resolve_model_fallback_without_manifest():
 
     # Should use global CRITICALITY_TO_MODEL when no manifest
     model = resolve_model("high", "nonexistent_venture")
-    assert model == "cu/claude-4.5-sonnet"
+    assert model == "meta/llama-3.1-8b-instruct"

@@ -2015,6 +2015,7 @@ def run_cycle_graph(
     registry: Registry | None = None,
     checkpointer: Any | None = False,
     thread_id: str | None = None,
+    resolved_approval_ids: list[str] | None = None,
 ) -> CycleState:
     """Execute the full daily harness cycle via LangGraph.
 
@@ -2143,7 +2144,7 @@ def run_cycle_graph(
         "inputs": {"seed_context": seed_context} if seed_context else {},
         "step_results": [],
         "approval_queue": [],
-        "resolved_approval_ids": [],
+        "resolved_approval_ids": resolved_approval_ids or [],
         "handoffs": [],
         "errors": [],
         # Loop engineering fields

@@ -177,6 +177,17 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     venture_id = registry.venture.id if registry.venture else "UNKNOWN"
 
+    # Load resolved approval IDs from previous runs
+    resolved_approval_ids: list[str] = []
+    if not args.dry_run:
+        try:
+            from aos.services.approvals import get_resolved_ids
+            resolved_approval_ids = get_resolved_ids()
+            if resolved_approval_ids:
+                print(f"Loaded {len(resolved_approval_ids)} resolved approval(s) from previous runs")
+        except Exception as e:
+            logger.warning("Failed to load resolved approvals: %s", e)
+
     # Resolve venture artifacts
     venture_artifacts: dict[str, Path] = {}
     if vp:
@@ -195,9 +206,33 @@ def cmd_run(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         verbose=args.verbose,
         registry=registry,  # H4: cross-harness dispatch
+        resolved_approval_ids=resolved_approval_ids,
     )
 
     print(format_state_summary(state))
+
+    # Send notification if approvals pending (skip in dry-run)
+    if not args.dry_run:
+        try:
+            from aos.notify import send_approval_notification, send_run_summary
+
+            approvals_pending = state.get("approval_queue", [])
+            errors = state.get("errors", [])
+            steps = state.get("step_results", [])
+
+            if approvals_pending:
+                send_approval_notification(approvals_pending)
+
+            send_run_summary(
+                steps_completed=len([s for s in steps if s.get("status") == "success"]),
+                total_steps=len(steps),
+                errors=errors,
+                approvals_pending=len(approvals_pending),
+                venture=args.venture or "netso",
+            )
+        except Exception as e:
+            logger.warning("Failed to send notification: %s", e)
+
     return 0
 
 
