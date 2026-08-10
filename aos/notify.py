@@ -8,13 +8,35 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("aos.notify")
 
 
+def _load_env():
+    """Load .env file if not already loaded."""
+    if os.getenv("AOS_TELEGRAM_BOT_TOKEN"):
+        return  # Already loaded
+
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(env_path)
+        except ImportError:
+            # Manual .env loading if python-dotenv not installed
+            with open(env_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, _, value = line.partition("=")
+                        os.environ.setdefault(key.strip(), value.strip())
+
+
 def _get_telegram_provider():
     """Get Telegram alert provider if configured."""
+    _load_env()
     bot_token = os.getenv("AOS_TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("AOS_TELEGRAM_CHAT_ID", "")
     if not bot_token or not chat_id:
