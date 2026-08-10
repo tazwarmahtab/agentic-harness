@@ -61,10 +61,17 @@ class DashboardStore {
   }
 
   _update(partial) {
-    this._state = { ...this._state, ...partial, lastUpdated: new Date() };
-    this._listeners.forEach((cb) => {
-      try { cb(this._state); } catch (e) { console.error('Store listener error:', e); }
-    });
+    // Guard against recursive updates (listener calls _update → listener → ...)
+    if (this._updating) return;
+    this._updating = true;
+    try {
+      this._state = { ...this._state, ...partial, lastUpdated: new Date() };
+      this._listeners.forEach((cb) => {
+        try { cb(this._state); } catch (e) { console.error('Store listener error:', e); }
+      });
+    } finally {
+      this._updating = false;
+    }
   }
 
   // ── Data Fetching ─────────────────────────────────────────────────────────
