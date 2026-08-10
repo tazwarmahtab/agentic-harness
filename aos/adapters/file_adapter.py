@@ -1,13 +1,14 @@
-"""File-based data adapter for AOS harnesses.
+"""Data adapter for AOS harnesses.
 
-Reads JSON data files from the venture data directory and returns
-context dicts for injection into agent prompts.
+Supports both file-based and API-based data sources.
+API adapters are used when configured (env vars set), otherwise falls back to file-based.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -111,8 +112,57 @@ class FileDataAdapter:
         return context if context else None
 
 
+def _get_api_adapter(source: str, venture_dir: Path) -> Any | None:
+    """Get API adapter for a data source if configured."""
+    try:
+        if source == "calendar" and os.getenv("GOOGLE_CREDENTIALS_PATH"):
+            from aos.adapters.google_calendar import GoogleCalendarAdapter
+
+            credentials_path = Path(os.getenv("GOOGLE_CREDENTIALS_PATH"))
+            token_path = Path(os.getenv("GOOGLE_CALENDAR_TOKEN_PATH", "token_calendar.json"))
+            cache_dir = venture_dir / "cache"
+            return GoogleCalendarAdapter(
+                credentials_path=credentials_path,
+                token_path=token_path,
+                cache_dir=cache_dir,
+            )
+
+        if source == "email" and os.getenv("GOOGLE_CREDENTIALS_PATH"):
+            from aos.adapters.gmail import GmailAdapter
+
+            credentials_path = Path(os.getenv("GOOGLE_CREDENTIALS_PATH"))
+            token_path = Path(os.getenv("GMAIL_TOKEN_PATH", "token_gmail.json"))
+            cache_dir = venture_dir / "cache"
+            return GmailAdapter(
+                credentials_path=credentials_path,
+                token_path=token_path,
+                cache_dir=cache_dir,
+            )
+
+        if source == "crm":
+            from aos.adapters.crm_adapter import CRMAdapter, FileCRMAdapter
+
+            crm_type = os.getenv("CRM_TYPE", "file")
+            if crm_type != "file":
+                return CRMAdapter.create(
+                    crm_type=crm_type,
+                    api_key=os.getenv("CRM_API_KEY", ""),
+                )
+            # File-based CRM
+            deals_path = venture_dir / "deals.json"
+            if deals_path.exists():
+                return FileCRMAdapter(deals_path=deals_path)
+
+    except Exception as e:
+        logger.debug("No API adapter for %s: %s", source, e)
+
+    return None
+
+
 def load_venture_data(venture_dir: Path) -> dict[str, Any]:
     """Convenience function to load all data for a venture.
+
+    Uses API adapters when configured, falls back to file-based.
 
     Parameters
     ----------
@@ -125,4 +175,18 @@ def load_venture_data(venture_dir: Path) -> dict[str, Any]:
     """
     data_dir = venture_dir / "data"
     adapter = FileDataAdapter(data_dir=data_dir, venture_dir=venture_dir)
-    return adapter.load_all()
+    context = adapter.load_all()
+
+    # Override with API adapters when configured
+    for source in ["calendar", "email", "crm"]:
+        api_adapter = _get_api_adapter(source, venture_dir)
+        if api_adapter:
+            try:
+                api_data = api_adapter.load() if hasattr(api_adapter, "load") else api_adapter.fetch_deals() if source == "crm" else None
+                if api_data:
+                    context[source] = api_data
+                    logger.info("Using API adapter for %s", source)
+            except Exception as e:
+                logger.warning("API adapter failed for %s: %s", source, e)
+
+    return context
