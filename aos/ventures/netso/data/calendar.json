@@ -1,0 +1,51 @@
+{
+  "last_updated": "2026-08-11T00:00:00+06:00",
+  "data": {
+    "meetings": [
+      {
+        "id": "CAL-001",
+        "title": "CGS PPA Finalization",
+        "date": "2026-08-12",
+        "time": "10:00",
+        "duration_minutes": 60,
+        "attendees": ["Troy", "CGS Legal"],
+        "location": "Video Call",
+        "notes": "Review final PPA draft, sign if ready"
+      },
+      {
+        "id": "CAL-002",
+        "title": "Steven Pemberton Follow-up",
+        "date": "2026-08-14",
+        "time": "14:00",
+        "duration_minutes": 30,
+        "attendees": ["Steven Pemberton"],
+        "location": "Phone",
+        "notes": "Discuss $500K SAFE terms"
+      }
+    ],
+    "deadlines": [
+      {
+        "id": "DL-001",
+        "title": "CGS PPA Signed",
+        "date": "2026-08-15",
+        "priority": "high",
+        "owner": "Founder"
+      },
+      {
+        "id": "DL-002",
+        "title": "Invoice INV-2026-03-CGS001 Due",
+        "date": "2026-04-15",
+        "priority": "medium",
+        "owner": "Finance"
+      }
+    ],
+    "reminders": [
+      {
+        "id": "REM-001",
+        "text": "Follow up with Md. Mahfuzul Kabir re: Zia meeting",
+        "date": "2026-08-13",
+        "priority": "medium"
+      }
+    ]
+  }
+}

@@ -948,6 +948,20 @@ def review_node(state: CycleState) -> dict:
                 )
                 inputs[key] = f"(could not read {path_str}: {exc})"
 
+    # Load data from adapters (calendar, email, crm, finance, etc.)
+    try:
+        from aos.adapters import load_venture_data
+
+        venture_dir = Path(__file__).parent / "ventures" / "netso"
+        if venture_dir.exists():
+            venture_data = load_venture_data(venture_dir)
+            for source, data in venture_data.items():
+                if data and "error" not in data:
+                    inputs[source] = data
+            logger.debug("Loaded venture data sources: %s", list(venture_data.keys()))
+    except Exception as e:
+        logger.warning("Failed to load venture data adapters: %s", e)
+
     coo = (
         bundle.specialists.get("AGT-EXEC-COO")
         if bundle and bundle.specialists

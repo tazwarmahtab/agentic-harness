@@ -1,0 +1,26 @@
+{
+  "last_updated": "2026-08-11T00:00:00+06:00",
+  "data": {
+    "meeting_notes": [
+      {
+        "id": "MN-001",
+        "date": "2026-08-05",
+        "title": "CGS PPA Discussion",
+        "attendees": ["Troy", "Founder"],
+        "summary": "Reviewed PPA terms. Troy wants to finalize by end of August. Legal review needed.",
+        "action_items": ["Send PPA to legal", "Schedule signing meeting"]
+      }
+    ],
+    "whatsapp": [],
+    "linkedin": [],
+    "phone_summaries": [
+      {
+        "id": "PH-001",
+        "date": "2026-08-03",
+        "contact": "Md. Mahfuzul Kabir",
+        "summary": "Discussed Zia Chowdhury meeting. Will connect us for site assessment.",
+        "follow_up": "Schedule meeting with Zia"
+      }
+    ]
+  }
+}

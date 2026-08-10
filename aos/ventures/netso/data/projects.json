@@ -1,0 +1,38 @@
+{
+  "last_updated": "2026-08-11T00:00:00+06:00",
+  "data": {
+    "active_projects": [
+      {
+        "id": "PRJ-001",
+        "name": "CGS Rooftop Installation",
+        "status": "operational",
+        "capacity_kw": 850,
+        "customer": "CGS",
+        "start_date": "2026-01-01",
+        "completion_pct": 100,
+        "notes": "Fully operational, 98.2% availability"
+      },
+      {
+        "id": "PRJ-002",
+        "name": "Zia Chowdhury Site Assessment",
+        "status": "pending",
+        "capacity_kw": 0,
+        "customer": "Zia Chowdhury",
+        "start_date": null,
+        "completion_pct": 0,
+        "notes": "Meeting scheduled, site visit pending"
+      }
+    ],
+    "procurement": [],
+    "construction_progress": [],
+    "risks": [
+      {
+        "id": "RISK-001",
+        "description": "Invoice INV-2026-03-CGS001 pending payment",
+        "severity": "low",
+        "owner": "Finance",
+        "mitigation": "Follow up if not paid by Apr 20"
+      }
+    ]
+  }
+}

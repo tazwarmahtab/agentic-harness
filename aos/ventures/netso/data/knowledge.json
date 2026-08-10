@@ -1,0 +1,35 @@
+{
+  "last_updated": "2026-08-11T00:00:00+06:00",
+  "data": {
+    "contracts": [
+      {
+        "id": "CONT-001",
+        "name": "CGS PPA",
+        "status": "draft",
+        "parties": ["Netso Energy", "CGS"],
+        "value_bdt": 960000,
+        "notes": "LOI signed, PPA at 60% draft"
+      }
+    ],
+    "sops": [
+      {
+        "id": "SOP-001",
+        "name": "Daily Executive Loop",
+        "location": "aos/harnesses/executive/sops/daily-executive-loop.yml"
+      },
+      {
+        "id": "SOP-002",
+        "name": "Approval Routing",
+        "location": "aos/harnesses/executive/sops/approval-routing.yml"
+      }
+    ],
+    "policies": [
+      {
+        "id": "POL-001",
+        "name": "Approval Thresholds",
+        "content": "Proposal value > BDT 5M requires Founder approval. DSCR < 2.25x requires Founder + CFO."
+      }
+    ],
+    "past_decisions": []
+  }
+}

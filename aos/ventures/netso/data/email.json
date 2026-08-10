@@ -1,0 +1,35 @@
+{
+  "last_updated": "2026-08-11T00:00:00+06:00",
+  "data": {
+    "unread_count": 3,
+    "important_threads": [
+      {
+        "id": "EMAIL-001",
+        "from": "Troy (CGS)",
+        "subject": "PPA Draft Review",
+        "date": "2026-08-09",
+        "summary": "Attached revised PPA draft for review. Looking forward to finalization.",
+        "requires_action": true,
+        "action_needed": "Review and respond with approval or comments"
+      },
+      {
+        "id": "EMAIL-002",
+        "from": "Steven Pemberton",
+        "subject": "RE: $500K SAFE Terms",
+        "date": "2026-08-08",
+        "summary": "Waiting for your confirmation on the $3M cap. Happy to discuss.",
+        "requires_action": true,
+        "action_needed": "Schedule follow-up call"
+      }
+    ],
+    "recent_sent": [
+      {
+        "id": "EMAIL-003",
+        "to": "Troy (CGS)",
+        "subject": "RE: PPA Draft",
+        "date": "2026-08-07",
+        "summary": "Acknowledged receipt, will review by end of week."
+      }
+    ]
+  }
+}
