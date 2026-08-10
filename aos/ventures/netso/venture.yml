@@ -75,65 +75,63 @@ dispatch_only_specialists:
   - { persona: PRISM, domain: research, role: "Regulatory Research" }
 
 # ---------------------------------------------------------------------------
-# Live source-of-truth artifacts (relative to Netso_HQ root).
-# Harness memory.yml references these by key. Paths are canonical; do not
-# duplicate content into TAZ OS — always read from source.
+# Live source-of-truth artifacts (relative to aos/ventures/ root).
+# Harness memory.yml references these by key. Paths are canonical.
 # ---------------------------------------------------------------------------
 artifacts:
   # Financial ground truth — NEVER deviate. All numbers must match this.
   ground_truth_constants:
-    path: GROUND_TRUTH_CONSTANTS.md
-    generator: ai_system/System/scripts/core_economics.py
+    path: netso/seed/constants.json
     classification: confidential
     rule: "Any financial metric in any output MUST match this file."
 
   # Executive / operations memory (the PLAN/DO/CHECK/ACT loop)
   dashboard:
-    path: ai_system/System/DO/DASHBOARD.md
+    path: netso/DASHBOARD.md
     role: "Single source of truth — live state. Read first every session."
     classification: internal
   weekly_plan:
-    path: ai_system/System/PLAN/WEEKLY.md
+    path: netso/PLAN/WEEKLY.md
     role: "Top 3 priorities for current week."
     classification: internal
   backlog:
-    path: ai_system/System/PLAN/BACKLOG.md
+    path: netso/PLAN/BACKLOG.md
     role: "All known work, prioritized."
     classification: internal
   blockers:
-    path: ai_system/System/ACT/BLOCKERS.md
+    path: netso/ACT/BLOCKERS.md
     role: "Active blockers, each naming a holder."
     classification: internal
   lessons:
-    path: ai_system/System/ACT/LESSONS.md
+    path: netso/ACT/LESSONS.md
     role: "Patterns learned, mistakes to avoid."
     classification: internal
   weekly_review:
-    path: ai_system/System/CHECK/REVIEW.md
+    path: netso/CHECK/REVIEW.md
     role: "Friday review — what worked, what didn't."
     classification: internal
   latest_session:
-    path: ai_system/Nexus/logs/LATEST.md
+    path: netso/LOGS/LATEST.md
     role: "Current session context. Read at startup, update at shutdown."
     classification: internal
   handoffs:
-    path: ai_system/Nexus/logs/handoffs/
+    path: netso/LOGS/handoffs/
     role: "Inter-harness handoff channel."
     classification: internal
 
   # Dispatch sources
   agents_registry:
-    path: ai_system/System/AGENTS_REGISTRY.md
+    path: netso/AGENTS_REGISTRY.md
     role: "Master roster of all Netso agents."
     classification: internal
   task_router:
-    path: ai_system/System/TASK_ROUTER.md
+    path: netso/TASK_ROUTER.md
     role: "Routing rules + SLAs + escalation. Dispatcher's source table."
     classification: internal
 
-  # Persona files (16)
+  # Persona files
   personas_dir:
-    path: ai_system/System/agents/
+    path: netso/personas/
     role: "Source personas for re-homed specialists."
 
 # ---------------------------------------------------------------------------

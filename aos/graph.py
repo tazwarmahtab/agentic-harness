@@ -573,13 +573,17 @@ def _run_agent_node(
     model = resolve_model(agent.criticality.value, venture, override=agent_model)
     temperature = 0.1 if agent.id == "AGT-EXEC-DISPATCH" else 0.3
 
+    logger.debug("_run_agent_node: agent=%s model=%s step=%s", agent.id, model, step_name)
+
     try:
+        logger.debug("_run_agent_node: calling llm.complete for agent=%s", agent.id)
         response = llm.complete(
             model=model,
             system=system_prompt,
             messages=[{"role": "user", "content": task_prompt}],
             temperature=temperature,
         )
+        logger.debug("_run_agent_node: llm.complete returned for agent=%s", agent.id)
 
         extracted = _extract_json(response.content)
         output: dict[str, Any] = (
@@ -1527,7 +1531,7 @@ def approval_gates_node(state: CycleState) -> dict:
                     "approval_gates_node: resolved Chief of Staff via cross-harness registry fallback"
                 )
 
-    approval_items = state.get("approval_queue", [])
+    approval_items = [item for item in state.get("approval_queue", []) if item is not None]
     resolved_ids = set(state.get("resolved_approval_ids", []))
 
     # Cross-reference against ApprovalQueue persistence to resolve
@@ -1984,6 +1988,9 @@ def build_graph(
     )
 
     # Compile — use provided checkpointer or MemorySaver for crash recovery
+    # Pass checkpointer=False to disable checkpointer entirely
+    if checkpointer is False:
+        return graph.compile()
     if checkpointer is None:
         checkpointer = MemorySaver()
     return graph.compile(checkpointer=checkpointer)
@@ -2006,7 +2013,7 @@ def run_cycle_graph(
     max_iterations: int = 1,
     completion_criteria: dict[str, Any] | None = None,
     registry: Registry | None = None,
-    checkpointer: Any | None = None,
+    checkpointer: Any | None = False,
     thread_id: str | None = None,
 ) -> CycleState:
     """Execute the full daily harness cycle via LangGraph.
@@ -2052,6 +2059,20 @@ def run_cycle_graph(
         for path in venture_artifacts.values():
             venture_root = path.parent
             break
+
+    # Load seed data from venture directory (if available)
+    seed_context = ""
+    if venture_root:
+        try:
+            from aos.ventures.netso.loader import load_seed_data, format_seed_context
+
+            venture_dir = venture_root / "netso" if venture_root.name != "netso" else venture_root
+            if venture_dir.exists():
+                seed_data = load_seed_data(venture_dir)
+                seed_context = format_seed_context(seed_data)
+                logger.info("Loaded seed data from %s", venture_dir)
+        except Exception as e:
+            logger.warning("Failed to load seed data: %s", e)
 
     # Derive venture constants from Venture object (None for planning ventures)
     venture_constants: dict[str, Any] | None = None
@@ -2119,7 +2140,7 @@ def run_cycle_graph(
         "harness_id": harness_id,
         "cycle_id": cycle_id,
         "venture_artifacts": {k: str(v) for k, v in (venture_artifacts or {}).items()},
-        "inputs": {},
+        "inputs": {"seed_context": seed_context} if seed_context else {},
         "step_results": [],
         "approval_queue": [],
         "resolved_approval_ids": [],

@@ -60,11 +60,11 @@ class VentureRoutingManifest(BaseModel):
 # Model routing table — mirrors CLAUDE.md / 9router config
 # ---------------------------------------------------------------------------
 MODEL_TABLE: dict[str, str] = {
-    "default": "cu/claude-4.5-sonnet",  # paid Claude Sonnet
-    "reasoning": "cu/claude-4.5-opus-high-thinking",  # paid Claude Opus
-    "fast": "cu/claude-4.5-haiku",  # paid Claude Haiku
-    "subagent": "cu/claude-4.5-haiku",  # paid Claude Haiku
-    "free": "openrouter/google/gemma-4-31b-it:free",  # free pool entry
+    "default": "meta/llama-3.1-8b-instruct",  # NVIDIA NIM
+    "reasoning": "meta/llama-3.1-8b-instruct",  # NVIDIA NIM (use fast model for now)
+    "fast": "meta/llama-3.1-8b-instruct",  # fast tier via NVIDIA NIM
+    "subagent": "meta/llama-3.1-8b-instruct",  # subagent tier via NVIDIA NIM
+    "free": "meta/llama-3.1-8b-instruct",  # free pool entry via NVIDIA NIM
 }
 
 # Pool of verified free-tier models — round-robin indexed.
@@ -717,7 +717,8 @@ class NvidiaLLMClient:
 
                 choice = body["choices"][0]
                 msg = choice.get("message", {})
-                content = msg.get("content", "")
+                # Handle models that return reasoning_content instead of content
+                content = msg.get("content") or msg.get("reasoning_content") or ""
                 circuit_breaker.record_success()
                 return LLMResponse(
                     content=content,

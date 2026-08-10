@@ -1,0 +1,28 @@
+{
+  "venture": "netso",
+  "version": "1.0.0",
+  "source": "core_economics.py",
+  "financial_constants": {
+    "capex_per_kw_scenario_a": 55000,
+    "capex_per_kw_scenario_b": 40000,
+    "capex_default_scenario": "A",
+    "true_variable_rate": 12.98,
+    "blended_rate": 14.81,
+    "ppa_rate": 10.00,
+    "customer_savings_pct": 23.0,
+    "nem_export_rate": 6.4523,
+    "idcol_debt_pct": 80,
+    "idcol_interest": 6.0,
+    "idcol_term_years": 10,
+    "dscr_scenario_a": 2.25,
+    "dscr_scenario_b": 3.09,
+    "dscr_alert_floor": 2.0,
+    "capacity_factor": 16.5,
+    "opex_per_kw": 1000
+  },
+  "approval_thresholds": {
+    "proposal_value_bdt": 5000000,
+    "dscr_escalation_floor": 2.25,
+    "dscr_alert_floor": 2.0
+  }
+}
