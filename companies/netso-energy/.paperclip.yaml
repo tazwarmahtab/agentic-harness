@@ -1,11 +1,11 @@
 # Netso Energy Paperclip runtime configuration.
 #
 # SECURITY: import/run this package only on a patched Paperclip release.
-# Paperclip had a critical unauthenticated import/RCE vulnerability in releases
-# before 2026.416.0. Keep company import restricted to trusted operators.
+# Keep company import restricted to trusted operators and keep agents paused
+# until the shadow-mode validation gate passes.
 #
 # DEPLOYMENT: replace /opt/netso/agentic-harness with the actual checked-out
-# repository path before activating agents. Keep agents paused during validation.
+# repository path before activating agents.
 
 agents:
   ceo:
@@ -64,7 +64,7 @@ agents:
         graceSec: 20
         env:
           AOS_PROJECT_ROOT: /opt/netso/agentic-harness
-          NETSO_AOS_AGENT_ID: AGT-EXEC-DISPATCH
+          NETSO_AOS_AGENT_ID: AGT-EXEC-CRO
           PAPERCLIP_AGENT_SLUG: cro
     budgetMonthlyCents: 30000
 
@@ -79,7 +79,7 @@ agents:
         graceSec: 20
         env:
           AOS_PROJECT_ROOT: /opt/netso/agentic-harness
-          NETSO_AOS_AGENT_ID: AGT-EXEC-PERF
+          NETSO_AOS_AGENT_ID: AGT-EXEC-CTO
           PAPERCLIP_AGENT_SLUG: cto
     budgetMonthlyCents: 30000
 
