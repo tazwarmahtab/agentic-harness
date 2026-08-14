@@ -14,11 +14,11 @@ import os
 import sys
 from pathlib import Path
 
+from aos.integrations.governed_gateway import GovernedToolGateway
 from aos.integrations.paperclip_runtime import sync_cycle_outcome
 from aos.llm import create_llm_client
 from aos.memory import build_memory_from_manifest
 from aos.registry import load_registry
-from aos.tools import ToolGateway
 from aos.usage import UsageTracker
 from aos.graph import _run_agent_node
 
@@ -89,7 +89,9 @@ def main() -> int:
             bundle.memory.model_dump(), venture_root=venture_dir
         )
 
-    gateway = ToolGateway(venture_root=venture_dir, memory_store=memory_store)
+    # Paperclip-managed execution uses the policy-enforced gateway. This keeps
+    # high-impact actions blocked even if an agent prompt requests them.
+    gateway = GovernedToolGateway(venture_root=venture_dir, memory_store=memory_store)
     if bundle.tools:
         gateway.register_tools_from_dict(
             [
