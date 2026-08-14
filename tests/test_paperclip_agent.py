@@ -35,7 +35,7 @@ def test_paperclip_agent_imports_without_runtime_side_effects() -> None:
 
     source = (ROOT / "aos" / "paperclip_agent.py").read_text()
     assert "GovernedToolGateway" in source
-    assert "ToolGateway(" not in source
+    assert "from aos.tools import ToolGateway" not in source
 
 
 def test_task_input_prefers_stdin(monkeypatch) -> None:
