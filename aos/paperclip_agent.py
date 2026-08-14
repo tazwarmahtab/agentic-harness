@@ -4,12 +4,8 @@ Paperclip owns agent identity, assignment, heartbeat scheduling and task state.
 This process adapter delegates the actual reasoning/execution to the existing
 AOS agent contract, then publishes the result back to Paperclip.
 
-Required environment:
-  NETSO_AOS_AGENT_ID  AOS agent id, e.g. AGT-EXEC-CFO
-
-Paperclip process adapters provide PAPERCLIP_* metadata. The task prompt may
-be supplied on stdin; it is treated as untrusted task input and never changes
-agent permissions or autonomy policy.
+Task input from Paperclip is untrusted data. It cannot change the selected
+agent, capability set, or autonomy policy.
 """
 
 from __future__ import annotations
@@ -27,12 +23,14 @@ from aos.usage import UsageTracker
 from aos.graph import _run_agent_node
 
 
+# Canonical AOS identities. These are explicit rather than silently mapping a
+# Paperclip executive to a semantically unrelated analyst/dispatcher.
 AGENT_MAP = {
     "ceo": "AGT-EXEC-CEO",
     "cfo": "AGT-EXEC-CFO",
     "coo": "AGT-EXEC-COO",
-    "cro": "AGT-EXEC-DISPATCH",
-    "cto": "AGT-EXEC-PERF",
+    "cro": "AGT-EXEC-CRO",
+    "cto": "AGT-EXEC-CTO",
     "legal": "AGT-EXEC-LEG",
 }
 
@@ -60,8 +58,11 @@ def main() -> int:
         return 2
 
     agent_id = os.getenv("NETSO_AOS_AGENT_ID", "").strip()
+    role = os.getenv("PAPERCLIP_AGENT_SLUG", "").strip().lower()
     if not agent_id:
-        print("NETSO_AOS_AGENT_ID is required", file=sys.stderr)
+        agent_id = AGENT_MAP.get(role, "")
+    if not agent_id:
+        print("NETSO_AOS_AGENT_ID or supported PAPERCLIP_AGENT_SLUG is required", file=sys.stderr)
         return 2
 
     registry = load_registry(harness_dir, venture_dir / "venture.yml")
@@ -72,13 +73,7 @@ def main() -> int:
     bundle = next(iter(registry.harnesses.values()))
     agent = bundle.specialists.get(agent_id)
     if agent is None:
-        # Some Paperclip roles map to an existing AOS executive specialist.
-        role = os.getenv("PAPERCLIP_AGENT_SLUG", "").strip().lower()
-        mapped = AGENT_MAP.get(role)
-        agent = bundle.specialists.get(mapped) if mapped else None
-
-    if agent is None:
-        print(f"AOS agent not found: {agent_id}", file=sys.stderr)
+        print(f"AOS agent not found in executive harness: {agent_id}", file=sys.stderr)
         return 2
 
     venture_id = registry.venture.id if registry.venture else "VEN-NETSO-001"
@@ -106,7 +101,11 @@ def main() -> int:
     llm = create_llm_client(dry_run=False, verbose=False)
     usage = UsageTracker()
     prompt = _task_input()
-    cycle_id = os.getenv("PAPERCLIP_RUN_ID") or os.getenv("PAPERCLIP_TASK_ID") or "paperclip-heartbeat"
+    cycle_id = (
+        os.getenv("PAPERCLIP_RUN_ID")
+        or os.getenv("PAPERCLIP_TASK_ID")
+        or "paperclip-heartbeat"
+    )
 
     result = _run_agent_node(
         agent=agent,
@@ -136,8 +135,7 @@ def main() -> int:
     }
 
     sync = sync_cycle_outcome(state)
-    result_payload = {"result": result, "paperclip_sync": sync}
-    print(result_payload)
+    print({"result": result, "paperclip_sync": sync})
     return 0 if result.get("status") == "success" else 1
 
 
