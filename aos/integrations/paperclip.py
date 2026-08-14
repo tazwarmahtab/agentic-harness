@@ -1,15 +1,14 @@
 """Small, dependency-free Paperclip control-plane client.
 
-This module deliberately does not embed Paperclip business logic. It provides
-only the minimum outbound contract needed by AOS to publish work outcomes and
-create control-plane work items. Authentication is bearer-token based and no
-secret is ever logged.
+AOS owns execution; Paperclip owns workforce/task control. This module is the
+narrow, auditable outbound boundary between them.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -25,6 +24,8 @@ class PaperclipConfig:
     api_key: str
     company_id: str
     timeout_seconds: float = 15.0
+    max_retries: int = 2
+    retry_backoff_seconds: float = 0.25
 
     @classmethod
     def from_env(cls) -> "PaperclipConfig":
@@ -58,6 +59,7 @@ class PaperclipClient:
         payload: dict | None = None,
         *,
         run_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict:
         url = f"{self.config.base_url}{path}"
         headers = {
@@ -70,16 +72,28 @@ class PaperclipClient:
             body = json.dumps(payload).encode("utf-8")
         if run_id:
             headers["X-Paperclip-Run-Id"] = run_id
+        if idempotency_key:
+            headers["Idempotency-Key"] = idempotency_key
 
         request = Request(url, data=body, headers=headers, method=method)
-        try:
-            with urlopen(request, timeout=self.config.timeout_seconds) as response:
-                raw = response.read().decode("utf-8")
-        except HTTPError as exc:
-            # Never expose headers or secrets in the exception text.
-            raise PaperclipError(f"Paperclip {method} {path} failed: HTTP {exc.code}") from exc
-        except URLError as exc:
-            raise PaperclipError(f"Paperclip {method} {path} failed: network error") from exc
+        attempts = 0
+        while True:
+            try:
+                with urlopen(request, timeout=self.config.timeout_seconds) as response:
+                    raw = response.read().decode("utf-8")
+                break
+            except HTTPError as exc:
+                if exc.code not in {408, 429, 500, 502, 503, 504} or attempts >= self.config.max_retries:
+                    raise PaperclipError(
+                        f"Paperclip {method} {path} failed: HTTP {exc.code}"
+                    ) from exc
+            except URLError as exc:
+                if attempts >= self.config.max_retries:
+                    raise PaperclipError(
+                        f"Paperclip {method} {path} failed: network error"
+                    ) from exc
+            attempts += 1
+            time.sleep(self.config.retry_backoff_seconds * (2 ** (attempts - 1)))
 
         if not raw:
             return {}
@@ -107,6 +121,8 @@ class PaperclipClient:
         project_id: str | None = None,
         goal_id: str | None = None,
         parent_id: str | None = None,
+        idempotency_key: str | None = None,
+        run_id: str | None = None,
     ) -> dict:
         payload = {
             "title": title,
@@ -125,6 +141,8 @@ class PaperclipClient:
             "POST",
             f"/api/companies/{self.config.company_id}/issues",
             payload,
+            run_id=run_id,
+            idempotency_key=idempotency_key,
         )
 
     def update_issue(
@@ -134,9 +152,20 @@ class PaperclipClient:
         status: str | None = None,
         comment: str | None = None,
         run_id: str | None = None,
+        idempotency_key: str | None = None,
     ) -> dict:
-        payload = {k: v for k, v in {"status": status, "comment": comment}.items() if v is not None}
-        return self._request("PATCH", f"/api/issues/{issue_id}", payload, run_id=run_id)
+        payload = {
+            k: v
+            for k, v in {"status": status, "comment": comment}.items()
+            if v is not None
+        }
+        return self._request(
+            "PATCH",
+            f"/api/issues/{issue_id}",
+            payload,
+            run_id=run_id,
+            idempotency_key=idempotency_key,
+        )
 
 
 def build_client_from_env() -> PaperclipClient:
