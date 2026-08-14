@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from aos.integrations.governed_gateway import GovernedToolGateway
+from aos.integrations.policy import create_founder_approval_token
 from aos.tools import ToolDef
 
 
@@ -30,7 +31,7 @@ def test_high_impact_call_is_denied_without_approval():
     )
     assert result.status == "denied"
     assert result.approval_required is True
-    assert "Founder approval required" in (result.error or "")
+    assert "Verified founder approval required" in (result.error or "")
 
 
 def test_untrusted_approval_flag_cannot_bypass_gate():
@@ -71,23 +72,34 @@ def test_high_impact_concrete_action_is_denied_before_execution():
     assert result["required_level"] == 5
 
 
-def test_only_founder_can_register_verified_approval():
+def test_tampered_or_missing_token_is_denied(monkeypatch):
     gateway = _gateway()
-    with pytest.raises(PermissionError):
-        gateway.grant_verified_approval(
-            approval_id="APR-001",
-            action_class="regulatory_submission",
-            approver_id="AGT-EXEC-CEO",
-        )
-
-
-def test_verified_approval_can_reach_executor():
-    gateway = _gateway()
-    gateway.grant_verified_approval(
+    monkeypatch.setenv("AOS_APPROVAL_SIGNING_SECRET", "test-secret")
+    token = create_founder_approval_token(
         approval_id="APR-001",
         action_class="regulatory_submission",
-        approver_id="HUM-000001",
     )
+    gateway.register_approval_token(approval_id="APR-001", token=token + "tampered")
+    result = gateway.execute(
+        {
+            "action_type": "shell",
+            "command": "echo should-not-run",
+            "action_class": "regulatory_submission",
+            "approval_id": "APR-001",
+        }
+    )
+    assert result["ok"] is False
+    assert result["status"] == "denied"
+
+
+def test_signed_founder_approval_can_reach_executor(monkeypatch):
+    gateway = _gateway()
+    monkeypatch.setenv("AOS_APPROVAL_SIGNING_SECRET", "test-secret")
+    token = create_founder_approval_token(
+        approval_id="APR-001",
+        action_class="regulatory_submission",
+    )
+    gateway.register_approval_token(approval_id="APR-001", token=token)
     result = gateway.execute(
         {
             "action_type": "shell",
@@ -98,3 +110,23 @@ def test_verified_approval_can_reach_executor():
     )
     assert result["ok"] is True
     assert result["stdout"] == "approved"
+
+
+def test_token_is_bound_to_action_class(monkeypatch):
+    gateway = _gateway()
+    monkeypatch.setenv("AOS_APPROVAL_SIGNING_SECRET", "test-secret")
+    token = create_founder_approval_token(
+        approval_id="APR-001",
+        action_class="regulatory_submission",
+    )
+    gateway.register_approval_token(approval_id="APR-001", token=token)
+    result = gateway.execute(
+        {
+            "action_type": "shell",
+            "command": "echo should-not-run",
+            "action_class": "money_movement",
+            "approval_id": "APR-001",
+        }
+    )
+    assert result["ok"] is False
+    assert result["status"] == "denied"
