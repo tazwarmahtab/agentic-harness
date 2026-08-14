@@ -4,7 +4,6 @@ kind: agent
 slug: cto
 name: CTO / Energy Engineering
 title: Chief Technology Officer
-a_reportsTo: ceo
 reportsTo: ceo
 skills:
   - founder-governance
