@@ -1,0 +1,99 @@
+# Netso Energy Paperclip runtime configuration.
+#
+# SECURITY: import/run this package only on a patched Paperclip release.
+# Paperclip had a critical unauthenticated import/RCE vulnerability in releases
+# before 2026.416.0. Keep company import restricted to trusted operators.
+#
+# DEPLOYMENT: replace /opt/netso/agentic-harness with the actual checked-out
+# repository path before activating agents. Keep agents paused during validation.
+
+agents:
+  ceo:
+    adapter:
+      type: process
+      config:
+        command: python3
+        args: ["-m", "aos.paperclip_agent"]
+        cwd: /opt/netso/agentic-harness
+        timeoutSec: 900
+        graceSec: 20
+        env:
+          AOS_PROJECT_ROOT: /opt/netso/agentic-harness
+          NETSO_AOS_AGENT_ID: AGT-EXEC-CEO
+          PAPERCLIP_AGENT_SLUG: ceo
+    budgetMonthlyCents: 50000
+
+  cfo:
+    adapter:
+      type: process
+      config:
+        command: python3
+        args: ["-m", "aos.paperclip_agent"]
+        cwd: /opt/netso/agentic-harness
+        timeoutSec: 900
+        graceSec: 20
+        env:
+          AOS_PROJECT_ROOT: /opt/netso/agentic-harness
+          NETSO_AOS_AGENT_ID: AGT-EXEC-CFO
+          PAPERCLIP_AGENT_SLUG: cfo
+    budgetMonthlyCents: 30000
+
+  coo:
+    adapter:
+      type: process
+      config:
+        command: python3
+        args: ["-m", "aos.paperclip_agent"]
+        cwd: /opt/netso/agentic-harness
+        timeoutSec: 900
+        graceSec: 20
+        env:
+          AOS_PROJECT_ROOT: /opt/netso/agentic-harness
+          NETSO_AOS_AGENT_ID: AGT-EXEC-COO
+          PAPERCLIP_AGENT_SLUG: coo
+    budgetMonthlyCents: 30000
+
+  cro:
+    adapter:
+      type: process
+      config:
+        command: python3
+        args: ["-m", "aos.paperclip_agent"]
+        cwd: /opt/netso/agentic-harness
+        timeoutSec: 900
+        graceSec: 20
+        env:
+          AOS_PROJECT_ROOT: /opt/netso/agentic-harness
+          NETSO_AOS_AGENT_ID: AGT-EXEC-DISPATCH
+          PAPERCLIP_AGENT_SLUG: cro
+    budgetMonthlyCents: 30000
+
+  cto:
+    adapter:
+      type: process
+      config:
+        command: python3
+        args: ["-m", "aos.paperclip_agent"]
+        cwd: /opt/netso/agentic-harness
+        timeoutSec: 900
+        graceSec: 20
+        env:
+          AOS_PROJECT_ROOT: /opt/netso/agentic-harness
+          NETSO_AOS_AGENT_ID: AGT-EXEC-PERF
+          PAPERCLIP_AGENT_SLUG: cto
+    budgetMonthlyCents: 30000
+
+  legal:
+    adapter:
+      type: process
+      config:
+        command: python3
+        args: ["-m", "aos.paperclip_agent"]
+        cwd: /opt/netso/agentic-harness
+        timeoutSec: 900
+        graceSec: 20
+        env:
+          AOS_PROJECT_ROOT: /opt/netso/agentic-harness
+          NETSO_AOS_AGENT_ID: AGT-EXEC-LEG
+          PAPERCLIP_AGENT_SLUG: legal
+    budgetMonthlyCents: 30000
