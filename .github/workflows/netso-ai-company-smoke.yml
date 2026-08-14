@@ -1,6 +1,9 @@
 name: Netso AI Company smoke
 
 'on':
+  push:
+    branches:
+      - 'feat/netso-ai-company-v1'
   pull_request:
     branches:
       - main
