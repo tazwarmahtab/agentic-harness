@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import yaml
@@ -25,8 +24,18 @@ def test_paperclip_company_has_runtime_config() -> None:
 def test_paperclip_agent_imports_without_runtime_side_effects() -> None:
     import aos.paperclip_agent as entrypoint
 
-    assert entrypoint.AGENT_MAP["ceo"] == "AGT-EXEC-CEO"
-    assert entrypoint.AGENT_MAP["cfo"] == "AGT-EXEC-CFO"
+    assert entrypoint.AGENT_MAP == {
+        "ceo": "AGT-EXEC-CEO",
+        "cfo": "AGT-EXEC-CFO",
+        "coo": "AGT-EXEC-COO",
+        "cro": "AGT-EXEC-CRO",
+        "cto": "AGT-EXEC-CTO",
+        "legal": "AGT-EXEC-LEG",
+    }
+
+    source = (ROOT / "aos" / "paperclip_agent.py").read_text()
+    assert "GovernedToolGateway" in source
+    assert "ToolGateway(" not in source
 
 
 def test_task_input_prefers_stdin(monkeypatch) -> None:
