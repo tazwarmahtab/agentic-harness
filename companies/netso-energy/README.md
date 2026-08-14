@@ -18,6 +18,7 @@ Paperclip control plane
 Existing AOS / agentic-harness runtime
     ├── LangGraph orchestration
     ├── capability-based tools
+    ├── policy-enforced Paperclip gateway
     ├── memory
     ├── evaluation
     ├── Netso venture context
@@ -54,6 +55,8 @@ After import, configure runtime adapters and local workspaces in Paperclip. Mach
 
 Do not activate scheduled heartbeats initially. Start with recommendation-only and reversible internal work. External communication, material pricing, PPAs, financing, payments, regulatory submissions, and final engineering approvals stay human-gated.
 
+High-impact actions at the AOS/Paperclip boundary require a verified approval record tied to founder identity `HUM-000001`; task input cannot bypass this gate with a boolean flag.
+
 ## Existing AOS validation
 
 From the repository root:
@@ -66,3 +69,7 @@ pytest -q
 ```
 
 The existing repository already provides the domain runtime, memory, approvals, evaluation, Netso context, and multi-harness orchestration. This package adds the company-level Paperclip configuration around it.
+
+## CI note
+
+The current GitHub Actions integration is not producing application jobs for this branch and reports `startup_failure`. Treat that as a hosted-run infrastructure gate, not as evidence that the Python test suite passes or fails.
