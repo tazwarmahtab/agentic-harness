@@ -9,43 +9,20 @@ from aos.tools import ToolGateway, ToolResult
 
 
 class GovernedToolGateway(ToolGateway):
-    """Tool gateway that enforces high-impact action policy before execution.
-
-    The ordinary AOS gateway remains backward compatible. Paperclip-managed
-    processes use this subclass so high-impact actions cannot bypass the
-    founder approval boundary.
-    """
+    """Tool gateway that enforces high-impact action policy before execution."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self._verified_approvals: dict[str, tuple[str, str]] = {}
+        self._approval_tokens: dict[str, str] = {}
 
-    def grant_verified_approval(
-        self,
-        *,
-        approval_id: str,
-        action_class: str,
-        approver_id: str,
-    ) -> None:
-        """Register an approval only through a trusted runtime integration.
+    def register_approval_token(self, *, approval_id: str, token: str) -> None:
+        """Register an opaque token received from the trusted approval service."""
+        if not approval_id or not token:
+            raise ValueError("approval_id and token are required")
+        self._approval_tokens[approval_id] = token
 
-        The approval ID is opaque to the LLM/task prompt. A caller must supply
-        the founder identity and the exact action class being authorized.
-        """
-        if approver_id != "HUM-000001":
-            raise PermissionError("Only the founder identity may grant high-impact approval")
-        self._verified_approvals[approval_id] = (action_class, approver_id)
-
-    def _approval_is_verified(
-        self,
-        *,
-        approval_id: str | None,
-        action_class: str | None,
-    ) -> bool:
-        if not approval_id or not action_class:
-            return False
-        approved_action = self._verified_approvals.get(approval_id)
-        return approved_action == (action_class, "HUM-000001")
+    def _token_for(self, approval_id: str | None) -> str | None:
+        return self._approval_tokens.get(approval_id or "")
 
     def call(
         self,
@@ -55,13 +32,9 @@ class GovernedToolGateway(ToolGateway):
     ) -> ToolResult:
         action_class = inputs.get("_action_class")
         approval_id = inputs.get("_approval_id")
-        approval_granted = self._approval_is_verified(
-            approval_id=approval_id,
-            action_class=action_class,
-        )
         decision = evaluate_action(
             action_class=action_class,
-            approval_granted=approval_granted,
+            approval_token=self._token_for(approval_id),
         )
         if not decision.allowed:
             tool = self.tools.get(capability)
@@ -83,13 +56,9 @@ class GovernedToolGateway(ToolGateway):
         """Enforce action policy before legacy concrete-action execution."""
         action_class = action.get("action_class")
         approval_id = action.get("approval_id")
-        approval_granted = self._approval_is_verified(
-            approval_id=approval_id,
-            action_class=action_class,
-        )
         decision = evaluate_action(
             action_class=action_class,
-            approval_granted=approval_granted,
+            approval_token=self._token_for(approval_id),
         )
         if not decision.allowed:
             return {
