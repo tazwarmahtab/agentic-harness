@@ -1,0 +1,30 @@
+name: Netso AI Company smoke
+
+'on':
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile AOS Python sources
+        run: python -m compileall -q aos
+      - name: Validate company package
+        run: python scripts/validate_netso_company.py
+      - name: Validate Paperclip config syntax
+        run: |
+          python - <<'PY'
+          import pathlib
+          import yaml
+          p = pathlib.Path('companies/netso-energy/.paperclip.yaml')
+          data = yaml.safe_load(p.read_text())
+          assert set(data['agents']) == {'ceo','cfo','coo','cro','cto','legal'}
+          print('Paperclip config: OK')
+          PY
