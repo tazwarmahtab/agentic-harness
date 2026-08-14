@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from aos.integrations.governed_gateway import GovernedToolGateway
 from aos.tools import ToolDef
 
@@ -31,6 +33,19 @@ def test_high_impact_call_is_denied_without_approval():
     assert "Founder approval required" in (result.error or "")
 
 
+def test_untrusted_approval_flag_cannot_bypass_gate():
+    gateway = _gateway()
+    result = gateway.call(
+        "internal_task",
+        {
+            "_action_class": "money_movement",
+            "_approval_granted": True,
+        },
+        agent_id="AGT-EXEC-CEO",
+    )
+    assert result.status == "denied"
+
+
 def test_reversible_call_reaches_normal_gateway():
     gateway = _gateway()
     result = gateway.call(
@@ -56,14 +71,29 @@ def test_high_impact_concrete_action_is_denied_before_execution():
     assert result["required_level"] == 5
 
 
-def test_approved_high_impact_action_can_reach_executor():
+def test_only_founder_can_register_verified_approval():
     gateway = _gateway()
+    with pytest.raises(PermissionError):
+        gateway.grant_verified_approval(
+            approval_id="APR-001",
+            action_class="regulatory_submission",
+            approver_id="AGT-EXEC-CEO",
+        )
+
+
+def test_verified_approval_can_reach_executor():
+    gateway = _gateway()
+    gateway.grant_verified_approval(
+        approval_id="APR-001",
+        action_class="regulatory_submission",
+        approver_id="HUM-000001",
+    )
     result = gateway.execute(
         {
             "action_type": "shell",
             "command": "printf 'approved'",
             "action_class": "regulatory_submission",
-            "approval_granted": True,
+            "approval_id": "APR-001",
         }
     )
     assert result["ok"] is True
