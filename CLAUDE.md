@@ -51,7 +51,7 @@ pytest -m integration  # integration only (requires live deps)
 | `LANGFUSE_PUBLIC_KEY` | No | — | Langfuse public API key (from https://cloud.langfuse.com) |
 | `LANGFUSE_SECRET_KEY` | No | — | Langfuse secret API key |
 | `LANGFUSE_HOST` | No | `https://cloud.langfuse.com` | Override Langfuse endpoint (for self-hosted) |
-| `DATABASE_URL` | No | — | Postgres connection string for CocoIndex RAG pipeline + pgvector (e.g. `postgresql://postgres:aos@localhost:5432/aos`) |
+| `DATABASE_URL` | No | — | Postgres connection string for CocoIndex RAG pipeline + pgvector (e.g. `postgresql://postgres:aos@localhost:5432/aos`). When set, RAG auto-activates: relevant Netso venture doc chunks are injected into every agent's system prompt via `_run_agent_node`. |
 
 ## 9router Model Routing
 All LLM calls route through 9router (localhost:20128) unless overridden.

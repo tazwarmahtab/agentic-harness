@@ -455,6 +455,63 @@ def _build_task_prompt(
     return "\n".join(parts)
 
 
+def _fetch_rag_context(query: str, agent_id: str) -> tuple[str, int]:
+    """Retrieve relevant Netso venture document chunks for the given query.
+
+    Bridges the sync/async boundary via ThreadPoolExecutor so this function
+    is safe to call from both sync code and from inside FastAPI's event loop.
+
+    Args:
+        query:    Natural-language query (typically step_name or agent mission).
+        agent_id: Agent identifier, used for debug logging only.
+
+    Returns:
+        Tuple of (formatted_string, chunk_count).
+        formatted_string is "" when degraded (DB unavailable, import error, etc).
+        chunk_count is 0 when degraded.
+        Never raises.
+    """
+    RAG_CHAR_LIMIT = 6000  # ~1500 tokens
+
+    if not query or not query.strip():
+        return "", 0
+
+    try:
+        # Lazy import — avoids ImportError when psycopg is not installed.
+        from aos.ventures.netso.retriever import retrieve_netso_context  # noqa: PLC0415
+
+        def _run_async() -> list:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(retrieve_netso_context(query.strip(), top_k=5))
+            finally:
+                loop.close()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            chunks = pool.submit(_run_async).result(timeout=10)
+
+        if not chunks:
+            return "", 0
+
+        parts: list[str] = []
+        total = 0
+        for chunk in chunks:
+            line = f"[{chunk.filename}#{chunk.chunk_index}] {chunk.content}"
+            if total + len(line) > RAG_CHAR_LIMIT:
+                break
+            parts.append(line)
+            total += len(line)
+
+        return "\n".join(parts), len(chunks)
+
+    except ImportError:
+        logger.debug("RAG retriever not available (psycopg/sentence_transformers not installed) — skipping for agent %s", agent_id)
+        return "", 0
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("RAG pre-fetch failed for agent %s (query=%r): %s — proceeding without context", agent_id, query[:60], exc)
+        return "", 0
+
+
 def _run_agent_node(
     agent: Agent,
     bundle: HarnessBundle,
@@ -506,6 +563,12 @@ def _run_agent_node(
         except AttributeError:
             memory_context = memory_store.retrieve_for_agent(agent.id, step_name)
 
+    # RAG context — retrieve relevant Netso venture document chunks
+    rag_context, rag_chunks_retrieved = _fetch_rag_context(
+        query=step_name or agent.mission or "",
+        agent_id=agent.id,
+    )
+
     # Build prompts via context builder (full contract serialization)
     financial = (
         venture_constants
@@ -516,6 +579,7 @@ def _run_agent_node(
         agent,
         netso_financial=financial,
         memory_context=memory_context,
+        rag_context=rag_context or None,
     )
     task_prompt = _build_task_prompt(
         step_name,
@@ -565,6 +629,7 @@ def _run_agent_node(
             "status": "success" if validation.passed else "error",
             "output": output,
             "duration_ms": elapsed,
+            "rag_chunks_retrieved": rag_chunks_retrieved,
         }
         if validation.violations:
             result["_errors"] = [f"{agent.id}: {v}" for v in validation.violations]
@@ -579,6 +644,7 @@ def _run_agent_node(
             "error": str(e),
             "output": {},
             "duration_ms": elapsed,
+            "rag_chunks_retrieved": rag_chunks_retrieved,
             "_errors": [f"{agent.id}: {e}"],
         }
 
