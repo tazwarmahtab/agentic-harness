@@ -437,6 +437,42 @@ def cmd_systems(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_index(args: argparse.Namespace) -> int:
+    """Index venture documents into pgvector via CocoIndex."""
+    import os
+
+    venture = args.venture.lower()
+    if venture != "netso":
+        logger.error("Only --venture netso is currently supported.")
+        return 1
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url:
+        print(
+            "ERROR: DATABASE_URL is not set.\n"
+            "Set it to a pgvector-enabled Postgres connection string, e.g.:\n"
+            "  export DATABASE_URL=postgresql://postgres:aos@localhost:5432/aos\n"
+            "Quick-start with Docker:\n"
+            "  docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=aos pgvector/pgvector:pg16"
+        )
+        return 1
+
+    try:
+        from aos.ventures.netso.indexer import run_index
+
+        mode = "full reindex" if args.force else "incremental"
+        print(f"Indexing Netso venture documents ({mode})...")
+        run_index(force=args.force)
+        print("Index complete.")
+        return 0
+    except FileNotFoundError as exc:
+        logger.error("Venture root not found: %s", exc)
+        return 1
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Indexing failed: %s", exc)
+        return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="aos",
@@ -475,6 +511,17 @@ def main() -> int:
 
     # ventures command
     subparsers.add_parser("ventures", help="List all discovered ventures")
+
+    # index command — CocoIndex RAG pipeline
+    index_parser = subparsers.add_parser(
+        "index", help="Index venture documents into pgvector for RAG"
+    )
+    index_parser.add_argument(
+        "--venture", "-v", default="netso", help="Venture to index (default: netso)"
+    )
+    index_parser.add_argument(
+        "--force", action="store_true", help="Drop and rebuild index from scratch"
+    )
 
     # orchestrate command
     orch_parser = subparsers.add_parser(
@@ -581,6 +628,8 @@ def main() -> int:
         return cmd_orchestrate(args)
     if args.command == "ventures":
         return cmd_ventures(args)
+    if args.command == "index":
+        return cmd_index(args)
     if args.command == "approvals":
         return cmd_approvals(args)
     if args.command == "audit":

@@ -20,11 +20,23 @@ def build_prompt(
     agent: Agent,
     netso_financial: dict[str, Any] | None = None,
     memory_context: str | None = None,
+    rag_context: str | None = None,
 ) -> str:
     """Build the complete system prompt for an agent from its manifest.
 
     This is the SINGLE source of prompt construction. Every agent in
     AOS goes through this function. No agent builds its own prompt.
+
+    Args:
+        agent:           Agent manifest.
+        netso_financial: Financial ground truth constants (CFO agents only).
+        memory_context:  Runtime memory context string (episodic/semantic).
+        rag_context:     Retrieved venture document chunks (CocoIndex RAG).
+                         Injected after financial constants and before memory
+                         context, following the Phase 11 prompt caching layout:
+                         system → tools → few-shots → retrieved-docs → history.
+                         Callers must pre-assemble and token-cap this string
+                         (recommended ≤1500 tokens) before passing it in.
     """
     parts: list[str] = []
 
@@ -120,6 +132,14 @@ def build_prompt(
             parts.append(f"  {category}: {', '.join(metrics)}")
         parts.append("")
 
+    # --- RAG Context (venture docs, retrieved by CocoIndex) ---
+    # Injected here per Phase 11 prompt caching layout:
+    # system → tools → few-shots → retrieved-docs → history → user message
+    # Stable content (identity, capabilities, constraints) stays above for
+    # cache-friendly prefix detection. Dynamic RAG content comes after.
+    if rag_context:
+        parts.append(_build_rag_block(rag_context))
+
     # --- Memory Context (runtime-injected) ---
     if memory_context:
         parts.append("RELEVANT MEMORY CONTEXT:")
@@ -130,6 +150,27 @@ def build_prompt(
     parts.append(_get_output_format(agent.id))
 
     return "\n".join(parts)
+
+
+def _build_rag_block(rag_context: str) -> str:
+    """Build the RAG section injected from CocoIndex venture doc retrieval.
+
+    Token budget: callers must cap rag_context at ~1500 tokens before passing
+    it here. This function does not truncate — it trusts the caller.
+    """
+    lines: list[str] = [
+        "=" * 60,
+        "RELEVANT VENTURE DOCUMENTS (retrieved from Netso knowledge base)",
+        "=" * 60,
+        "",
+        "Use the following documents to ground your response in verified",
+        "venture data. Prefer these over general knowledge for Netso-specific",
+        "facts (rates, contracts, operational details).",
+        "",
+        rag_context,
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def _build_financial_block(
