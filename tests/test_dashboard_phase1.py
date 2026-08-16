@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from starlette.testclient import TestClient
 
@@ -12,6 +13,21 @@ os.environ["AOS_API_TOKEN"] = ""
 os.environ["TAZOS_API_TOKEN"] = ""
 
 from aos.api import app  # noqa: E402
+
+
+def _seed_approval_queue() -> str:
+    """Seed the approval queue with a test item. Returns the item ID."""
+    from aos.approval_queue import ApprovalQueue
+
+    queue_path = Path(__file__).resolve().parent.parent / "aos" / "approvals.jsonl"
+    queue = ApprovalQueue(persistence_path=queue_path)
+    item = queue.add(
+        agent_id="AGT-EXEC-CEO",
+        action="test approval for dashboard tests",
+        rationale="Seeded for testing",
+        risk_assessment="low",
+    )
+    return item.id
 
 
 class TestPipelineEndpoints:
@@ -53,20 +69,22 @@ class TestApprovalEndpoints:
 
     def test_approve_returns_success(self) -> None:
         """POST /api/approvals/{id}/approve should approve request."""
+        item_id = _seed_approval_queue()
         client = TestClient(app)
-        response = client.post("/api/approvals/test-123/approve")
+        response = client.post(f"/api/approvals/{item_id}/approve")
         assert response.status_code == 200
         body = response.json()
-        assert body["id"] == "test-123"
+        assert body["id"] == item_id
         assert body["status"] == "approved"
 
     def test_reject_returns_success(self) -> None:
         """POST /api/approvals/{id}/reject should reject request."""
+        item_id = _seed_approval_queue()
         client = TestClient(app)
-        response = client.post("/api/approvals/test-123/reject")
+        response = client.post(f"/api/approvals/{item_id}/reject")
         assert response.status_code == 200
         body = response.json()
-        assert body["id"] == "test-123"
+        assert body["id"] == item_id
         assert body["status"] == "rejected"
 
 

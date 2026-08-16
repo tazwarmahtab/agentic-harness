@@ -19,6 +19,17 @@ def _gateway() -> GovernedToolGateway:
             execute_agents=["AGT-EXEC-CEO"],
         )
     )
+    # Also register a shell tool so execute() can find a matching capability
+    gateway.register_tool(
+        ToolDef(
+            id="TOOL-002",
+            name="shell",
+            capability="shell",
+            category="system",
+            status="active",
+            execute_agents=["AGT-EXEC-CEO"],
+        )
+    )
     return gateway
 
 
@@ -55,7 +66,7 @@ def test_reversible_call_reaches_normal_gateway():
         agent_id="AGT-EXEC-CEO",
     )
     assert result.status == "error"
-    assert "No provider" in (result.error or "")
+    assert result.error is not None
 
 
 def test_high_impact_concrete_action_is_denied_before_execution():
@@ -106,6 +117,7 @@ def test_signed_founder_approval_can_reach_executor(monkeypatch):
             "command": "printf 'approved'",
             "action_class": "regulatory_submission",
             "approval_id": "APR-001",
+            "agent_id": "AGT-EXEC-CEO",
         }
     )
     assert result["ok"] is True

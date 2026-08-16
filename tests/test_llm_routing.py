@@ -128,21 +128,21 @@ def test_load_manifest_missing_file():
 
 def test_resolve_model_with_manifest():
     """Test resolve_model uses venture manifest."""
-    from aos.llm import resolve_model
+    from aos.llm import resolve_model, MODEL_TABLE
 
     # Criticality "high" for Netso should use "default" tier
     model = resolve_model("high", "netso")
-    assert model == "meta/llama-3.1-8b-instruct"
+    assert model == MODEL_TABLE["default"]
 
     # Criticality "critical" for Netso uses "reasoning" tier
     model = resolve_model("critical", "netso")
-    assert model == "meta/llama-3.1-8b-instruct"
+    assert model == MODEL_TABLE["reasoning"]
 
 
 def test_resolve_model_fallback_without_manifest():
     """Test resolve_model falls back to global mapping when no manifest."""
-    from aos.llm import resolve_model
+    from aos.llm import resolve_model, MODEL_TABLE
 
     # Should use global CRITICALITY_TO_MODEL when no manifest
     model = resolve_model("high", "nonexistent_venture")
-    assert model == "meta/llama-3.1-8b-instruct"
+    assert model == MODEL_TABLE["default"]

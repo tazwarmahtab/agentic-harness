@@ -54,6 +54,8 @@ def test_declared_tool_calls_use_governed_gateway():
             self.status = status
             self.output = {"status": status}
             self.error = "blocked" if status == "denied" else None
+            self.approval_required = status == "denied"
+            self.approval_id = None
 
     class FakeGateway:
         def __init__(self):
