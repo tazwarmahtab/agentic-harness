@@ -1,0 +1,20 @@
+[Unit]
+Description=AOS Engine — Agentic Operating System
+After=network.target
+
+[Service]
+Type=simple
+User=tazwarmahtab
+WorkingDirectory=/Users/tazwarmahtab/orca/agentic-harness
+EnvironmentFile=/Users/tazwarmahtab/orca/agentic-harness/.env
+ExecStart=/Users/tazwarmahtab/orca/agentic-harness/.venv/bin/python -m uvicorn aos.api:app --host 0.0.0.0 --port 7001
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+MemoryMax=2G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

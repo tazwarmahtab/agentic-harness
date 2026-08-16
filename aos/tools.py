@@ -19,10 +19,15 @@ import logging
 import re
 import shlex
 import subprocess
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, ClassVar, Protocol
+
+from aos.enforcement import EnforcementEngine, EnforcementSeverity
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +126,12 @@ class FileProvider:
         inputs: dict[str, Any],
         agent_id: str,
     ) -> dict[str, Any]:
-        if capability in ("read_dashboard", "read_file", "read_any_data"):
+        if capability in (
+            "read_dashboard",
+            "read_file",
+            "read_any_data",
+            "rate_limited_read",
+        ):
             return self._read_file(inputs, agent_id)
         if capability in ("write_dashboard", "write_file"):
             return self._write_file(inputs)
@@ -421,7 +431,9 @@ class ToolGateway:
         self.tools: dict[str, ToolDef] = {}
         self.providers: dict[str, ToolProvider] = providers or {}
         self._rate_counters: dict[str, list[datetime]] = {}
+        self._rate_lock = threading.Lock()
         self._approval_provider: ApprovalProvider | None = None
+        self._enforcement: EnforcementEngine = EnforcementEngine()
 
         # Default providers
         if "file" not in self.providers:
@@ -484,23 +496,24 @@ class ToolGateway:
         return False
 
     def check_rate_limit(self, capability: str, limit: int | None = None) -> bool:
-        """Check if tool is within rate limits."""
+        """Check if tool is within rate limits. Thread-safe."""
         tool = self.tools.get(capability)
         if not tool or not tool.rate_limit:
             return True
 
-        now = datetime.now()
-        hour_ago = now.timestamp() - 3600
-        key = capability
-        if key not in self._rate_counters:
-            self._rate_counters[key] = []
+        with self._rate_lock:
+            now = datetime.now()
+            hour_ago = now.timestamp() - 3600
+            key = capability
+            if key not in self._rate_counters:
+                self._rate_counters[key] = []
 
-        # Prune old entries
-        self._rate_counters[key] = [
-            t for t in self._rate_counters[key] if t.timestamp() > hour_ago
-        ]
+            # Prune old entries
+            self._rate_counters[key] = [
+                t for t in self._rate_counters[key] if t.timestamp() > hour_ago
+            ]
 
-        return len(self._rate_counters[key]) < tool.rate_limit
+            return len(self._rate_counters[key]) < tool.rate_limit
 
     def call(
         self,
@@ -563,6 +576,24 @@ class ToolGateway:
                     approval_id=approval_result["approval_id"],
                 )
 
+        # Enforcement rule check
+        enforcement_results = self._enforcement.evaluate(capability, inputs)
+        if self._enforcement.has_blocks(enforcement_results):
+            blocked = [r for r in enforcement_results if not r.passed and r.severity == EnforcementSeverity.BLOCK]
+            messages = "; ".join(r.message for r in blocked)
+            logger.warning("Enforcement BLOCK: %s — %s", capability, messages)
+            return ToolResult(
+                tool_id=tool.id,
+                capability=capability,
+                agent_id=agent_id,
+                status="denied",
+                error=f"Enforcement rules blocked: {messages}",
+            )
+        # Log warnings but continue
+        warnings = self._enforcement.get_warnings(enforcement_results)
+        for w in warnings:
+            logger.info("Enforcement WARN [%s]: %s — %s", w.rule_id, capability, w.message)
+
         # Resolve provider
         provider = self._resolve_provider(capability)
         if not provider:
@@ -577,11 +608,12 @@ class ToolGateway:
         # Execute
         try:
             output = provider.execute(capability, inputs, agent_id)
-            # Record rate limit usage
+            # Record rate limit usage (thread-safe)
             if tool.rate_limit:
-                if capability not in self._rate_counters:
-                    self._rate_counters[capability] = []
-                self._rate_counters[capability].append(datetime.now())
+                with self._rate_lock:
+                    if capability not in self._rate_counters:
+                        self._rate_counters[capability] = []
+                    self._rate_counters[capability].append(datetime.now())
 
             return ToolResult(
                 tool_id=tool.id,
@@ -622,12 +654,21 @@ class ToolGateway:
         (re.compile(r"exec\s*\("), "exec() execution"),
     ]
 
+    # Action types that require execute permission (shell, subprocess)
+    _EXECUTE_ACTION_TYPES: ClassVar[set[str]] = {"shell"}
+    # Action types that require write permission (file mutations)
+    _WRITE_ACTION_TYPES: ClassVar[set[str]] = {"file_write"}
+
     def execute(self, action: dict[str, Any]) -> dict[str, Any]:
-        """Execute a concrete action dict and return real results.
+        """Execute a concrete action dict with permission and enforcement checks.
 
         Supported action types:
           - ``shell``: run a subprocess command (with blocklist guard)
           - ``file_write``: write content to a file path
+
+        Approval gating for dangerous actions is enforced at the graph level
+        (``should_execute`` + ``approval_gates_node``) — not here, to avoid
+        double-gating safe commands like ``ls`` or ``git status``.
 
         Parameters
         ----------
@@ -640,13 +681,80 @@ class ToolGateway:
         dict with at least ``{"ok": bool}`` plus type-specific fields.
         """
         action_type = action.get("action_type", "")
+        agent_id = action.get("agent_id", "")
+
+        if not agent_id:
+            return {"ok": False, "error": "agent_id is required in action dict"}
+
         handler = getattr(self, f"_exec_{action_type}", None)
         if handler is None:
             return {"ok": False, "error": f"Unknown action_type: {action_type}"}
+
+        # --- Permission check (mirrors ToolGateway.call) ---
+        if action_type in self._EXECUTE_ACTION_TYPES and not self._check_action_permission(action_type, agent_id, "execute"):
+            return {
+                "ok": False,
+                "error": f"Agent {agent_id} not authorized for action_type={action_type} (requires execute permission)",
+            }
+        elif action_type in self._WRITE_ACTION_TYPES and not self._check_action_permission(action_type, agent_id, "write"):
+            return {
+                "ok": False,
+                "error": f"Agent {agent_id} not authorized for action_type={action_type} (requires write permission)",
+            }
+
+        # --- Rate limit check (mirrors ToolGateway.call) ---
+        if not self.check_rate_limit(action_type):
+            return {"ok": False, "error": f"Rate limit exceeded for action_type={action_type}"}
+
+        # --- Enforcement rules (path traversal, shell metacharacters, etc.) ---
+        enforcement_results = self._enforcement.evaluate(action_type, action)
+        if self._enforcement.has_blocks(enforcement_results):
+            blocked = [
+                r for r in enforcement_results
+                if not r.passed and r.severity == EnforcementSeverity.BLOCK
+            ]
+            messages = "; ".join(r.message for r in blocked)
+            logger.warning("Enforcement BLOCK [%s]: %s", action_type, messages)
+            return {"ok": False, "error": f"Enforcement rules blocked: {messages}"}
+
+        # --- Dispatch to handler ---
         try:
-            return handler(action)
+            result = handler(action)
+            # Record rate limit usage on success
+            with self._rate_lock:
+                if action_type not in self._rate_counters:
+                    self._rate_counters[action_type] = []
+                self._rate_counters[action_type].append(datetime.now())
+            return result
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
+
+    def _check_action_permission(
+        self, action_type: str, agent_id: str, mode: str
+    ) -> bool:
+        """Check if an agent has permission for an action_type.
+
+        Unlike ``check_permission`` which looks up registered ToolDef entries,
+        this method enforces a baseline policy for raw action execution:
+        shell requires execute permission, file_write requires write permission.
+        """
+        # If tools are registered, check against them
+        for tool in self.tools.values():
+            if tool.capability == action_type:
+                return self.check_permission(action_type, agent_id, mode)
+
+        # Baseline policy: allow known agents, block unknown
+        # This prevents unregistered handoffs from executing without identity
+        _KNOWN_EXECUTORS = {"system", "AGT-EXEC-COO", "AGT-EXEC-COS", "AGT-DISPATCHER"}
+        if agent_id in _KNOWN_EXECUTORS:
+            return True
+
+        self._logger.warning(
+            "Permission denied: unknown agent %s for action_type=%s",
+            agent_id,
+            action_type,
+        )
+        return False
 
     def _exec_shell(self, action: dict[str, Any]) -> dict[str, Any]:
         """Run a shell command via subprocess with regex-based safety blocklist."""
@@ -701,7 +809,9 @@ class ToolGateway:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
-        return {"ok": True, "path": str(path), "bytes_written": len(content.encode())}
+        # Return relative path to avoid leaking absolute filesystem layout
+        display_path = path_str if Path(path_str).is_absolute() else path_str
+        return {"ok": True, "path": display_path, "bytes_written": len(content.encode())}
 
     def _resolve_provider(self, capability: str) -> ToolProvider | None:
         """Resolve a capability to its provider."""

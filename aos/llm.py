@@ -1,20 +1,22 @@
 """LLM client abstraction with model routing and provider fallback.
 
 Routes tasks to the right model based on agent criticality.
-Supports three backends (tried in order):
-1. 9router (localhost:20128) — model routing via cu/claude-4.5-* IDs
-2. Direct Anthropic API — claude-sonnet-4-20250514 / claude-haiku-4-5
-3. DryRunLLMClient — mock for testing (no API calls)
+Supports multiple backends (tried in order):
+1. NVIDIA NIM direct API — nvidia/* models (if NVIDIA_NIM_API_KEY set)
+2. Bytez direct API — meta-llama/* models (if BYTEZ_API_KEY set)
+3. 9router (localhost:20128) — model routing via cu/claude-4.5-* IDs
+4. Direct Anthropic API — claude-sonnet-4-20250514 / claude-haiku-4-5
+5. DryRunLLMClient — mock for testing (no API calls)
 
 Model routing table mirrors CLAUDE.md / 9router config.
 
 Free-tier subagent dispatch:
 - CRITICALITY_TO_MODEL maps low/medium criticality agents to the "fast"
-tier by default.
+  tier by default.
 - When AOS_FREE_TIER is set in the environment, those agents are
-redirected to the "free" tier which rotates across a pool of verified
-OpenRouter free models (via 9router) — this avoids rate-limiting on
-paid Claude endpoints during parallel fan-out.
+  redirected to the "free" tier which rotates across a pool of verified
+  free models (via 9router) — this avoids rate-limiting on
+  paid Claude endpoints during parallel fan-out.
 """
 
 from __future__ import annotations
@@ -22,8 +24,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
-import time
+import time as _time
 import urllib.request
 import urllib.error
 from dataclasses import dataclass, field
@@ -59,22 +62,42 @@ class VentureRoutingManifest(BaseModel):
 # ---------------------------------------------------------------------------
 # Model routing table — mirrors CLAUDE.md / 9router config
 # ---------------------------------------------------------------------------
+
+# NVIDIA NIM model table (used when NvidiaLLMClient is active)
+NVIDIA_MODEL_TABLE: dict[str, str] = {
+    "default": "nvidia/nemotron-3-ultra-550b-a55b",        # best general-purpose
+    "reasoning": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",  # reasoning model
+    "fast": "nvidia/nemotron-3-ultra-550b-a55b",           # fast = best
+    "subagent": "nvidia/nemotron-3-ultra-550b-a55b",       # subagents = best
+    "free": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",  # free pool entry
+}
+
+# Bytez model table (used when BytezLLMClient is active)
+BYTEZ_MODEL_TABLE: dict[str, str] = {
+    "default": "meta-llama/Meta-Llama-3.1-405B-Instruct",
+    "reasoning": "meta-llama/Meta-Llama-3.1-405B-Instruct",
+    "fast": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    "subagent": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    "free": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+}
+
+# Primary model table — NVIDIA NIM models (best free tier)
 MODEL_TABLE: dict[str, str] = {
-    "default": "meta/llama-3.1-8b-instruct",  # NVIDIA NIM
-    "reasoning": "meta/llama-3.1-8b-instruct",  # NVIDIA NIM (use fast model for now)
-    "fast": "meta/llama-3.1-8b-instruct",  # fast tier via NVIDIA NIM
-    "subagent": "meta/llama-3.1-8b-instruct",  # subagent tier via NVIDIA NIM
-    "free": "meta/llama-3.1-8b-instruct",  # free pool entry via NVIDIA NIM
+    "default": "nvidia/nemotron-3-ultra-550b-a55b",
+    "reasoning": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "fast": "nvidia/nemotron-3-ultra-550b-a55b",
+    "subagent": "nvidia/nemotron-3-ultra-550b-a55b",
+    "free": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
 }
 
 # Pool of verified free-tier models — round-robin indexed.
+# Ordered by capability: best -> lightest
 FREE_MODEL_POOL: list[str] = [
-    "openrouter/google/gemma-4-31b-it:free",
-    "openrouter/nvidia/stepfun-ai/step-3.7-flash",  # verified working via 9router
-    "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
-    "openrouter/meta/llama-4-scout-17b-16e-instruct",
-    "openrouter/google/gemini-2.5-flash",
+    "nvidia/nemotron-3-ultra-550b-a55b",
+    "nvidia/nemotron-3-super-120b-a12b",
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "nvidia/mistralai/mistral-medium-3.5-128b",
+    "nvidia/google/gemma-4-31b-it",
 ]
 
 # Direct Anthropic model IDs (fallback when 9router is down)
@@ -143,12 +166,99 @@ def load_manifest(venture: str) -> VentureRoutingManifest:
     except (ValidationError, ValueError) as e:
         raise ValueError(f"Invalid manifest for {venture}: {str(e)}")
 
+# ---------------------------------------------------------------------------
+# Free-tier model health tracking
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class FreeModelHealth:
+    """Health metrics for a free-tier model."""
+
+    model: str
+    total_requests: int = 0
+    successful_requests: int = 0
+    failed_requests: int = 0
+    total_latency_ms: int = 0
+    last_used: float = 0.0
+    consecutive_failures: int = 0
+
+    @property
+    def error_rate(self) -> float:
+        if self.total_requests == 0:
+            return 0.0
+        return self.failed_requests / self.total_requests
+
+    @property
+    def avg_latency_ms(self) -> float:
+        if self.successful_requests == 0:
+            return 0.0
+        return self.total_latency_ms / self.successful_requests
+
+    def record_success(self, latency_ms: int) -> None:
+        self.total_requests += 1
+        self.successful_requests += 1
+        self.total_latency_ms += latency_ms
+        self.consecutive_failures = 0
+        self.last_used = _time.time()
+
+    def record_failure(self) -> None:
+        self.total_requests += 1
+        self.failed_requests += 1
+        self.consecutive_failures += 1
+        self.last_used = _time.time()
+
+    def is_healthy(
+        self, max_error_rate: float = 0.5, max_consecutive_failures: int = 5
+    ) -> bool:
+        """Check if model is healthy enough to use."""
+        if self.total_requests < 3:
+            return True  # Not enough data to judge
+        if self.error_rate > max_error_rate:
+            return False
+        if self.consecutive_failures >= max_consecutive_failures:
+            return False
+        return True
+
+
+# Global health registry
+_free_model_health: dict[str, FreeModelHealth] = {
+    model: FreeModelHealth(model=model) for model in FREE_MODEL_POOL
+}
+
+
+def record_free_model_result(model: str, success: bool, latency_ms: int = 0) -> None:
+    """Record the result of a free-tier model call."""
+    if model in _free_model_health:
+        if success:
+            _free_model_health[model].record_success(latency_ms)
+        else:
+            _free_model_health[model].record_failure()
+
+
+def get_healthy_free_models(
+    max_error_rate: float = 0.5,
+    max_consecutive_failures: int = 5,
+) -> list[str]:
+    """Get list of healthy free-tier models, preserving round-robin order."""
+    return [
+        model
+        for model in FREE_MODEL_POOL
+        if _free_model_health[model].is_healthy(
+            max_error_rate, max_consecutive_failures
+        )
+    ]
+
 
 def _next_free_model() -> str:
-    """Return the next model from FREE_MODEL_POOL, cycling round-robin."""
+    """Return the next healthy model from FREE_MODEL_POOL, cycling round-robin."""
     global _free_model_idx
+    healthy = get_healthy_free_models()
+    if not healthy:
+        # Fallback to all models if none are healthy (last resort)
+        healthy = FREE_MODEL_POOL
     with _free_model_lock:
-        model = FREE_MODEL_POOL[_free_model_idx % len(FREE_MODEL_POOL)]
+        model = healthy[_free_model_idx % len(healthy)]
         _free_model_idx += 1
         return model
 
@@ -258,8 +368,6 @@ def _parse_first_json(raw: str) -> dict:
         pass
 
     # Try extracting from ```json ... ``` blocks
-    import re
-
     code_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)```", raw, re.DOTALL)
     for block in code_blocks:
         try:
@@ -458,6 +566,7 @@ class RouterLLMClient:
             current_data = json.dumps(current_payload).encode("utf-8")
 
             for attempt in range(3):
+                start_time = _time.perf_counter()
                 try:
                     retry_req = urllib.request.Request(
                         url, data=current_data, headers=headers, method="POST"
@@ -478,8 +587,11 @@ class RouterLLMClient:
                         if not content and msg.get("reasoning"):
                             content = msg["reasoning"]
 
-                        # Record success and return
-                        circuit_breaker.record_success()
+                        latency_ms = int((_time.perf_counter() - start_time) * 1000)
+                        # Record health for free-tier models
+                        if current_model in FREE_MODEL_POOL:
+                            record_free_model_result(current_model, True, latency_ms)
+
                         return LLMResponse(
                             content=content,
                             model=body.get("model", current_model),
@@ -487,6 +599,7 @@ class RouterLLMClient:
                             provider="9router",
                         )
                 except (urllib.error.URLError, ConnectionError) as e:
+                    latency_ms = int((_time.perf_counter() - start_time) * 1000)
                     last_error = e
                     circuit_breaker.record_failure()
                     if attempt < 2:
@@ -494,10 +607,16 @@ class RouterLLMClient:
                         continue
                     # 404 means model not found — try next model
                     if hasattr(e, "code") and e.code == 404:
+                        # Record failure for free-tier models
+                        if current_model in FREE_MODEL_POOL:
+                            record_free_model_result(current_model, False, latency_ms)
                         break
                     # For other errors, continue to next model
                     break
 
+        # Record final failure if all attempts failed and it's a free-tier model
+        if model in FREE_MODEL_POOL:
+            record_free_model_result(model, False, 0)
         raise last_error or ConnectionError("All model attempts failed")
 
 
@@ -563,14 +682,10 @@ class AnthropicLLMClient:
         # Map 9router model IDs to Anthropic model IDs
         anthropic_model = model
         if model.startswith("cu/"):
-            tier = "default"
-            for t, m in MODEL_TABLE.items():
-                if m == model:
-                    tier = t
-                    break
-            anthropic_model = ANTHROPIC_MODEL_TABLE.get(
-                tier, "claude-sonnet-4-20250514"
-            )
+            anthropic_model = model[3:]  # strip "cu/" prefix
+        elif model.startswith("nvidia/"):
+            # NVIDIA models not supported on direct Anthropic API
+            raise ValueError(f"Model {model} not supported on direct Anthropic API")
 
         venture = self._get_venture_from_context(messages)
         circuit_breaker = self._get_circuit_breaker(model, venture)
@@ -587,34 +702,36 @@ class AnthropicLLMClient:
             "messages": messages,
         }
 
-        headers = {
-            "Content-Type": "application/json",
-            "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01",
-        }
-
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(
-            self.API_URL, data=data, headers=headers, method="POST"
+            self.API_URL,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            method="POST",
         )
 
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                body = json.loads(resp.read().decode("utf-8"))
-                content_parts = body.get("content", [])
-                text = "".join(
-                    p.get("text", "") for p in content_parts if p.get("type") == "text"
-                )
-                circuit_breaker.record_success()
-                return LLMResponse(
-                    content=text,
-                    model=body.get("model", anthropic_model),
-                    usage=body.get("usage", {}),
-                    provider="anthropic",
-                )
-        except (urllib.error.URLError, ConnectionError) as e:
-            circuit_breaker.record_failure()
-            raise
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read().decode("utf-8")
+            body = json.loads(raw)
+
+        if "error" in body:
+            raise ConnectionError(f"Anthropic error: {body['error']}")
+
+        content = ""
+        for block in body.get("content", []):
+            if block.get("type") == "text":
+                content += block.get("text", "")
+
+        return LLMResponse(
+            content=content,
+            model=body.get("model", anthropic_model),
+            usage=body.get("usage", {}),
+            provider="anthropic",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -706,29 +823,87 @@ class NvidiaLLMClient:
             self.API_URL, data=data, headers=headers, method="POST"
         )
 
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                raw = resp.read().decode("utf-8")
-                body = json.loads(raw)
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read().decode("utf-8")
+            body = json.loads(raw)
 
-                if "error" in body:
-                    circuit_breaker.record_failure()
-                    raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
+        if "error" in body:
+            raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
 
-                choice = body["choices"][0]
-                msg = choice.get("message", {})
-                # Handle models that return reasoning_content instead of content
-                content = msg.get("content") or msg.get("reasoning_content") or ""
-                circuit_breaker.record_success()
-                return LLMResponse(
-                    content=content,
-                    model=body.get("model", model),
-                    usage=body.get("usage", {}),
-                    provider="nvidia-nim",
-                )
-        except (urllib.error.URLError, ConnectionError) as e:
-            circuit_breaker.record_failure()
-            raise
+        choice = body["choices"][0]
+        msg = choice.get("message", {})
+        content = msg.get("content", "")
+        return LLMResponse(
+            content=content,
+            model=body.get("model", model),
+            usage=body.get("usage", {}),
+            provider="nvidia-nim",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Bytez client (direct to Bytez API)
+# ---------------------------------------------------------------------------
+
+
+class BytezLLMClient:
+    """Direct Bytez API client (OpenAI-compatible endpoint).
+
+    Used for Bytez-hosted models (meta-llama/* and other Bytez-supported IDs).
+    Reads key from BYTEZ_API_KEY env var.
+    """
+
+    API_URL = "https://api.bytez.io/v1/chat/completions"
+
+    def __init__(self, api_key: str | None = None, timeout: int = 300):
+        self.api_key = api_key or os.getenv("BYTEZ_API_KEY", "")
+        if not self.api_key:
+            raise ValueError("No Bytez API key found. Set BYTEZ_API_KEY.")
+        self.timeout = timeout
+
+    def complete(
+        self,
+        *,
+        model: str,
+        system: str,
+        messages: list[dict[str, str]],
+        max_tokens: int = 4096,
+        temperature: float = 0.3,
+    ) -> LLMResponse:
+        payload = {
+            "model": model,
+            "messages": [{"role": "system", "content": system}] + messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": False,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            self.API_URL, data=data, headers=headers, method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read().decode("utf-8")
+            body = json.loads(raw)
+
+        if "error" in body:
+            raise ConnectionError(f"Bytez error: {body['error']}")
+
+        choice = body["choices"][0]
+        msg = choice.get("message", {})
+        content = msg.get("content", "")
+        return LLMResponse(
+            content=content,
+            model=body.get("model", model),
+            usage=body.get("usage", {}),
+            provider="bytez",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -771,10 +946,12 @@ def create_llm_client(
     """Create the best available LLM client.
 
     Priority:
-    1. prefer="router" → RouterLLMClient
-    2. prefer="anthropic" → AnthropicLLMClient
-    3. Auto-detect: try 9router (with fallback), then Anthropic, then dry run
-    4. dry_run=True → DryRunLLMClient
+    1. dry_run=True → DryRunLLMClient
+    2. prefer="router" → RouterLLMClient
+    3. prefer="anthropic" → AnthropicLLMClient
+    4. prefer="nvidia" → NvidiaLLMClient
+    5. prefer="bytez" → BytezLLMClient
+    6. Auto-detect: try NVIDIA NIM → Bytez → 9router → Anthropic → dry run
     """
     if dry_run:
         return DryRunLLMClient()
@@ -783,25 +960,41 @@ def create_llm_client(
         return RouterLLMClient()
     if prefer == "anthropic":
         return AnthropicLLMClient()
+    if prefer == "bytez":
+        return BytezLLMClient()
+    if prefer == "nvidia":
+        return NvidiaLLMClient()
 
-    # Auto-detect: check 9router first (with usability guard), then Anthropic, then dry run
+    # Auto-detect: check NVIDIA NIM first (if key available), then Bytez, then 9router, then Anthropic, then dry run
     router_base = os.getenv("AOS_LLM_BASE_URL", "")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
     has_auth_token = bool(os.getenv("ANTHROPIC_AUTH_TOKEN", ""))
+    has_nvidia_key = bool(os.getenv("NVIDIA_NIM_API_KEY", ""))
+    has_bytez_key = bool(os.getenv("BYTEZ_API_KEY", ""))
+
+    # NVIDIA NIM direct API — best rate limits for NVIDIA models
+    if has_nvidia_key:
+        try:
+            if verbose:
+                logger.info("Using NVIDIA NIM direct API")
+            return NvidiaLLMClient()
+        except ValueError:
+            pass  # fall through
+
+    # Bytez direct API
+    if has_bytez_key:
+        try:
+            if verbose:
+                logger.info("Using Bytez direct API")
+            return BytezLLMClient()
+        except ValueError:
+            pass  # fall through
 
     # 9router is usable only if it has configured backend providers
     if has_auth_token and _is_9router_usable(router_base):
         if verbose:
             logger.info(f"Using local router backend: {router_base}")
         return RouterLLMClient()
-
-    # No working 9router. NVIDIA-NIM models (nvidia/*, z-ai/*) can be
-    # reached directly if NVIDIA_NIM_API_KEY is set.
-    if os.getenv("NVIDIA_NIM_API_KEY"):
-        try:
-            return NvidiaLLMClient()
-        except ValueError:
-            pass  # fall through to Anthropic
 
     # Fall back to direct Anthropic API
     if anthropic_key:
@@ -818,6 +1011,50 @@ def create_llm_client(
     if verbose:
         logger.warning("No LLM backend available — falling back to dry run")
     return DryRunLLMClient()
+
+
+def validate_free_tier_pool() -> dict[str, bool]:
+    """Validate free-tier model pool at startup by checking 9router /v1/models.
+
+    Returns a dict mapping model -> healthy status.
+    """
+    import urllib.request
+    import json
+
+    base = os.getenv("AOS_LLM_BASE_URL", "")
+    if not base:
+        return {}
+
+    if base.endswith("/v1"):
+        base = base[:-3]
+
+    try:
+        url = f"{base}/v1/models"
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+
+        available = {m["id"] for m in body.get("data", [])}
+        result = {}
+        for model in FREE_MODEL_POOL:
+            result[model] = model in available
+        return result
+    except Exception:
+        # On any error, return empty (caller handles gracefully)
+        return {}
+
+
+def ensure_healthy_free_tier_pool(min_healthy: int = 2) -> bool:
+    """Ensure free-tier pool has at least min_healthy models available.
+
+    Returns True if pool is healthy, False otherwise.
+    """
+    health = validate_free_tier_pool()
+    if not health:
+        return True  # Can't validate, assume OK (e.g., no router URL configured)
+
+    healthy_count = sum(1 for ok in health.values() if ok)
+    return healthy_count >= min_healthy
 
 
 # ---------------------------------------------------------------------------

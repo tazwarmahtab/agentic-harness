@@ -84,6 +84,9 @@ class Venture(BaseModel):
     artifacts: dict[str, ArtifactEntry]
     financial_constants: Optional[FinancialConstants] = None
     approval_thresholds: Optional[dict[str, float]] = None
+    # Base path where artifact paths are resolved from
+    # Can be absolute or relative to the venture manifest
+    root_path: Optional[str] = None
 
     @field_validator("id")
     @classmethod

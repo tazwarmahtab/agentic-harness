@@ -11,7 +11,6 @@ Usage:
  python -m aos audit PATH [--type TYPE]
  python -m aos systems [list|show ID]
 """
-
 from __future__ import annotations
 
 import argparse
@@ -30,8 +29,11 @@ from aos.registry import load_registry
 from aos.validator import validate_all
 from aos.discover import discover_ventures, find_venture
 
-logger = logging.getLogger(__name__)
+# Load .env from project root
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent.parent / ".env")
 
+logger = logging.getLogger(__name__)
 
 def find_project_root() -> Path:
     """Find the aos project root (where aos/ package lives)."""
@@ -191,13 +193,16 @@ def cmd_run(args: argparse.Namespace) -> int:
     # Resolve venture artifacts
     venture_artifacts: dict[str, Path] = {}
     if vp:
-        venture_root = vp.parent.parent if vp else None
+        # Use venture.root_path if specified, otherwise fall back to venture config dir
+        if registry.venture and registry.venture.root_path:
+            venture_root = Path(registry.venture.root_path).expanduser()
+        else:
+            venture_root = vp.parent.parent if vp else None
         if venture_root and registry.venture:
             for key, art in registry.venture.artifacts.items():
                 art_path = venture_root / art.path
                 if art_path.exists():
                     venture_artifacts[key] = art_path
-
     state = run_cycle_graph(
         bundle=bundle,
         venture_id=venture_id,
@@ -432,6 +437,42 @@ def cmd_systems(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_index(args: argparse.Namespace) -> int:
+    """Index venture documents into pgvector via CocoIndex."""
+    import os
+
+    venture = args.venture.lower()
+    if venture != "netso":
+        logger.error("Only --venture netso is currently supported.")
+        return 1
+
+    database_url = os.environ.get("DATABASE_URL", "")
+    if not database_url:
+        print(
+            "ERROR: DATABASE_URL is not set.\n"
+            "Set it to a pgvector-enabled Postgres connection string, e.g.:\n"
+            "  export DATABASE_URL=postgresql://postgres:aos@localhost:5432/aos\n"
+            "Quick-start with Docker:\n"
+            "  docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=aos pgvector/pgvector:pg16"
+        )
+        return 1
+
+    try:
+        from aos.ventures.netso.indexer import run_index
+
+        mode = "full reindex" if args.force else "incremental"
+        print(f"Indexing Netso venture documents ({mode})...")
+        run_index(force=args.force)
+        print("Index complete.")
+        return 0
+    except FileNotFoundError as exc:
+        logger.error("Venture root not found: %s", exc)
+        return 1
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Indexing failed: %s", exc)
+        return 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="aos",
@@ -470,6 +511,17 @@ def main() -> int:
 
     # ventures command
     subparsers.add_parser("ventures", help="List all discovered ventures")
+
+    # index command — CocoIndex RAG pipeline
+    index_parser = subparsers.add_parser(
+        "index", help="Index venture documents into pgvector for RAG"
+    )
+    index_parser.add_argument(
+        "--venture", "-v", default="netso", help="Venture to index (default: netso)"
+    )
+    index_parser.add_argument(
+        "--force", action="store_true", help="Drop and rebuild index from scratch"
+    )
 
     # orchestrate command
     orch_parser = subparsers.add_parser(
@@ -576,6 +628,8 @@ def main() -> int:
         return cmd_orchestrate(args)
     if args.command == "ventures":
         return cmd_ventures(args)
+    if args.command == "index":
+        return cmd_index(args)
     if args.command == "approvals":
         return cmd_approvals(args)
     if args.command == "audit":

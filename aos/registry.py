@@ -8,6 +8,7 @@ from pathlib import Path
 
 from aos.schemas.harness import Harness, AgentTeam
 from aos.schemas.agent import Agent
+from aos.schemas.agent_class import AgentClass
 from aos.schemas.venture import Venture
 from aos.schemas.memory import Memory
 from aos.schemas.tool import ToolRegistry
@@ -17,6 +18,7 @@ from aos.schemas.policy_collection import PolicyCollection
 from aos.loader import (
     load_harness,
     load_agent,
+    load_agent_class,
     load_venture,
     load_memory,
     load_tool_registry,
@@ -42,6 +44,7 @@ class HarnessBundle:
     approvals: PolicyCollection | None = None
     evaluation: Evaluation | None = None
     sops: dict[str, SOP] = field(default_factory=dict)
+    agent_classes: dict[str, AgentClass] = field(default_factory=dict)
 
 
 @dataclass
@@ -93,6 +96,18 @@ class Registry:
             agents.extend(bundle.specialists.values())
         return agents
 
+    def all_agent_classes(self) -> list[AgentClass]:
+        classes = []
+        for bundle in self.harnesses.values():
+            classes.extend(bundle.agent_classes.values())
+        return classes
+
+    def resolve_agent_class(self, agent_class_id: str) -> AgentClass | None:
+        for bundle in self.harnesses.values():
+            if agent_class_id in bundle.agent_classes:
+                return bundle.agent_classes[agent_class_id]
+        return None
+
     def summary(self) -> str:
         lines = ["Registry Summary:"]
         if self.venture:
@@ -113,6 +128,7 @@ class Registry:
             lines.append(f"    Approvals: {'yes' if bundle.approvals else 'no'}")
             lines.append(f"    Evaluation: {'yes' if bundle.evaluation else 'no'}")
             lines.append(f"    SOPs: {sop_count}")
+            lines.append(f"    Agent Classes: {len(bundle.agent_classes)}")
         lines.append(f"  Total agents: {len(self.all_agents())}")
         return "\n".join(lines)
 
@@ -212,6 +228,13 @@ def load_registry(
         if harness.teams:
             for team in harness.teams:
                 bundle.teams[team.id] = team
+
+        # Load agent classes
+        agent_classes_dir = harness_dir / "agent_classes"
+        if agent_classes_dir.exists():
+            for yml in sorted(agent_classes_dir.glob("*.yml")):
+                agent_class = load_agent_class(yml)
+                bundle.agent_classes[agent_class.id] = agent_class
 
         registry.harnesses[harness.id] = bundle
 

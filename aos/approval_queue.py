@@ -8,6 +8,7 @@ Decisions are persisted to disk for audit trail.
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -72,6 +73,7 @@ class ApprovalQueue:
     ):
         self._items: dict[str, ApprovalItem] = {}
         self._counter = 0
+        self._lock = threading.Lock()
         self._persistence_path = persistence_path
         self._decision_log_path = decision_log_path
 
@@ -80,8 +82,9 @@ class ApprovalQueue:
             self._load()
 
     def _next_id(self) -> str:
-        self._counter += 1
-        return f"APR-{self._counter:04d}"
+        with self._lock:
+            self._counter += 1
+            return f"APR-{self._counter:04d}"
 
     def add(
         self,
@@ -90,7 +93,7 @@ class ApprovalQueue:
         rationale: str,
         risk_assessment: str,
     ) -> ApprovalItem:
-        """Add a new approval request to the queue."""
+        """Add a new approval request to the queue. Thread-safe."""
         item = ApprovalItem(
             id=self._next_id(),
             agent_id=agent_id,
@@ -98,7 +101,8 @@ class ApprovalQueue:
             rationale=rationale,
             risk_assessment=risk_assessment,
         )
-        self._items[item.id] = item
+        with self._lock:
+            self._items[item.id] = item
         self._save()
         return item
 
@@ -140,19 +144,29 @@ class ApprovalQueue:
         return result
 
     def approve_all(self, founder_note: Optional[str] = None) -> list[ApprovalResult]:
-        """Approve all pending items."""
+        """Approve all pending items. Thread-safe — holds lock across batch."""
         results = []
-        for item in self.pending():
-            result = self.decide(item.id, ApprovalDecision.APPROVE, founder_note)
+        with self._lock:
+            pending_ids = [
+                item.id for item in self._items.values()
+                if item.status == "pending"
+            ]
+        for item_id in pending_ids:
+            result = self.decide(item_id, ApprovalDecision.APPROVE, founder_note)
             if result:
                 results.append(result)
         return results
 
     def reject_all(self, founder_note: Optional[str] = None) -> list[ApprovalResult]:
-        """Reject all pending items."""
+        """Reject all pending items. Thread-safe — holds lock across batch."""
         results = []
-        for item in self.pending():
-            result = self.decide(item.id, ApprovalDecision.REJECT, founder_note)
+        with self._lock:
+            pending_ids = [
+                item.id for item in self._items.values()
+                if item.status == "pending"
+            ]
+        for item_id in pending_ids:
+            result = self.decide(item_id, ApprovalDecision.REJECT, founder_note)
             if result:
                 results.append(result)
         return results

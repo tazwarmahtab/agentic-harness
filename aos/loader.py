@@ -16,6 +16,7 @@ from jsonschema import Draft7Validator
 from aos.hardening import sanitize_path
 from aos.schemas.harness import Harness
 from aos.schemas.agent import Agent
+from aos.schemas.agent_class import AgentClass
 from aos.schemas.venture import Venture
 from aos.schemas.memory import Memory
 from aos.schemas.tool import ToolRegistry
@@ -98,6 +99,12 @@ def load_agent(path: Path) -> Agent:
     return Agent(**data)
 
 
+def load_agent_class(path: Path) -> AgentClass:
+    """Load an agent class manifest."""
+    data = _load_yaml(path)
+    return AgentClass(**data)
+
+
 def load_venture(path: Path) -> Venture:
     """Load a venture manifest."""
     data = _load_yaml(path)
@@ -146,6 +153,7 @@ SCHEMA_MAP: dict[str, str] = {
     "policy-collection": "policy-collection",
     "identity": "identity",
     "policy": "policy",
+    "agent-class": "agent_class",
 }
 
 
@@ -156,6 +164,8 @@ def detect_manifest_type(data: dict) -> str | None:
         return "harness"
     if manifest_id.startswith("AGT-"):
         return "agent"
+    if manifest_id.startswith("ACL-"):
+        return "agent-class"
     if manifest_id.startswith("VEN-"):
         return "venture"
     if manifest_id.startswith("MEM-"):

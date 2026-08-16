@@ -78,6 +78,7 @@ docs/
 | Memory persistence (SQLite-backed store) | ✅ Fully implemented |
 | Approval queue (persistent JSONL) | ✅ Fully implemented |
 | Cross-harness dispatch | ✅ Fully implemented |
+| CocoIndex RAG (auto-injected into every agent via `_run_agent_node`) | ✅ Fully implemented |
 | Test suite | ✅ 696 tests |
 
 ## Re-homing from existing Netso AI system

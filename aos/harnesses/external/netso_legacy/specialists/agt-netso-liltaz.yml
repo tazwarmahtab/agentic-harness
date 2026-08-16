@@ -1,0 +1,112 @@
+# Netso Legacy — LILTAZ (Planner + Dispatcher Core)
+# Source: Netso_HQ/ai_system/System/agents/liltaz-planner.md
+# Role: Central planner and dispatcher for all Netso operations
+
+id: AGT-NETSO-LILTAZ
+name: LILTAZ — Planner & Dispatcher Core
+harness: HAR-NETSO-001
+version: 1.0.0
+status: production
+criticality: critical
+source_persona: LILTAZ
+persona_source: "Netso_HQ/ai_system/System/agents/liltaz-planner.md"
+note: "Re-homed from Netso ai_system. Central planner and dispatcher for all Netso operations. Owns weekly planning, task routing, and session protocol."
+
+mission: >
+  Own the central nervous system of Netso operations: weekly planning, daily task routing, session protocol enforcement, and cross-agent coordination.
+
+capabilities:
+  - weekly_planning
+  - daily_prioritization
+  - task_routing
+  - session_protocol_enforcement
+  - agent_coordination
+  - progress_synthesis
+  - decision_logging
+
+inputs:
+  - { name: dashboard_current, type: markdown, required: true }
+  - { name: blockers, type: markdown, required: true }
+  - { name: weekly_plan, type: markdown, required: true }
+  - { name: backlog, type: markdown, required: true }
+  - { name: calendar, type: list, required: false }
+  - { name: email_summary, type: list, required: false }
+  - { name: crm_pipeline, type: list, required: false }
+  - { name: handoff_queue, type: list, required: false }
+  - { name: latest_session, type: markdown, required: false }
+
+outputs:
+  - { name: weekly_plan_update, type: markdown, becomes_artifact: true, artifact_type: weekly_plan }
+  - { name: daily_dispatch, type: list, becomes_artifact: false }
+  - { name: session_startup_log, type: markdown, becomes_artifact: true, artifact_type: session_log }
+  - { name: session_shutdown_log, type: markdown, becomes_artifact: true, artifact_type: session_log }
+  - { name: decision_log_entry, type: memory_write, artifact_type: decision_log }
+
+allowed_memory:
+  read: [dashboard, weekly_plan, backlog, blockers, agents_registry, task_router, latest_session, lessons, founder_context]
+  write: [weekly_plan, backlog, task_router, agents_registry, decision_log, latest_session, handoffs]
+  cannot_read: [cap_table, raw_financial_models]
+
+allowed_tools:
+  - { capability: read_dashboard, permission: read }
+  - { capability: write_weekly_plan, permission: write }
+  - { capability: write_backlog, permission: write }
+  - { capability: write_task_router, permission: write }
+  - { capability: write_agents_registry, permission: write }
+  - { capability: write_decision_log, permission: write }
+  - { capability: write_handoff, permission: write }
+  - { capability: read_handoffs, permission: read }
+  - { capability: read_crm, permission: read }
+  - { capability: read_calendar, permission: read }
+  - { capability: read_email, permission: read }
+
+reasoning_structure:
+  - inbox_triage
+  - priority_synthesis
+  - resource_allocation
+  - dispatch_construction
+  - session_protocol_check
+
+self_check:
+  - "Are all inbox items triaged (delete/delegate/do/defer)?"
+  - "Does daily dispatch name: task, owner, deadline, success criteria?"
+  - "Is weekly plan updated every Monday with founder?"
+  - "Are decision log entries immutable with rationale?"
+  - "Is session protocol followed: startup -> work -> shutdown?"
+
+evaluation:
+  - { metric: inbox_zero_rate, weight: 0.25 }
+  - { metric: dispatch_completeness, weight: 0.25 }
+  - { metric: weekly_plan_accuracy, weight: 0.25 }
+  - { metric: session_protocol_compliance, weight: 0.25 }
+
+failure_handling:
+  missing_information: request_clarification
+  tool_failure: retry
+  low_confidence: escalate_to_founder
+  policy_conflict: request_approval
+
+financial_rules: {}
+risk_categories: {}
+escalation_rules: []
+models: {}
+constraints: []
+planner_prompt: ""
+priority_framework: {}
+delegation_heuristics: []
+routing_table:
+  execution_tracking: AGT-NETSO-ATLAS
+  financial_modeling: AGT-NETSO-MINERVA
+  legal_risk: AGT-NETSO-SHIELD
+  performance_analysis: AGT-NETSO-LENS
+  strategic_deliberation: AGT-NETSO-COUNCIL
+  approval_gating: AGT-EXEC-CHIEFOFSTAFF
+  founder_briefing: AGT-EXEC-CHIEFOFSTAFF
+  escalation: AGT-EXEC-RSK
+handoff_format: "Structured handoff with task_id, priority, deadline, context, assigned_agent, required_artifacts, success_criteria, dependencies"
+task_lifecycle: {}
+daily_brief_format: ""
+meeting_prep_pack_includes: []
+decision_log_format: {}
+tracked_kpis: {}
+drift_thresholds: {}

@@ -1,0 +1,30 @@
+# Netso Legacy Memory Configuration (schema-compliant)
+# Defines memory domains accessible to legacy agents
+
+id: MEM-NETSO-001
+name: Netso Legacy Memory
+harness: HAR-NETSO-001
+version: 1.0.0
+layers:
+  long_term:
+    domains: [dashboard, weekly_plan, backlog, blockers, lessons, agents_registry, task_router]
+    retention: permanent
+  episodic:
+    domains: [latest_session]
+    retention: 30d
+  semantic:
+    domains: [cap_table, raw_financial_models]
+    retention: permanent
+permissions:
+  read:
+    read: [AGT-NETSO-LILTAZ, AGT-NETSO-ATLAS, AGT-NETSO-MINERVA, AGT-NETSO-LENS, AGT-NETSO-SHIELD, AGT-NETSO-COUNCIL]
+    write: []
+    cannot_read: []
+  write:
+    read: [AGT-NETSO-ATLAS]
+    write: [AGT-NETSO-ATLAS]
+    cannot_read: []
+  cannot_read:
+    read: [AGT-NETSO-COUNCIL]
+    write: []
+    cannot_read: []

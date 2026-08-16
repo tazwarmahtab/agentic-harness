@@ -1,0 +1,20 @@
+{
+  "agent_id": "AGT-EXEC-CFO",
+  "output": {
+    "blended_rate": 14.81,
+    "true_variable_rate": 12.98,
+    "savings_pct": 23.0,
+    "dscr": 2.5,
+    "ppa_rate": 7.0,
+    "capex_per_kw": 55000,
+    "nem_export_rate": 8.0,
+    "scenario": "A"
+  },
+  "expected": {
+    "passed": false,
+    "violations": [
+      "PPA rate 7.0 differs from ground truth 10.00 BDT/kWh. Hard-fail rule: wrong_ppa_rate",
+      "NEM export rate 8.0 differs from ground truth 6.4523 BDT/kWh. Hard-fail rule: wrong_nem_export_rate"
+    ]
+  }
+}

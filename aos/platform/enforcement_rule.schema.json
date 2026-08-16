@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aos/platform/enforcement_rule.schema.json",
+  "title": "TAZ OS Enforcement Rule",
+  "description": "A guardrail that blocks or warns on dangerous agent actions at the ToolGateway chokepoint.",
+  "type": "object",
+  "required": ["id", "name", "severity", "scope", "check_fn"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^ENF-[A-Z]+-[0-9]{3}$" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "severity": { "type": "string", "enum": ["block", "warn"] },
+    "scope": { "type": "string", "description": "'all', 'agent_class:<id>', or 'capability:<name>'" },
+    "check_fn": { "type": "string", "description": "Name of the check function to call" }
+  }
+}
