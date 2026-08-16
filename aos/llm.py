@@ -823,10 +823,9 @@ class NvidiaLLMClient:
             self.API_URL, data=data, headers=headers, method="POST"
         )
 
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                raw = resp.read().decode("utf-8")
-                body = json.loads(raw)
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            raw = resp.read().decode("utf-8")
+            body = json.loads(raw)
 
         if "error" in body:
             raise ConnectionError(f"NVIDIA NIM error: {body['error']}")
@@ -905,7 +904,6 @@ class BytezLLMClient:
             usage=body.get("usage", {}),
             provider="bytez",
         )
->>>>>>> 337e7e2 (feat: add Bytez and NVIDIA NIM backends to LLM client)
 
 
 # ---------------------------------------------------------------------------
