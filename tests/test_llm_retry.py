@@ -132,18 +132,18 @@ class TestRetryOnError:
     # -----------------------------------------------------------------------
 
     def test_all_models_fail(self, client: RouterLLMClient, call_kwargs: dict) -> None:
-        """ConnectionError on all 3 attempts for a model -> raises immediately after 3 tries.
+        """ConnectionError on all attempts for all models -> raises after exhausting retries.
 
-        Non-404 errors are re-raised on the 3rd attempt rather than falling back
-        to the next model (only 404 triggers model fallback).
+        Non-404 errors retry up to 3 times per model, then fall back to next model.
+        With 3 models, that's up to 9 total attempts.
         """
         with patch("aos.llm.urllib.request.urlopen") as mock_open:
             mock_open.side_effect = ConnectionError("network down")
             with pytest.raises(ConnectionError, match="network down"):
                 client.complete(**call_kwargs)
 
-        # 3 attempts on the first model, then raises (no fallback for non-404)
-        assert mock_open.call_count == 3
+        # 3 models × 3 retries each = 9 attempts
+        assert mock_open.call_count == 9
 
     # -----------------------------------------------------------------------
     # 5. test_success_no_retry

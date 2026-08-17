@@ -440,7 +440,7 @@ class CircuitBreaker:
                 return False
 
             # Check if recovery window has passed
-            if time.time() - self.last_failure_time > self.recovery_window_sec:
+            if _time.time() - self.last_failure_time > self.recovery_window_sec:
                 self.failure_count = 0  # Reset on recovery
                 return False
 
@@ -450,7 +450,7 @@ class CircuitBreaker:
         """Record a failure and trip circuit if threshold exceeded."""
         with self.lock:
             self.failure_count += 1
-            self.last_failure_time = time.time()
+            self.last_failure_time = _time.time()
 
     def record_success(self) -> None:
         """Record a success and reset failure count."""
@@ -603,7 +603,7 @@ class RouterLLMClient:
                     last_error = e
                     circuit_breaker.record_failure()
                     if attempt < 2:
-                        time.sleep(2**attempt)
+                        _time.sleep(2**attempt)
                         continue
                     # 404 means model not found — try next model
                     if hasattr(e, "code") and e.code == 404:

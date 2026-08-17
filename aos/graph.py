@@ -594,7 +594,7 @@ def _run_agent_node(
     agent_model = None
     if agent.models and agent.models.preferred:
         agent_model = agent.models.preferred
-    model = resolve_model(agent.criticality.value, override=agent_model)
+    model = resolve_model(agent.criticality.value, venture_id, override=agent_model)
     temperature = 0.1 if agent.id == "AGT-EXEC-DISPATCH" else 0.3
 
     try:
@@ -1997,6 +1997,7 @@ def run_cycle_graph(
     registry: Registry | None = None,
     checkpointer: Any | None = None,
     thread_id: str | None = None,
+    resolved_approval_ids: list[str] | None = None,
 ) -> CycleState:
     """Execute the full daily harness cycle via LangGraph.
 
@@ -2111,7 +2112,7 @@ def run_cycle_graph(
         "inputs": {},
         "step_results": [],
         "approval_queue": [],
-        "resolved_approval_ids": [],
+        "resolved_approval_ids": resolved_approval_ids or [],
         "handoffs": [],
         "errors": [],
         # Loop engineering fields
