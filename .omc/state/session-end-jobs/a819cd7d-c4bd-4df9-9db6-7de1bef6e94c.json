@@ -1,0 +1,313 @@
+{
+  "version": 1,
+  "jobId": "92f0011d-244a-4ede-9cb0-933f39660c5d",
+  "sessionId": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+  "scopeKey": "13eb57f5a47aff71c416f0171aebdf9ee778f9e799795233d9f2c3b165db3f2c",
+  "revision": 7,
+  "createdAt": "2026-08-16T12:23:33.242Z",
+  "updatedAt": "2026-08-16T12:23:36.023Z",
+  "producerGraceExpiresAt": "2026-08-16T12:24:03.258Z",
+  "bestEffortDeadlineAt": "2026-08-16T12:24:54.258Z",
+  "producers": {
+    "core": {
+      "state": "sealed",
+      "intentKey": "e2e2a1999fa2c97fe15f2feb1500d8649c376fdf40aa3d250f32a399b8ccf1b1",
+      "payloadDigest": "e2e2a1999fa2c97fe15f2feb1500d8649c376fdf40aa3d250f32a399b8ccf1b1",
+      "sealedAt": "2026-08-16T12:23:33.361Z",
+      "sealedBy": "foreground"
+    },
+    "wiki": {
+      "state": "absent"
+    }
+  },
+  "actions": {
+    "foreground-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "completed",
+      "attempts": 0,
+      "idempotencyKey": "774591c048c6fdb9c0b1ee4399167dcc7b744ecce38bfa65d97e42022412e509",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        },
+        "foregroundResult": {
+          "removedTransientFiles": 0,
+          "completedAt": "2026-08-16T12:23:33.360Z"
+        }
+      },
+      "budgetMs": 9000,
+      "completedAt": "2026-08-16T12:23:33.361Z",
+      "lastOutcomeCode": "completed"
+    },
+    "wiki-capture": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "pending",
+      "attempts": 0,
+      "idempotencyKey": "d8e02ab3a613882b7dd0cf323b0e6d990a76a42984cfc0d2c9bc5cebb71240b2",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        }
+      },
+      "budgetMs": 9000
+    },
+    "team-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "pending",
+      "attempts": 0,
+      "idempotencyKey": "94c73996725c895826117890d3b9fb707b624c91a4cc10284e729a647b22d1df",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        }
+      },
+      "budgetMs": 9000
+    },
+    "python-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "pending",
+      "attempts": 0,
+      "idempotencyKey": "21a22e69c025fc39637d90b35e2cb2616b71534694b80b2d115d97616e74da15",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        }
+      },
+      "budgetMs": 9000
+    },
+    "reply-cleanup": {
+      "class": "required",
+      "phase": "deferred-required",
+      "status": "pending",
+      "attempts": 0,
+      "idempotencyKey": "67b7789cb9e7018abb78f433c898c8f4759441f1051e42e2f91a8e3768a26867",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        }
+      },
+      "budgetMs": 9000
+    },
+    "callback": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "pending",
+      "attempts": 0,
+      "idempotencyKey": "ba5600b56e09f54803340b62e6dcc3c3a928b74d1d8e3347ee9cc9bab603626b",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        }
+      },
+      "budgetMs": 2000
+    },
+    "notification": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "pending",
+      "attempts": 0,
+      "idempotencyKey": "4966be8740aae17d479cc64bf9a6bce0030f34259b37f853d5685d9c47e1a3ee",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        }
+      },
+      "budgetMs": 2000
+    },
+    "openclaw": {
+      "class": "best-effort",
+      "phase": "deferred-best-effort",
+      "status": "pending",
+      "attempts": 0,
+      "idempotencyKey": "78252242fb770b2a75c213f2ee20637667e213fa4394dfbb4703f6f09fbbb1a6",
+      "payload": {
+        "transcriptPath": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+        "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+        "reason": "clear",
+        "input": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "transcript_path": "/Users/tazwarmahtab/.claude/projects/-Users-tazwarmahtab-orca-agentic-harness/a819cd7d-c4bd-4df9-9db6-7de1bef6e94c.jsonl",
+          "cwd": "/Users/tazwarmahtab/orca/agentic-harness",
+          "prompt_id": "cc8e644b-f920-48fa-846a-0270d85681fa",
+          "hook_event_name": "SessionEnd",
+          "reason": "clear"
+        },
+        "metrics": {
+          "session_id": "a819cd7d-c4bd-4df9-9db6-7de1bef6e94c",
+          "ended_at": "2026-08-16T12:23:33.203Z",
+          "reason": "clear",
+          "agents_spawned": 0,
+          "agents_completed": 0,
+          "modes_used": []
+        },
+        "initialTeamNames": [],
+        "openClawEnabled": false,
+        "openClawRouting": {
+          "tmux": "/tmp/orca-claude-agent-teams/team-b45b4432-8d22-44ad-9c64-0d89270d3099,0,1",
+          "tmuxPane": "%1"
+        }
+      },
+      "budgetMs": 2000
+    }
+  },
+  "owner": null,
+  "phase": "recoverable-failure"
+}

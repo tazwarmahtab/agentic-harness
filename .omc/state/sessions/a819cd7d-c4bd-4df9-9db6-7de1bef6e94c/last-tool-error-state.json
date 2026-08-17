@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"pytest -q -m unit 2>&1\"}",
+  "error": "Exit code 2\n\n==================================== ERRORS ====================================\n______________________ ERROR collecting tests/test_api.py ______________________\n/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/_pytest/python.py:498: in importtestmodule\n    mod = import_path(\n/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/_pytest/pathlib.py:587: in import_path\n    importlib.import_module(module_name)\n/Library/Frameworks...",
+  "timestamp": "2026-08-16T11:35:50.142Z",
+  "retry_count": 1
+}

@@ -1,0 +1,191 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1786883015294,
+  "projectRoot": "/Users/tazwarmahtab/orca/agentic-harness",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "pyproject.toml"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "fastapi",
+        "version": null,
+        "category": "backend"
+      },
+      {
+        "name": "pytest",
+        "version": null,
+        "category": "testing"
+      }
+    ],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "pytest",
+    "lintCommand": "ruff check",
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "]": {
+      "path": "]",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1786883015186,
+      "keyFiles": []
+    },
+    "aos": {
+      "path": "aos",
+      "purpose": null,
+      "fileCount": 48,
+      "lastAccessed": 1786883015188,
+      "keyFiles": [
+        "__init__.py",
+        "__main__.py",
+        "_venv_compat.py",
+        "alerting.py",
+        "alerting_telegram.py"
+      ]
+    },
+    "deploy": {
+      "path": "deploy",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1786883015190,
+      "keyFiles": [
+        "RUNBOOK.md",
+        "aos-dashboard.service",
+        "aos-engine.service",
+        "aos.nginx.conf",
+        "backup.sh"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 13,
+      "lastAccessed": 1786883015200,
+      "keyFiles": [
+        "AOS-SYSTEM-ARCHITECTURE.md",
+        "AOS_BLUEPRINT.md",
+        "AOS_DISCOVERY.md",
+        "AOS_SYSTEM_MAP.md",
+        "AUDIT_REPORT.md"
+      ]
+    },
+    "graphify-out": {
+      "path": "graphify-out",
+      "purpose": null,
+      "fileCount": 48,
+      "lastAccessed": 1786883015206,
+      "keyFiles": [
+        "GRAPH_REPORT.md",
+        "cost.json",
+        "graph.html",
+        "graph.json",
+        "manifest.json"
+      ]
+    },
+    "gsd-core": {
+      "path": "gsd-core",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1786883015207,
+      "keyFiles": []
+    },
+    "gsd-repo": {
+      "path": "gsd-repo",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1786883015207,
+      "keyFiles": []
+    },
+    "odysseus": {
+      "path": "odysseus",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1786883015207,
+      "keyFiles": [
+        "__init__.py",
+        "server.py"
+      ]
+    },
+    "ops": {
+      "path": "ops",
+      "purpose": null,
+      "fileCount": 8,
+      "lastAccessed": 1786883015207,
+      "keyFiles": [
+        "AGENTS_REGISTRY.md",
+        "DASHBOARD.md",
+        "__init__.py",
+        "aos-daily.sh",
+        "approve.sh"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1786883015208,
+      "keyFiles": [
+        "morning_brief.sh"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 72,
+      "lastAccessed": 1786883015208,
+      "keyFiles": [
+        "__init__.py",
+        "conftest.py",
+        "test_agent_class.py",
+        "test_ai_development.py",
+        "test_ai_development_harness.py"
+      ]
+    },
+    "odysseus/routes": {
+      "path": "odysseus/routes",
+      "purpose": "Route handlers",
+      "fileCount": 3,
+      "lastAccessed": 1786883015209,
+      "keyFiles": [
+        "__init__.py",
+        "aos_routes.py",
+        "netso_routes.py"
+      ]
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}
