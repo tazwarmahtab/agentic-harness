@@ -611,8 +611,8 @@ class RouterLLMClient:
                         if current_model in FREE_MODEL_POOL:
                             record_free_model_result(current_model, False, latency_ms)
                         break
-                    # For other errors, raise immediately (no fallback to next model)
-                    raise
+                    # For other errors, retry exhausted on this model — try next model
+                    break
 
         # Record final failure if all attempts failed and it's a free-tier model
         if model in FREE_MODEL_POOL:
