@@ -6,6 +6,7 @@
 import store from '../stores/dashboard.js';
 
 const NAV_ITEMS = [
+  { id: 'prospects', icon: '📄', label: 'Prospect Briefs' },
   { id: 'overview',     icon: '⚡', label: 'Overview' },
   { id: 'harnesses',    icon: '🔗', label: 'Harnesses' },
   { id: 'pipelines',    icon: '🔄', label: 'Pipelines' },

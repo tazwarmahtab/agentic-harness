@@ -17,6 +17,7 @@ import ws from './services/websocket.js';
 import { renderLayout, getContentEl, highlightNav } from './layouts/dashboard-layout.js';
 import { initKeyboardShortcuts, destroyKeyboardShortcuts } from './services/keyboard.js';
 
+import * as prospectsPage from './pages/prospects.js';
 import * as overviewPage from './pages/overview.js';
 import * as harnessesPage from './pages/harnesses.js';
 import * as pipelinesPage from './pages/pipelines.js';
@@ -35,6 +36,7 @@ import * as internalPortfolioPage from './pages/netso/internal-portfolio.js';
 import * as internalFinancialsPage from './pages/netso/internal-financials.js';
 
 const PAGES = {
+  prospects: prospectsPage,
   overview:   overviewPage,
   harnesses:  harnessesPage,
   pipelines:  pipelinesPage,
@@ -54,6 +56,7 @@ const PAGES = {
 };
 
 let _isOpen = false;
+let _lastPage = null;
 let _currentUnsub = null;
 let _storeUnsub = null;
 
@@ -93,6 +96,8 @@ function _ensurePanel() {
 }
 
 function _renderCurrentPage(page) {
+  if (_lastPage === page) return;
+  _lastPage = page;
   const contentEl = getContentEl();
   if (!contentEl) return;
 
@@ -152,6 +157,7 @@ export function openPanel() {
 export function closePanel() {
   if (!_isOpen) return;
   _isOpen = false;
+  _lastPage = null;
 
   if (_currentUnsub) { _currentUnsub(); _currentUnsub = null; }
   if (_storeUnsub) { _storeUnsub(); _storeUnsub = null; }

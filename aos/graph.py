@@ -1504,6 +1504,30 @@ def summarize_node(state: CycleState) -> dict:
     return update
 
 
+def _approvals_authorized(state: CycleState, queue: Any = None) -> bool:
+    """Only current persisted APPROVE decisions grant execution authority."""
+    requests = state.get("approval_queue") or []
+    if not requests:
+        return True
+    if queue is None:
+        return False
+    try:
+        records = {item.id: item for item in queue.current_items()}
+    except (OSError, ValueError, KeyError):
+        return False
+    for request in requests:
+        if not isinstance(request, dict):
+            return False
+        record = records.get(request.get("id"))
+        if record is None or record.status != "decided" or record.decision != "approve":
+            return False
+        if request.get("action") and request["action"] != record.action:
+            return False
+        if request.get("agent_id") and request["agent_id"] != record.agent_id:
+            return False
+    return True
+
+
 def approval_gates_node(state: CycleState) -> dict:
     """Step 6: Validate and bundle approval gates for the founder.
 
@@ -1544,7 +1568,6 @@ def approval_gates_node(state: CycleState) -> dict:
             approval_items.extend([i for i in item if i is not None and isinstance(i, dict)])
         elif isinstance(item, dict):
             approval_items.append(item)
-    resolved_ids = set(state.get("resolved_approval_ids") or [])
     # Cross-reference against ApprovalQueue persistence to resolve
     from aos.approval_queue import ApprovalQueue
 
@@ -1553,26 +1576,23 @@ def approval_gates_node(state: CycleState) -> dict:
     newly_resolved: list[str] = []
     still_pending: list[dict[str, Any]] = []
 
-    if queue:
-        pending_ids = {item.id for item in queue.pending()}
-        for item in approval_items:
-            item_id = item.get("id", "")
-            if item_id in resolved_ids:
-                continue  # already resolved
-            if item_id and item_id not in pending_ids:
-                # Not in pending list — was resolved via CLI
-                newly_resolved.append(item_id)
-            else:
-                still_pending.append(item)
-    else:
-        # No queue configured — filter out already-resolved items
-        for item in approval_items:
-            item_id = item.get("id", "")
-            if item_id not in resolved_ids:
-                still_pending.append(item)
+    try:
+        records = {item.id: item for item in queue.current_items()} if queue is not None else {}
+    except (OSError, ValueError, KeyError):
+        records = {}
+    for item in approval_items:
+        item_id = item.get("id", "")
+        record = records.get(item_id)
+        if record is not None and record.status == "decided":
+            newly_resolved.append(item_id)
+        if record is None or record.decision != "approve" or (
+            item.get("action") and item["action"] != record.action
+        ) or (item.get("agent_id") and item["agent_id"] != record.agent_id):
+            still_pending.append(item)
 
     bundled = {
         "total_pending": len(still_pending),
+        "authorized": _approvals_authorized(state, queue),
         "items": still_pending,
         "format": "approve_all | review_individually | reject",
         "delivery": "console_queue",
@@ -1580,8 +1600,6 @@ def approval_gates_node(state: CycleState) -> dict:
 
     # Reflect actual gate status: blocked if approvals still pending, clear if empty
     gate_status = "blocked" if still_pending else "success"
-    if not chief:
-        gate_status = "success"  # no chief configured, no gate to block
 
     elapsed = int((time.monotonic() - start) * 1000)
     update: dict[str, Any] = {
@@ -1623,11 +1641,7 @@ def should_execute(state: CycleState) -> str:
     if not handoffs:
         return "log"
 
-    # Block execution only if there are genuinely pending approvals
-    approval_queue = state.get("approval_queue", [])
-    resolved_ids = set(state.get("resolved_approval_ids", []))
-    pending = [a for a in approval_queue if a.get("id", "") not in resolved_ids]
-    if pending:
+    if state.get("approval_queue") and not state.get("approval_gates_output", {}).get("authorized", False):
         return "log"
 
     return "execute"
@@ -1697,6 +1711,14 @@ def execute_node(state: CycleState) -> dict:
     config = get_config()
     cfg = config.get("configurable", {})
     tool_gateway: ToolGateway | None = cfg.get("tool_gateway")
+
+    if not _approvals_authorized(state, cfg.get("approval_queue")):
+        return {
+            "execute_output": {"executed": [], "handoff_count": len(state.get("handoffs", []))},
+            "errors": ["execute: approval missing, rejected, deferred, or mismatched"],
+            "step_results": _step_result_to_list({"step": "execute", "agent_id": None,
+                "status": "blocked", "output": {}, "duration_ms": int((time.monotonic() - start) * 1000)}),
+        }
 
     executed: list[dict[str, Any]] = []
     new_errors: list[str] = []
@@ -1972,7 +1994,7 @@ def build_graph(
         },
     )
 
-    # Compile — use provided checkpointer or MemorySaver for crash recovery
+    # Compile — MemorySaver is process-local; supply a durable checkpointer for restart recovery
     if checkpointer is None:
         checkpointer = MemorySaver()
     return graph.compile(checkpointer=checkpointer)

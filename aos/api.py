@@ -29,6 +29,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 
+from aos.prospects.routes import ProspectBodyLimit, router as prospect_router
 from aos.discover import find_venture
 from aos.hardening import ConnectionLimiter, sanitize_path, validate_harness_name
 from aos.graph import CycleState, build_graph
@@ -92,6 +93,10 @@ app = FastAPI(
     description="Governance-first agentic operating system engine.",
     lifespan=lifespan,
 )
+
+# Founder OS capability uses strict auth independently of legacy local-dev routes.
+app.include_router(prospect_router)
+app.add_middleware(ProspectBodyLimit)
 
 # CORS — explicit origin allowlist (override via AOS_CORS_ORIGINS env var, comma-separated)
 _DEFAULT_ORIGINS = [

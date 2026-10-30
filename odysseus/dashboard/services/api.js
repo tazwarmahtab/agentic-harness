@@ -3,23 +3,27 @@
  * All requests go through Odysseus proxy (never direct to port 7001).
  */
 
-const API_BASE = '/api/aos';
+const API_BASE = '/api';
 const NETSO_API_BASE = '/api/netso';
 
 class AosApi {
   constructor(baseUrl = API_BASE, netsoBaseUrl = NETSO_API_BASE) {
+    this.token = '';
     this.baseUrl = baseUrl;
     this.netsoBaseUrl = netsoBaseUrl;
   }
 
+  setToken(token) { this.token = token; }
+  _headers() { return this.token ? { Authorization: `Bearer ${this.token}` } : {}; }
+
   async _get(path) {
-    const resp = await fetch(this.baseUrl + path);
+    const resp = await fetch(this.baseUrl + path, { headers: this._headers() });
     if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
     return resp.json();
   }
 
   async _getNetso(path) {
-    const resp = await fetch(this.netsoBaseUrl + path);
+    const resp = await fetch(this.netsoBaseUrl + path, { headers: this._headers() });
     if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
     return resp.json();
   }
@@ -27,7 +31,7 @@ class AosApi {
   async _post(path, body = {}) {
     const resp = await fetch(this.baseUrl + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...this._headers() },
       body: JSON.stringify(body),
     });
     if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
