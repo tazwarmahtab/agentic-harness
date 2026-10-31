@@ -1,5 +1,6 @@
 /** Founder OS prospect workflow. Every document/model string is rendered as text. */
 import api from '../services/api.js';
+import store from '../stores/dashboard.js';
 
 let token = ''; // Memory only: never persisted to storage, URLs or logs.
 
@@ -11,6 +12,7 @@ function element(tag, text, parent) {
 }
 
 export function render(container) {
+  token = api.token || '';
   container.replaceChildren();
   let active = true;
   const intro = element('p', 'Supply documents, inspect the evidence, and review a draft. Approval never sends a message.', container);
@@ -173,5 +175,14 @@ export function render(container) {
     });
   });
   restore.addEventListener('click', () => work(loadJobs));
+  const selection = store.state.selectedProspect;
+  if (selection) {
+    venture.value = selection.venture; project.value = selection.project;
+    work(async () => {
+      const s = scope();
+      const job = await json('/' + encodeURIComponent(selection.id) + query(s));
+      if (active) show(job, s);
+    });
+  }
   return () => { active = false; };
 }

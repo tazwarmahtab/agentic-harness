@@ -18,6 +18,7 @@ import { renderLayout, getContentEl, highlightNav } from './layouts/dashboard-la
 import { initKeyboardShortcuts, destroyKeyboardShortcuts } from './services/keyboard.js';
 
 import * as prospectsPage from './pages/prospects.js';
+import * as knowledgePage from './pages/knowledge.js';
 import * as overviewPage from './pages/overview.js';
 import * as harnessesPage from './pages/harnesses.js';
 import * as pipelinesPage from './pages/pipelines.js';
@@ -36,6 +37,7 @@ import * as internalPortfolioPage from './pages/netso/internal-portfolio.js';
 import * as internalFinancialsPage from './pages/netso/internal-financials.js';
 
 const PAGES = {
+  knowledge: knowledgePage,
   prospects: prospectsPage,
   overview:   overviewPage,
   harnesses:  harnessesPage,

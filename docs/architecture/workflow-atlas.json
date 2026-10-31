@@ -1,0 +1,344 @@
+{
+  "version": 1,
+  "date": "2026-10-31",
+  "scope": "Prospect workflow and proposed shared services; not every legacy module",
+  "steps": [
+    {
+      "id": "01",
+      "status": "implemented",
+      "title": "Scoped intake",
+      "summary": "Single-founder upload with venture, project and meeting purpose.",
+      "owner": "Founder / API",
+      "input": "Bearer authentication; 1–12 TXT, MD, text PDF or DOCX files.",
+      "output": "A scoped job with source records; configured token required.",
+      "failure": "Reject unsupported, malformed or oversized uploads; retain explicit failure rather than silently OCR.",
+      "check": "Scope, auth and upload-limit regressions; no multi-user authorization claim.",
+      "sources": [
+        {
+          "path": "aos/prospects/models.py",
+          "anchor": "class Intake"
+        },
+        {
+          "path": "aos/prospects/routes.py",
+          "anchor": "def require_founder"
+        },
+        {
+          "path": "tests/test_prospect_api.py",
+          "anchor": "def test_"
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "status": "implemented",
+      "title": "Bounded extraction",
+      "summary": "Original bytes become source-located text with resource limits.",
+      "owner": "Parser worker",
+      "input": "Accepted upload; decoded byte and extraction budgets.",
+      "output": "Readable passages, stable source IDs and SHA-256 originals.",
+      "failure": "15-second outer deadline; parser errors request readable text. Resource limits do not isolate filesystem/network.",
+      "check": "Parser timeout and extraction tests; macOS host acceptance still needed.",
+      "sources": [
+        {
+          "path": "aos/prospects/ingest.py",
+          "anchor": "def extract"
+        },
+        {
+          "path": "aos/prospects/parser_worker.py",
+          "anchor": "def main"
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "status": "implemented",
+      "title": "Evidence storage",
+      "summary": "Keep source records, originals, output versions and events in scoped SQLite.",
+      "owner": "ProspectStore",
+      "input": "Validated intake; authorized scope on retrieval.",
+      "output": "Transactionally stored job and retrievable original sources.",
+      "failure": "Reject wrong scope; local persistence still needs operational backup/restore procedure.",
+      "check": "Store/API tests verify source download and scope.",
+      "sources": [
+        {
+          "path": "aos/prospects/store.py",
+          "anchor": "class ProspectStore"
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "status": "implemented",
+      "title": "Evidence selection",
+      "summary": "Default is extractive; model selection requires explicit disclosure opt-in.",
+      "owner": "Workflow / founder",
+      "input": "Stored passages; optional server and request model flags.",
+      "output": "Exact excerpts at source locators; no independent truth verification.",
+      "failure": "Reject fabricated citations; preserve conflicting claims for human review.",
+      "check": "Exact-quote validation; live-model quality remains unvalidated.",
+      "sources": [
+        {
+          "path": "aos/prospects/workflow.py",
+          "anchor": "def model_analyzer"
+        },
+        {
+          "path": "aos/prospects/routes.py",
+          "anchor": "def generate"
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "status": "implemented",
+      "title": "Brief and confirmation checklist",
+      "summary": "Produce evidence excerpts and generic confirmation questions.",
+      "owner": "Workflow",
+      "input": "Validated Analysis with selected evidence.",
+      "output": "Meeting output and follow-up draft. No selected evidence does not prove the document lacks an answer.",
+      "failure": "Avoid inferred financing terms, buyer authority or reconciling contradictory sources.",
+      "check": "Extractive mode takes up to the first 40 passages; this is not complete semantic document review.",
+      "sources": [
+        {
+          "path": "aos/prospects/workflow.py",
+          "anchor": "def extractive_analysis"
+        },
+        {
+          "path": "aos/prospects/workflow.py",
+          "anchor": "def build_output"
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "status": "implemented",
+      "title": "Browse, edit and inspect",
+      "summary": "Knowledge & Files browses existing scoped prospect folders, originals and generated views; Prospect Briefs retains editing and review.",
+      "owner": "Founder / dashboard",
+      "input": "Saved job and current output version.",
+      "output": "Reviewed sources and a new version for each draft edit.",
+      "failure": "Reject stale edits; keep untrusted document text inert.",
+      "check": "Real API/dashboard desktop/mobile acceptance covers folder search, previews, downloads, history, scope changes and safe navigation to review.",
+      "sources": [
+        {
+          "path": "odysseus/dashboard/pages/prospects.js",
+          "anchor": "prospect"
+        },
+        {
+          "path": "tests/browser/prospect-smoke.cjs",
+          "anchor": "prospect"
+        },
+        {
+          "path": "odysseus/dashboard/pages/knowledge.js",
+          "anchor": "export function render"
+        }
+      ]
+    },
+    {
+      "id": "07",
+      "status": "implemented",
+      "title": "Review exact revision",
+      "summary": "Approve, reject or defer the current artifact version.",
+      "owner": "Founder / store",
+      "input": "Current output hash and decision.",
+      "output": "Recorded review; edit/revert cannot resurrect an old approval.",
+      "failure": "Stale or conflicting decisions fail; approval grants no external send authority.",
+      "check": "Version identity and review-reset regressions.",
+      "sources": [
+        {
+          "path": "aos/prospects/store.py",
+          "anchor": "def review"
+        },
+        {
+          "path": "aos/prospects/store.py",
+          "anchor": "def edit_draft"
+        }
+      ]
+    },
+    {
+      "id": "08",
+      "status": "gap",
+      "title": "Authorized external action",
+      "summary": "No prospect sending endpoint exists; do not turn draft review into permission to send.",
+      "owner": "Future action gateway",
+      "input": "Proposed recipient, channel, payload version, actor, scope and expiry.",
+      "output": "Separate scoped grant; idempotent action receipt and confirmed provider result.",
+      "failure": "Expired grants block; ambiguous delivery reconciles before retry; cancellation cannot undo a completed send.",
+      "check": "Add adversarial tests for wrong recipient, changed payload, replay and duplicate retries before enabling.",
+      "sources": [
+        {
+          "path": "aos/prospects/workflow.py",
+          "anchor": "draft_only"
+        },
+        {
+          "path": "aos/graph.py",
+          "anchor": "def execute_node"
+        }
+      ]
+    },
+    {
+      "id": "09",
+      "status": "gap",
+      "title": "Durable execution and shared policy",
+      "summary": "Prospect persistence does not make every legacy graph durable or all approval stores transactional.",
+      "owner": "AOS execution service",
+      "input": "Job intent, stable identity, dependencies, action grants and resource budget.",
+      "output": "Durable checkpoints and explicit job states across restart.",
+      "failure": "Lease expiry, retry backoff, duplicate prevention, cancellation and unknown-result reconciliation required.",
+      "check": "Crash/restart and concurrent-worker tests must pass; migrate legacy approvals incrementally.",
+      "sources": [
+        {
+          "path": "aos/graph.py",
+          "anchor": "MemorySaver()"
+        },
+        {
+          "path": "aos/approval_queue.py",
+          "anchor": "class ApprovalQueue"
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "status": "proposed",
+      "title": "Voice and adaptive interface",
+      "summary": "Add a conversational surface over the same jobs, evidence and permissions.",
+      "owner": "Voice adapter / UI",
+      "input": "Authenticated session; selected project; explicit microphone start.",
+      "output": "Short spoken answer plus evidence, comparison, form or review card from an approved catalog.",
+      "failure": "Separate stop-speaking from cancel-job; reject stale cards; reconnect to saved work; text fallback.",
+      "check": "Evaluate Bangla/English, names, numbers, interruption and locked-screen behavior on actual devices.",
+      "sources": [
+        {
+          "path": "odysseus/dashboard/pages/prospects.js",
+          "anchor": "prospect"
+        },
+        {
+          "path": "aos/prospects/models.py",
+          "anchor": "class Review"
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "status": "proposed",
+      "title": "Memory with provenance",
+      "summary": "Separate assertions, verified facts, preferences, decisions and hypotheses.",
+      "owner": "Knowledge service / founder",
+      "input": "Source-linked candidate memory with scope, date and sensitivity.",
+      "output": "Retrievable scoped record with status, supersession and retention rules.",
+      "failure": "Conflicts remain explicit; stale records flagged; deletion covers derived records and backup policy.",
+      "check": "Test cross-project leakage, correction propagation and stale business-model retrieval.",
+      "sources": [
+        {
+          "path": "docs/architecture/founder-os-consolidation.md",
+          "anchor": "External knowledge"
+        },
+        {
+          "path": "aos/api.py",
+          "anchor": "async def memory_summary"
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "status": "proposed",
+      "title": "Isolated workers",
+      "summary": "Evaluate Boxd as one replaceable execution backend; rv alone is not proven isolation.",
+      "owner": "Execution adapter",
+      "input": "Minimum task files, explicit egress, scoped credentials, CPU/time/storage budgets.",
+      "output": "Artifacts, source hashes, execution logs and test receipts.",
+      "failure": "Destroy or quarantine failed worker; snapshots never undo external side effects.",
+      "check": "Synthetic denial, credential, timeout, fork, cleanup and recovery tests before customer data.",
+      "sources": [
+        {
+          "path": "aos/prospects/ingest.py",
+          "anchor": "subprocess.run"
+        },
+        {
+          "path": "aos/prospects/parser_worker.py",
+          "anchor": "def main"
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "status": "proposed",
+      "title": "Narrow decision routing",
+      "summary": "Evaluate rules, existing LLM, Laya and optionally Jev on the same labeled requests.",
+      "owner": "Decision adapter",
+      "input": "Small relevant text state and finite options including uncertainty.",
+      "output": "Route suggestion, provider/model version and recorded evaluation.",
+      "failure": "Abstain or escalate; confidence is not authorization or correctness; no live Jev disclosure without agreement.",
+      "check": "Held-out English/Bangla/mixed-language data; measure false routing and review burden as well as latency.",
+      "sources": [
+        {
+          "path": "aos/graph.py",
+          "anchor": "def _fallback_routing"
+        },
+        {
+          "path": "aos/prospects/workflow.py",
+          "anchor": "def model_analyzer"
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "status": "gap",
+      "title": "Release and operational recovery",
+      "summary": "Tests exist; inherited lint/type/format debt remains. CI deploy steps are placeholders.",
+      "owner": "Engineering / founder",
+      "input": "Exact code and configuration revision, evaluation reports and release scope.",
+      "output": "Required gates pass, reviewed release, tested backups and recovery procedure.",
+      "failure": "Preserve failed evidence; diagnose code vs test defect; never weaken a gate solely to pass.",
+      "check": "Revalidate full CI, real deployment and restore; Harness.io is an optional delivery adapter.",
+      "sources": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "anchor": "Deploy to production server"
+        },
+        {
+          "path": "docs/superpowers/plans/2026-10-30-founder-os-progress.md",
+          "anchor": "Final verification"
+        }
+      ]
+    },
+    {
+      "id": "15",
+      "status": "proposed",
+      "title": "Outcome and improvement loop",
+      "summary": "Map observations to reviewed improvements without generating endless tickets.",
+      "owner": "Operations / founder",
+      "input": "Task outcomes, corrections, incidents, stale maps and measured review effort.",
+      "output": "Deduplicated digest or actionable proposal with owner, acceptance, cost and stop condition.",
+      "failure": "Suppress repetitive alerts; budget the loop; escalate failed evaluations and stop when release criteria pass.",
+      "check": "Measure useful response time, task accuracy, unsupported claims, recovery, review time and cost; no unattended loop enabled.",
+      "sources": [
+        {
+          "path": "docs/superpowers/plans/2026-10-30-founder-os-progress.md",
+          "anchor": "Release decision"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "anchor": "evaluator:"
+        }
+      ]
+    }
+  ],
+  "fingerprints": {
+    "aos/prospects/models.py": "09f2e37d1f7b2cd0cd4a7e692505c652f53e411aca0d769852569e175e492413",
+    "aos/prospects/routes.py": "ce5cd7a4b40a22362e65fee17b4e12729eee59767f6b766280d2fee9f00a3220",
+    "tests/test_prospect_api.py": "f8fe736b7533d713ce4ada5348204ada0764a1f4a081312a532d76eabc25dcb3",
+    "aos/prospects/ingest.py": "44d153b3b2557de02e69749d722f50abba665ca002badc1df04475e5256140f7",
+    "aos/prospects/parser_worker.py": "93a3ec4a27f7626186fec7d8b6dfb6f1f8ea4f9ce9957f7fb508e75f1615a367",
+    "aos/prospects/store.py": "f3938fbd07a71fd46d37ca2f42535c22d4b8a0d3dbe94c3dcd75976c87dd532e",
+    "aos/prospects/workflow.py": "81622f898f0dba25964b847af37c2d102e8deedb42b54fcbfbc10bc513171b82",
+    "odysseus/dashboard/pages/prospects.js": "052c0a87439a12de23ab40185234495668163a6f622ae0f69cde55a8d49b6678",
+    "tests/browser/prospect-smoke.cjs": "e3173fcc63a7dab03389c185bee5dd02bd1b42d8e87e0092a60741bb77c9b428",
+    "odysseus/dashboard/pages/knowledge.js": "a202254a35031975b57e62cae793d9f88e7cc822f3eb35c1bcb67eaf1c8e97f2",
+    "aos/graph.py": "79cff5c9af02b78e4760ce6c744b1a604ed1cfff97635e51ce854e943f69b479",
+    "aos/approval_queue.py": "1519a5c2d2e07280332a575cb2440301635f79ce8723571bef67d20531695e83",
+    "docs/architecture/founder-os-consolidation.md": "6bc64e13b1ed468fff2d5be6f4f34552a6ab448c538c76a5d8905ee2905a9f21",
+    "aos/api.py": "8317e33363830592415ac6ad8c81aea0912c5863ce9014beb49a02690eed77eb",
+    ".github/workflows/ci.yml": "edd9c35e8c26f42481a9c1e38011fc248e39877188a9ca870e6dadc9c5582e0e",
+    "docs/superpowers/plans/2026-10-30-founder-os-progress.md": "4dd49de2f353057d5904a96d69d8a45de99bd1bd8c6549cec716a61fc3a5ae25"
+  }
+}

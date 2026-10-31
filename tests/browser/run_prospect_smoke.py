@@ -60,7 +60,12 @@ def main() -> None:
                                 ) from None
                             time.sleep(0.1)
                 subprocess.run(
-                    ["node", "tests/browser/prospect-smoke.cjs"],
+                    [
+                        "node",
+                        sys.argv[1]
+                        if len(sys.argv) > 1
+                        else "tests/browser/prospect-smoke.cjs",
+                    ],
                     check=True,
                     env=env,
                     timeout=90,
