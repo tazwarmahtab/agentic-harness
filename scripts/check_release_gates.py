@@ -51,12 +51,12 @@ def validate_register(data: Any) -> dict[str, Any]:
         if not isinstance(gap_id, str) or gap_id in ids:
             raise GateRegisterError(f"invalid or duplicate gap id: {gap_id}")
         ids.add(gap_id)
-        if gate not in GATE_MAP:
+        if not isinstance(gate, str) or gate not in GATE_MAP:
             raise GateRegisterError(f"{gap_id}: unknown gate: {gate}")
         per_gate[gate].add(gap_id)
-        if status not in ALLOWED_STATUSES:
+        if not isinstance(status, str) or status not in ALLOWED_STATUSES:
             raise GateRegisterError(f"{gap_id}: unsupported status: {status}")
-        if item.get("priority") not in {"P0", "P1", "P2"}:
+        if not isinstance(item.get("priority"), str) or item["priority"] not in {"P0", "P1", "P2"}:
             raise GateRegisterError(f"{gap_id}: missing priority")
         if not all(isinstance(item.get(key), str) and item[key].strip()
                    for key in ("title", "required_proof")):
