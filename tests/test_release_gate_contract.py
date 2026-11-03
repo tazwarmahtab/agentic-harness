@@ -141,3 +141,11 @@ def test_nonpassing_test_receipt_is_rejected(register: dict) -> None:
     }
     with pytest.raises(GateRegisterError, match="test receipt"):
         validate_register(register)
+
+
+def test_unhashable_field_types_fail_closed(register: dict) -> None:
+    for field in ("gate", "status", "priority"):
+        mutated = copy.deepcopy(register)
+        mutated["gaps"][0][field] = ["invalid"]
+        with pytest.raises(GateRegisterError):
+            validate_register(mutated)
