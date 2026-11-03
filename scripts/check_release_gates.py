@@ -75,6 +75,10 @@ def validate_register(data: Any) -> dict[str, Any]:
                 for ref in evidence
             ):
                 raise GateRegisterError(f"{gap_id}: verified without linked evidence")
+            if any(ref["result"] != "pass" for ref in evidence):
+                raise GateRegisterError(f"{gap_id}: failed or unverified evidence")
+            if verification.get("test_status") != "passed":
+                raise GateRegisterError(f"{gap_id}: failed or missing test receipt")
             fields = ("commit_sha", "implemented_by", "verified_by", "verified_at", "test_summary")
             if not all(isinstance(verification.get(k), str) and verification[k].strip()
                        for k in fields):
