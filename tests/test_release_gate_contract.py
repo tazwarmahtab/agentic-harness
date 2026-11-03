@@ -75,6 +75,7 @@ def test_self_attestation_cannot_verify(register: dict) -> None:
         "verified_by": "agent-1",
         "verified_at": "2026-11-03T00:00:00+00:00",
         "test_summary": "synthetic fixture",
+        "test_status": "passed",
     }
     with pytest.raises(GateRegisterError, match="not independent"):
         validate_register(register)
@@ -90,6 +91,7 @@ def test_verified_with_independent_receipt_does_not_turn_gate_green(register: di
         "verified_by": "agent-2",
         "verified_at": "2026-11-03T00:00:00+00:00",
         "test_summary": "synthetic fixture",
+        "test_status": "passed",
     }
     result = validate_register(register)
     assert result["verified_gaps"] == 1
@@ -107,3 +109,35 @@ def test_input_document_is_not_mutated(register: dict) -> None:
     before = copy.deepcopy(register)
     validate_register(register)
     assert before == register
+
+
+def test_failed_evidence_is_not_verification(register: dict) -> None:
+    gap = register["gaps"][0]
+    gap["status"] = "verified"
+    gap["evidence"] = [{"ref": "https://example.test/run", "fingerprint": "abc123", "result": "fail"}]
+    gap["verification"] = {
+        "commit_sha": "0123456789",
+        "implemented_by": "agent-1",
+        "verified_by": "agent-2",
+        "verified_at": "2026-11-03T00:00:00+00:00",
+        "test_summary": "failed",
+        "test_status": "failed",
+    }
+    with pytest.raises(GateRegisterError, match="failed or unverified evidence"):
+        validate_register(register)
+
+
+def test_nonpassing_test_receipt_is_rejected(register: dict) -> None:
+    gap = register["gaps"][0]
+    gap["status"] = "verified"
+    gap["evidence"] = [{"ref": "https://example.test/run", "fingerprint": "abc123", "result": "pass"}]
+    gap["verification"] = {
+        "commit_sha": "0123456789",
+        "implemented_by": "agent-1",
+        "verified_by": "agent-2",
+        "verified_at": "2026-11-03T00:00:00+00:00",
+        "test_summary": "incomplete",
+        "test_status": "failed",
+    }
+    with pytest.raises(GateRegisterError, match="test receipt"):
+        validate_register(register)
