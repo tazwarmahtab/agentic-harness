@@ -11,7 +11,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import PydanticCustomError
 
 POINTS = frozenset(
     {
@@ -96,7 +104,15 @@ class Envelope(BoundaryModel):
     schema_version: Literal["1"]
     registry_revision: str = Field(min_length=1, max_length=128)
     point: str
-    activeHooks: list[Hook] = Field(default_factory=list, max_length=100)
+    activeHooks: tuple[Hook, ...] = Field(default_factory=tuple, max_length=100)
+
+    @field_validator("activeHooks", mode="before")
+    @classmethod
+    def freeze_wire_hooks(cls, value: Any) -> tuple[Any, ...]:
+        """Snapshot a JSON-array hook collection before validating its entries."""
+        if not isinstance(value, (list, tuple)):
+            raise PydanticCustomError("hook_array_type", "activeHooks must be an array")
+        return tuple(value)
 
     @model_validator(mode="after")
     def validate_identity(self) -> Envelope:
@@ -179,7 +195,9 @@ def plan_dispatch(
             if target not in allowed:
                 raise HookBlocked("unregistered dispatch target")
             assert target is not None
-            target_kind = "skill" if hook.ref.skill is not None else "agent"
+            target_kind: Literal["skill", "agent"] = (
+                "skill" if hook.ref.skill is not None else "agent"
+            )
             planned.append(PlannedDispatch(hook.id, hook.kind, target, target_kind))
         else:
             planned.append(

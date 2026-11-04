@@ -160,6 +160,27 @@ class HookContractTests(unittest.TestCase):
         self.assertEqual(plan[1].gate, self.gate())
         self.assertEqual(plan[1].target_kind, "gate_check")
 
+    def test_validated_hooks_are_an_immutable_snapshot(self):
+        wire_hooks = [self.gate().model_dump(exclude_none=True)]
+        envelope, planned = self.plan(
+            self.envelope(wire_hooks), frozenset({"approval"})
+        )
+        wire_hooks.clear()
+        self.assertIsInstance(envelope.activeHooks, tuple)
+        self.assertEqual(len(envelope.activeHooks), 1)
+        self.assertEqual(envelope.activeHooks[0], planned[0].gate)
+        with self.assertRaises(AttributeError):
+            envelope.activeHooks.clear()
+        with self.assertRaises(ValidationError):
+            envelope.activeHooks = ()
+        with self.assertRaises(ValidationError):
+            envelope.activeHooks[0].blocking = False
+
+    def test_hook_collection_rejects_non_array_shapes(self):
+        for value in (None, "approval", {"id": "approval"}, set()):
+            with self.assertRaises(ValidationError):
+                self.plan(self.envelope() | {"activeHooks": value})
+
     def test_skill_and_agent_with_same_name_remain_distinct(self):
         hooks = [
             {"id": "skill", "kind": "step", "ref": {"skill": "review"}},
