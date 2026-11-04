@@ -20,11 +20,15 @@ from aos.tools import ToolGateway
         "mv file '/' -f",
         "mv -t / file",
         "mv -t/ file",
+        "mv -ft'/' file",
+        "mv -vft'//' file",
+        "mv -nvt'/..' file",
+        "/usr/bin/mv -it'/' file",
         "mv --target-directory / file",
         "mv --target-directory=/ file",
         "mv -- file '/'",
         "echo ready; chmod 777 '/'",
-        "chmod 777 /tmp/..",
+        "chmod 777 /..",
     ],
 )
 def test_root_mutations_never_reach_subprocess(command: str) -> None:
@@ -41,6 +45,8 @@ def test_root_mutations_never_reach_subprocess(command: str) -> None:
         "chmod 600 /tmp/example",
         "mv /tmp/source /tmp/destination",
         "mv -t /tmp/destination /tmp/source",
+        "mv -ft'/tmp/destination' /tmp/source",
+        "mv -vft'/tmp/destination' /tmp/source",
         "echo hello",
     ],
 )

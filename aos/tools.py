@@ -788,6 +788,13 @@ class ToolGateway:
                         candidate = operand.partition("=")[2]
                     elif operand.startswith("-t"):
                         candidate = operand[2:]
+                    else:
+                        # GNU mv permits no-argument flags before -t in
+                        # the same option word, e.g. -ft'/'. shlex removes
+                        # the quotes before this option is inspected.
+                        target_option = re.fullmatch(r"-[finuvT]*t(.*)", operand)
+                        if target_option:
+                            candidate = target_option.group(1)
                 if candidate.startswith("/") and Path(candidate).resolve() == Path("/"):
                     return {
                         "ok": False,
@@ -888,3 +895,4 @@ class ToolGateway:
         if pending:
             lines.append(f"  Pending approvals: {pending}")
         return "\n".join(lines)
+
