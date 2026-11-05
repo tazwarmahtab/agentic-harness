@@ -1,0 +1,301 @@
+{
+  "schema_version": "1.0",
+  "as_of": "2026-11-01",
+  "timezone": "Asia/Dhaka",
+  "source_issues": {
+    "program": "https://github.com/tazwarmahtab/agentic-harness/issues/11",
+    "gates": "https://github.com/tazwarmahtab/agentic-harness/issues/12"
+  },
+  "all_gates_green": false,
+  "source_sensitivity": "architecture audit; no customer attachments",
+  "gaps": [
+    {
+      "id": "G01",
+      "priority": "P0",
+      "gate": "G1",
+      "title": "In-memory entity index/event bus",
+      "required_proof": "Persist record/event identities; restart parallel-writer recovery tests",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G02",
+      "priority": "P0",
+      "gate": "G1",
+      "title": "Process-local global execution checkpoints",
+      "required_proof": "Kill and restart workflow; verify state and history",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G03",
+      "priority": "P0",
+      "gate": "G1",
+      "title": "External exactly-once effects unverified",
+      "required_proof": "Crash before/after provider invocation; reconcile receipt and idempotency",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G04",
+      "priority": "P0",
+      "gate": "G1",
+      "title": "Agent identity, delegated grants and scope",
+      "required_proof": "Reject wrong actor expired grant cross-scope retrieval",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G05",
+      "priority": "P0",
+      "gate": "G1",
+      "title": "Approval exact-version exact-payload authorization partial",
+      "required_proof": "Reject stale revision recipient change modified payload replay",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G06",
+      "priority": "P0",
+      "gate": "G3",
+      "title": "Prompt injection and source/tool boundary",
+      "required_proof": "Hostile source cannot change policy or exfiltrate",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G07",
+      "priority": "P0",
+      "gate": "G1",
+      "title": "Worker isolation and network/filesystem egress incomplete",
+      "required_proof": "Denied unauthorized file network and tool access",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G08",
+      "priority": "P0",
+      "gate": "G6",
+      "title": "Backup restore and disaster recovery unverified",
+      "required_proof": "Restore clean environment; hash-check evidence audit approvals",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G09",
+      "priority": "P0",
+      "gate": "G0",
+      "title": "Divergent Git Brain ancestry/authority",
+      "required_proof": "Read-only reconciliation and independently reviewed source decision",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G10",
+      "priority": "P0",
+      "gate": "G0",
+      "title": "Data retention residency consent and revocation unverified",
+      "required_proof": "Provider disclosure map and derived index revoke/delete tests",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G11",
+      "priority": "P1",
+      "gate": "G2",
+      "title": "Temporal business truth and supersession",
+      "required_proof": "Distinguish prior PPA model and current factory-owned lane as-of dates",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G12",
+      "priority": "P1",
+      "gate": "G2",
+      "title": "Source selection coverage vs no evidence",
+      "required_proof": "Surface partial extraction coverage and source locator evidence",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G13",
+      "priority": "P1",
+      "gate": "G0",
+      "title": "Cross-system IDs and schema migrations",
+      "required_proof": "Records remain linked after GitHub/Notion rename/move/edit",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G14",
+      "priority": "P1",
+      "gate": "G3",
+      "title": "ACL deletion propagation to memory and cached UI",
+      "required_proof": "Revoked source inaccessible through every adapter",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G15",
+      "priority": "P1",
+      "gate": "G3",
+      "title": "Memory poisoning and circular citation",
+      "required_proof": "Adversarial poison and summary-feedback experiment",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G16",
+      "priority": "P1",
+      "gate": "G1",
+      "title": "Duplicate ticket and concurrent agent races",
+      "required_proof": "Concurrent creation dedupe locks dependency cycles and priority tests",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G17",
+      "priority": "P1",
+      "gate": "G5",
+      "title": "Provider drift and calibrated decisions",
+      "required_proof": "Held-out multilingual Jev/Laya/rules/LLM abstention evaluation",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G18",
+      "priority": "P1",
+      "gate": "G3",
+      "title": "Independent verification beyond agent self-report",
+      "required_proof": "Different worker runs policy/outcome assertions",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G19",
+      "priority": "P1",
+      "gate": "G2",
+      "title": "Review fatigue and misleading approval UI",
+      "required_proof": "Founder comprehension test; show action consequences",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G20",
+      "priority": "P1",
+      "gate": "G4",
+      "title": "Telemetry/audit integrity and missing-span detection",
+      "required_proof": "Trace full workflow and dropped signal detection",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G21",
+      "priority": "P1",
+      "gate": "G6",
+      "title": "Plugin and supply-chain compromise",
+      "required_proof": "Pin/scan dependencies; malicious plugin output simulation",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G22",
+      "priority": "P1",
+      "gate": "G3",
+      "title": "Cross-venture isolation including search/logs",
+      "required_proof": "Netso vs other scope negative tests for cache/vector/log",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G23",
+      "priority": "P1",
+      "gate": "G3",
+      "title": "Incident kill switch compensation escalation",
+      "required_proof": "Emergency stop and manual takeover fire drill",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G24",
+      "priority": "P1",
+      "gate": "G5",
+      "title": "Voice and UI interrupted state integrity",
+      "required_proof": "Concurrent edit/interruption Bangla code switch replay reconnect",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G25",
+      "priority": "P1",
+      "gate": "G1",
+      "title": "Legacy AOS API authentication beyond prospect routes",
+      "required_proof": "Threat model every exposed endpoint; deny bypass",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G26",
+      "priority": "P1",
+      "gate": "G0",
+      "title": "Ingestion legal basis classification malicious files",
+      "required_proof": "Authorized ingest quarantine corrupt/hostile test",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G27",
+      "priority": "P1",
+      "gate": "G5",
+      "title": "Notification noise vs actionable alerts",
+      "required_proof": "Digest dedupe suppression proof of action relevance",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G28",
+      "priority": "P2",
+      "gate": "G5",
+      "title": "Convex vs SSE/WS duplication",
+      "required_proof": "Latency consistency cost and maintenance comparison",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G29",
+      "priority": "P2",
+      "gate": "G5",
+      "title": "Accessibility and mobile localization",
+      "required_proof": "Keyboard screen reader Bangla display and mobile tests",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G30",
+      "priority": "P2",
+      "gate": "G5",
+      "title": "Unit economics and founder value unmeasured",
+      "required_proof": "Cost per verified task and Netso milestone value",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G31",
+      "priority": "P2",
+      "gate": "G4",
+      "title": "Observatory self-observability",
+      "required_proof": "Break collectors; prove UI cannot show false green",
+      "status": "open",
+      "evidence": []
+    },
+    {
+      "id": "G32",
+      "priority": "P2",
+      "gate": "G5",
+      "title": "Vendor exit portability and offline",
+      "required_proof": "Normalized export and replay without provider",
+      "status": "open",
+      "evidence": []
+    }
+  ]
+}
