@@ -1504,16 +1504,41 @@ def summarize_node(state: CycleState) -> dict:
     return update
 
 
+def _approval_outcomes(items: list[dict[str, Any]], cfg: dict) -> tuple[list[dict[str, Any]], list[str]]:
+    """Resolve only explicit approvals from the configured authority, never ID absence.
+
+    Resolved IDs are historical bookkeeping, not authorization. Missing or
+    unavailable authority keeps every requested approval blocking.
+    """
+    queue = cfg.get("approval_queue")
+    if queue is None:
+        return list(items), []
+    try:
+        records = {record.id: record for record in queue.all()}
+    except Exception:
+        logger.warning("Approval authority unavailable; keeping actions blocked")
+        return list(items), []
+    blocking: list[dict[str, Any]] = []
+    approved: list[str] = []
+    for item in items:
+        item_id = item.get("id", "")
+        record = records.get(item_id)
+        if record is not None and record.status == "decided" and record.decision == "approve":
+            approved.append(item_id)
+        else:
+            blocking.append(item)
+    return blocking, approved
+
+
 def approval_gates_node(state: CycleState) -> dict:
     """Step 6: Validate and bundle approval gates for the founder.
 
     Pure logic — no LLM call.  Bundles pending approvals into a
     structured format for console delivery.
 
-    FIX-03: Cross-references approval_queue items against the
-    ApprovalQueue persistence to resolve approved/rejected items.
-    Only genuinely pending items are surfaced. Approved items are
-    added to resolved_approval_ids so should_execute can unblock.
+    Cross-reference explicit approval decisions from the configured queue.
+    Rejected, deferred, unknown and unavailable records stay blocking.
+    Resolved IDs remain bookkeeping and never grant execution authority.
     """
     start = time.monotonic()
     config = get_config()
@@ -1544,32 +1569,7 @@ def approval_gates_node(state: CycleState) -> dict:
             approval_items.extend([i for i in item if i is not None and isinstance(i, dict)])
         elif isinstance(item, dict):
             approval_items.append(item)
-    resolved_ids = set(state.get("resolved_approval_ids") or [])
-    # Cross-reference against ApprovalQueue persistence to resolve
-    from aos.approval_queue import ApprovalQueue
-
-    queue: ApprovalQueue | None = cfg.get("approval_queue")  # type: ignore
-
-    newly_resolved: list[str] = []
-    still_pending: list[dict[str, Any]] = []
-
-    if queue:
-        pending_ids = {item.id for item in queue.pending()}
-        for item in approval_items:
-            item_id = item.get("id", "")
-            if item_id in resolved_ids:
-                continue  # already resolved
-            if item_id and item_id not in pending_ids:
-                # Not in pending list — was resolved via CLI
-                newly_resolved.append(item_id)
-            else:
-                still_pending.append(item)
-    else:
-        # No queue configured — filter out already-resolved items
-        for item in approval_items:
-            item_id = item.get("id", "")
-            if item_id not in resolved_ids:
-                still_pending.append(item)
+    still_pending, newly_resolved = _approval_outcomes(approval_items, cfg)
 
     bundled = {
         "total_pending": len(still_pending),
@@ -1580,8 +1580,6 @@ def approval_gates_node(state: CycleState) -> dict:
 
     # Reflect actual gate status: blocked if approvals still pending, clear if empty
     gate_status = "blocked" if still_pending else "success"
-    if not chief:
-        gate_status = "success"  # no chief configured, no gate to block
 
     elapsed = int((time.monotonic() - start) * 1000)
     update: dict[str, Any] = {
@@ -1614,23 +1612,31 @@ def should_execute(state: CycleState) -> str:
     this is the key improvement over the linear runtime which always
     ran every step.
 
-    FIX-03: If handoffs exist but approval_queue has genuinely pending
-    items, skip execution — handoffs are blocked until founder approval
-    is resolved. Resolved items (approved/rejected via CLI) are tracked
-    in resolved_approval_ids and excluded from the blocking check.
+    Requested approvals require explicit approval from the configured queue.
+    Historical resolved IDs cannot authorize execution.
     """
     handoffs = state.get("handoffs", [])
     if not handoffs:
         return "log"
 
-    # Block execution only if there are genuinely pending approvals
-    approval_queue = state.get("approval_queue", [])
-    resolved_ids = set(state.get("resolved_approval_ids", []))
-    pending = [a for a in approval_queue if a.get("id", "") not in resolved_ids]
-    if pending:
-        return "log"
-
-    return "execute"
+    # Re-read authoritative decisions; state-carried resolved IDs cannot grant authority.
+    raw_items = state.get("approval_queue") or []
+    items: list[dict[str, Any]] = []
+    for item in raw_items:
+        if isinstance(item, dict):
+            items.append(item)
+        elif isinstance(item, list):
+            items.extend(entry if isinstance(entry, dict) else {} for entry in item)
+        else:
+            items.append({})
+    if not items:
+        return "execute"
+    try:
+        cfg = get_config().get("configurable", {})
+    except RuntimeError:
+        cfg = {}
+    blocking, _ = _approval_outcomes(items, cfg)
+    return "log" if blocking else "execute"
 
 
 def should_continue_loop(state: CycleState) -> str:
@@ -1701,21 +1707,27 @@ def execute_node(state: CycleState) -> dict:
     executed: list[dict[str, Any]] = []
     new_errors: list[str] = []
 
+    approvals_blocked = bool(state.get("handoffs")) and should_execute(state) != "execute"
     for handoff in state.get("handoffs", []):
-        if tool_gateway is not None:
+        # Reserved receipt keys never come from caller-supplied handoff data.
+        metadata = {key: value for key, value in handoff.items() if key not in {"type", "status", "result"}}
+        if approvals_blocked:
+            executed.append({**metadata, "type": "handoff", "status": "blocked"})
+            new_errors.append("execute: authoritative approval required")
+        elif tool_gateway is not None:
             result = tool_gateway.execute(handoff)
             executed.append(
                 {
+                    **metadata,
                     "type": "handoff",
                     "status": "success" if result.get("ok") else "error",
                     "result": result,
-                    **handoff,
                 }
             )
             if not result.get("ok"):
                 new_errors.append(f"execute: {result.get('error', 'unknown error')}")
         else:
-            executed.append({"type": "handoff", "status": "queued", **handoff})
+            executed.append({**metadata, "type": "handoff", "status": "queued"})
 
     output = {"executed": executed, "handoff_count": len(state.get("handoffs", []))}
     elapsed = int((time.monotonic() - start) * 1000)
@@ -1724,7 +1736,7 @@ def execute_node(state: CycleState) -> dict:
             {
                 "step": "execute",
                 "agent_id": None,
-                "status": "success",
+                "status": "error" if new_errors else "success",
                 "output": output,
                 "duration_ms": elapsed,
             }
