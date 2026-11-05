@@ -93,6 +93,19 @@ def gateway_with_file(tmp_path) -> ToolGateway:
 class TestShellSafety:
     """Tests for the regex-based shell command blocklist."""
 
+    @pytest.fixture(autouse=True)
+    def prevent_destructive_denial_test_execution(self, request, monkeypatch):
+        """A guard regression must never execute the destructive test input."""
+        if not request.node.name.startswith("test_blocks_"):
+            yield
+            return
+        from unittest.mock import Mock
+
+        runner = Mock(return_value=Mock(returncode=0, stdout="", stderr=""))
+        monkeypatch.setattr("aos.tools.subprocess.run", runner)
+        yield
+        runner.assert_not_called()
+
     def test_blocks_rm_rf_slash(self, gateway: ToolGateway) -> None:
         result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "rm -rf /"})
         assert not result["ok"]

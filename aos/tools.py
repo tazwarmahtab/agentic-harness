@@ -764,9 +764,42 @@ class ToolGateway:
 
         # Validate shell syntax is parseable
         try:
-            shlex.split(command)
+            lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|()")
+            lexer.whitespace_split = True
+            lexer.commenters = ""
+            tokens = list(lexer)
         except ValueError:
             return {"ok": False, "error": "Command contains unparseable shell syntax"}
+
+        # A narrow root-mutation deny rule, not a shell sandbox. Inspect
+        # operands after parsing so quotes, mode values and trailing flags
+        # cannot hide a root path from the existing textual blocklist.
+        separators = {";", "&", "|", "(", ")"}
+        for index, token in enumerate(tokens):
+            executable = token.rsplit("/", 1)[-1]
+            if executable not in {"chmod", "chown", "mv"}:
+                continue
+            for operand in tokens[index + 1 :]:
+                if operand and set(operand).issubset(separators):
+                    break
+                candidate = operand
+                if executable == "mv":
+                    if operand.startswith("--target-directory="):
+                        candidate = operand.partition("=")[2]
+                    elif operand.startswith("-t"):
+                        candidate = operand[2:]
+                    else:
+                        # GNU mv permits no-argument flags before -t in
+                        # the same option word, e.g. -ft'/'. shlex removes
+                        # the quotes before this option is inspected.
+                        target_option = re.fullmatch(r"-[finuvT]*t(.*)", operand)
+                        if target_option:
+                            candidate = target_option.group(1)
+                if candidate.startswith("/") and Path(candidate).resolve() == Path("/"):
+                    return {
+                        "ok": False,
+                        "error": "Blocked dangerous command: mutation of root path",
+                    }
 
         # Check against blocked patterns
         cmd_lower = command.lower().strip()
@@ -862,3 +895,4 @@ class ToolGateway:
         if pending:
             lines.append(f"  Pending approvals: {pending}")
         return "\n".join(lines)
+
