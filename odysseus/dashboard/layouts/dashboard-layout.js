@@ -6,6 +6,8 @@
 import store from '../stores/dashboard.js';
 
 const NAV_ITEMS = [
+  { id: 'knowledge', icon: '▱', label: 'Knowledge & Files' },
+  { id: 'prospects', icon: '📄', label: 'Prospect Briefs' },
   { id: 'overview',     icon: '⚡', label: 'Overview' },
   { id: 'harnesses',    icon: '🔗', label: 'Harnesses' },
   { id: 'pipelines',    icon: '🔄', label: 'Pipelines' },
@@ -114,4 +116,6 @@ export function getContentEl() {
 
 export function highlightNav(page) {
   setActiveNav(page);
+  const title = document.getElementById('aos-page-title');
+  if (title) title.textContent = [...NAV_ITEMS, ...NETSO_NAV].find(n => n.id === page)?.label || page;
 }

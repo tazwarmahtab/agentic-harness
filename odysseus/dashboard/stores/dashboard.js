@@ -214,6 +214,10 @@ class DashboardStore {
     this._update({ currentPage: page });
   }
 
+  openProspect(id, venture, project) {
+    this._update({ selectedProspect: { id, venture, project }, currentPage: 'prospects' });
+  }
+
   // ── Auto-refresh ───────────────────────────────────────────────────────
 
   startAutoRefresh(intervalMs = 30000) {

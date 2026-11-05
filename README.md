@@ -1,4 +1,10 @@
-# AOS — Agentic Operating System
+# Founder OS — powered by AOS
+
+Founder OS, AOS and Netso OS are one program in this repository. The first consolidated workflow is **Prospect Briefs**: supplied documents → source-linked brief → confirmation checklist → editable follow-up draft → exact-version review. See [architecture, launch and limits](docs/architecture/founder-os-consolidation.md).
+
+**Status:** implemented and synthetically tested on a review branch; not a production deployment. Local extraction is the default. Model disclosure is opt-in. Legacy platform-wide lint/type and security migration work remains.
+
+**Historical context below:** existing BOO/OPEX positioning and financial constants are not silently adopted by the new workflow. Revalidate business-model inputs for each venture/project.
 
 > **One founder. Multiple ventures. One operating system.**
 

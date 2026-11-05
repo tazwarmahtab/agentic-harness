@@ -9,6 +9,9 @@ from pathlib import Path
 
 import httpx
 import uvicorn
+import websockets
+
+from aos.prospects.routes import ProspectBodyLimit
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -20,18 +23,19 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 AOS_ENGINE_URL = os.getenv("AOS_ENGINE_URL", "http://localhost:7001")
 DASHBOARD_DIR = Path(__file__).parent / "dashboard"
 app = FastAPI(title="Odysseus — AOS Dashboard")
+app.add_middleware(ProspectBodyLimit)
 
 # Serve dashboard static files
 app.mount("/static", StaticFiles(directory=DASHBOARD_DIR), name="static")
 
 # API proxy to AOS engine
-http_client = httpx.AsyncClient(base_url=AOS_ENGINE_URL, timeout=30.0)
+http_client = httpx.AsyncClient(base_url=AOS_ENGINE_URL, timeout=60.0, trust_env=False)
 
 
 @app.get("/")
 async def dashboard_root() -> HTMLResponse:
     """Serve the dashboard HTML."""
-    return FileResponse(DASHBOARD_DIR / "preview.html")
+    return FileResponse(DASHBOARD_DIR / "live.html")
 
 
 # Proxy all /api/* to AOS engine

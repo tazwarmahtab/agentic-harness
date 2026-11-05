@@ -114,6 +114,14 @@ class ApprovalQueue:
         """Return all approval items (pending and decided)."""
         return list(self._items.values())
 
+    def current_items(self) -> list[ApprovalItem]:
+        """Read authoritative persisted decisions without mutating the live snapshot."""
+        if self._persistence_path is None:
+            return self.all()
+        if not self._persistence_path.exists():
+            return []
+        return ApprovalQueue(persistence_path=self._persistence_path).all()
+
     def decide(
         self,
         item_id: str,

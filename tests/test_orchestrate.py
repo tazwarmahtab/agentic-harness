@@ -632,7 +632,9 @@ class TestGateBlocking:
         )
         pipeline = OrchestratePipeline(ctx, mock_gates)
 
-        rc = pipeline.run()
+        # Isolate approval timeout from availability of external /spec runner.
+        with patch.object(pipeline, "_run_spec", return_value=True):
+            rc = pipeline.run()
         assert rc == 1  # stopped at spec gate timeout
         mock_gates.wait_for_decision.assert_called_once()
 

@@ -49,8 +49,8 @@ class TestShouldExecute:
         }
         assert should_execute(state) == "log"
 
-    def test_handoffs_with_resolved_approvals_returns_execute(self) -> None:
-        """FIX-03: resolved approvals should NOT block execution."""
+    def test_historical_resolved_ids_do_not_authorize(self) -> None:
+        """FIX-03: resolved IDs alone must not grant authority."""
         state = {
             "handoffs": [{"type": "task", "agent_id": "A"}],
             "approval_queue": [
@@ -58,7 +58,7 @@ class TestShouldExecute:
             ],
             "resolved_approval_ids": ["APR-0001"],
         }
-        assert should_execute(state) == "execute"
+        assert should_execute(state) == "log"
 
     def test_mixed_pending_and_resolved_returns_log(self) -> None:
         """Only genuinely pending items block execution."""
@@ -72,7 +72,7 @@ class TestShouldExecute:
         }
         assert should_execute(state) == "log"
 
-    def test_all_resolved_returns_execute(self) -> None:
+    def test_all_historical_resolved_ids_do_not_authorize(self) -> None:
         state = {
             "handoffs": [{"type": "task", "agent_id": "A"}],
             "approval_queue": [
@@ -81,7 +81,7 @@ class TestShouldExecute:
             ],
             "resolved_approval_ids": ["APR-0001", "APR-0002"],
         }
-        assert should_execute(state) == "execute"
+        assert should_execute(state) == "log"
 
     def test_empty_handoffs_with_resolved_approvals_returns_log(self) -> None:
         """No handoffs = skip to log regardless of approval status."""
@@ -159,7 +159,7 @@ class TestApprovalGatesNode:
             result = approval_gates_node(state)
         assert result["approval_gates_output"]["total_pending"] == 0
 
-    def test_items_not_in_queue_are_filtered(self) -> None:
+    def test_unknown_items_remain_blocked(self) -> None:
         """Items whose IDs are in resolved_approval_ids should be filtered."""
         state = self._make_state(
             approval_queue=[
@@ -173,10 +173,10 @@ class TestApprovalGatesNode:
             m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         output = result["approval_gates_output"]
-        assert output["total_pending"] == 1
-        assert output["items"][0]["id"] == "APR-0002"
+        assert output["total_pending"] == 2
+        assert output["items"][0]["id"] == "APR-0001"
 
-    def test_all_resolved_returns_zero_pending(self) -> None:
+    def test_no_persisted_decisions_remain_blocked(self) -> None:
         state = self._make_state(
             approval_queue=[
                 {"id": "APR-0001", "action": "task 1"},
@@ -188,7 +188,7 @@ class TestApprovalGatesNode:
         with pytest.MonkeyPatch.context() as m:
             m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
-        assert result["approval_gates_output"]["total_pending"] == 0
+        assert result["approval_gates_output"]["total_pending"] == 2
 
     def test_emits_newly_resolved_ids(self) -> None:
         """Items in queue but not in pending list → emitted as newly_resolved."""
@@ -211,7 +211,7 @@ class TestApprovalGatesNode:
         # Should emit the resolved ID
         assert item.id in result.get("resolved_approval_ids", [])
 
-    def test_no_queue_configured_falls_back_to_resolved_ids(self) -> None:
+    def test_no_queue_cannot_authorize_from_resolved_ids(self) -> None:
         """When no ApprovalQueue is in config, only resolved_approval_ids is used."""
         state = self._make_state(
             approval_queue=[
@@ -225,5 +225,5 @@ class TestApprovalGatesNode:
             m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         output = result["approval_gates_output"]
-        assert output["total_pending"] == 1
-        assert output["items"][0]["id"] == "APR-0002"
+        assert output["total_pending"] == 2
+        assert output["items"][0]["id"] == "APR-0001"

@@ -15,11 +15,15 @@ from __future__ import annotations
 
 import argparse
 import logging
-from datetime import datetime
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# Load .env from project root
+from dotenv import load_dotenv
+
+from aos.discover import discover_ventures, find_venture
 from aos.orchestrate.gates import GateManager
 from aos.orchestrate.pipeline import (
     OrchestratePipeline,
@@ -27,10 +31,7 @@ from aos.orchestrate.pipeline import (
 )
 from aos.registry import load_registry
 from aos.validator import validate_all
-from aos.discover import discover_ventures, find_venture
 
-# Load .env from project root
-from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     """Execute the daily harness cycle."""
-    from aos.graph import run_cycle_graph, format_state_summary
+    from aos.graph import format_state_summary, run_cycle_graph
     from aos.registry import load_registry
 
     root = find_project_root()
@@ -351,7 +352,7 @@ def cmd_ventures(args: argparse.Namespace) -> int:
 
 def cmd_approvals(args: argparse.Namespace) -> int:
     """Manage the approval queue."""
-    from aos.approval_queue import ApprovalQueue, ApprovalDecision
+    from aos.approval_queue import ApprovalDecision, ApprovalQueue
 
     root = find_project_root()
     queue_path = root / "aos" / "approvals.jsonl"
@@ -616,7 +617,12 @@ def main() -> int:
     show_system = systems_sub.add_parser("show", help="Show a reusable system")
     show_system.add_argument("system_id")
 
+    from aos.prospects.cli import register
+    from aos.prospects.cli import run as run_prospect
+    register(subparsers)
     args = parser.parse_args()
+    if args.command == "prospects":
+        return run_prospect(args)
 
     if args.command == "validate":
         return cmd_validate(args)
