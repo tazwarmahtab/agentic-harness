@@ -23,3 +23,7 @@ New test-file Ruff lint and formatting passed; git diff whitespace check passed;
 This fixes the two reported graph defects. It does not implement full exact-action approval binding, expiry, one-use consumption, transactionally atomic decision-plus-dispatch, or independent external-effect reconciliation. The existing queue provides none of those guarantees. Unchanged no-approval workflows continue to route; trusted classification and mandatory approval derivation remain separate work. The governed gateway's caller-declared action class and token scope require further repair before a release safety claim.
 
 Independent reviewer launch failed because the host could not persist the spawned-agent relationship. No independent approval is claimed. Keep the PR draft until review and broader integration checks complete. No merge, deployment, dependency installation, live action, credentials or permission changes.
+
+## Subsequent independent review
+
+Independent reviewer successfully retried review at code commit 82b1b8daa23e41cfedbafa9b1615161eaec49b18. No actionable defects found in the scoped repair; reviewer independently ran both focused graph/gating test files: 28 passed. Recommendation: accept the narrow repair, without transferring that conclusion to exact action binding or replay guarantees. Current-head Actions query still returned zero runs. This addendum updates the earlier reviewer-launch limitation; keep CI and broader release gates open.
