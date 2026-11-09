@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import patch
 
 from aos.tools import (
     ToolGateway,
@@ -193,13 +194,21 @@ class TestShellSafety:
         assert not result["ok"]
         assert "Unknown action_type" in result["error"]
 
-    def test_blocks_chmod_root(self, gateway: ToolGateway) -> None:
-        result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "chmod 777 /"})
+    @pytest.mark.parametrize("command", ["chmod 777 /", "chmod -R 777 /", "chmod u+w /"])
+    def test_blocks_chmod_root(self, gateway: ToolGateway, command: str) -> None:
+        with patch("aos.tools.subprocess.run") as run:
+            run.return_value.returncode = 0
+            result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": command})
         assert not result["ok"]
+        run.assert_not_called()
 
-    def test_blocks_chown_root(self, gateway: ToolGateway) -> None:
-        result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "chown root /"})
+    @pytest.mark.parametrize("command", ["chown root /", "chown -R root /", "chown root:root /"])
+    def test_blocks_chown_root(self, gateway: ToolGateway, command: str) -> None:
+        with patch("aos.tools.subprocess.run") as run:
+            run.return_value.returncode = 0
+            result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": command})
         assert not result["ok"]
+        run.assert_not_called()
 
     def test_blocks_mv_root(self, gateway: ToolGateway) -> None:
         result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "mv file /"})
