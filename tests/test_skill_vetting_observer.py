@@ -76,6 +76,23 @@ class CandidateSkillContractTests(unittest.TestCase):
         path.write_text(path.read_text().replace("## OBSERVE", "## DISABLED"))
         self.assertTrue(any("OBSERVE" in e for e in validate(self.root)))
 
+    def test_negative_scope_must_be_a_nonempty_string_list(self):
+        self._manifest(lambda m: m.update(not_for="anything"))
+        self.assertTrue(any("negative usage scope" in e for e in validate(self.root)))
+
+    def test_side_effects_must_be_a_nonempty_string_list(self):
+        self._manifest(lambda m: m.update(side_effects="anything"))
+        self.assertTrue(any("side effect disclosure" in e for e in validate(self.root)))
+
+    def test_evaluation_expected_assertions_must_be_strings(self):
+        self._eval(lambda d: d["cases"][0].update(expected=[None]))
+        self.assertTrue(any("prompt/expected assertions" in e for e in validate(self.root)))
+
+    def test_non_object_manifest_fails_closed_without_exception(self):
+        path = self.root / "skills/skill-vetting-observer/manifest.json"
+        path.write_text("[]")
+        self.assertTrue(any("manifest" in e for e in validate(self.root)))
+
 
 if __name__ == "__main__":
     unittest.main()
