@@ -17,7 +17,7 @@ A past error is never erased. Store public-safe metadata here, and sensitive evi
 ## Register
 | ID | Incident | State | Reproduction | Prevention test | Independent review | Recurrence |
 |---|---|---|---|---|---|---|
-| TEMPLATE-ONLY | Example / do not count as a real incident | NOT_RUN | Not attempted | Not attempted | Not attempted | UNKNOWN |
+| CI-2026-11-03-001 | [AOS GitHub Actions run failed before usable logs](https://github.com/tazwarmahtab/agentic-harness/issues/20) | OPEN / BLOCKED | Linked runs failed and job logs returned 404; root cause UNKNOWN | Require actual job-step logs, exact-SHA test/coverage/lint and security checks | Await independent reviewer after jobs run | UNKNOWN, recheck each protected PR |
 
 ## Mistake-closure invariants
 - A failing test that was later deleted or skipped is not a correction.
