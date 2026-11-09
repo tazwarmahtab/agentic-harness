@@ -1,11 +1,12 @@
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
-import shutil
+
+from scripts.verify_candidate_skill import validate
 
 ROOT = Path(__file__).resolve().parents[1]
-from scripts.verify_candidate_skill import validate
 
 
 class CandidateSkillContractTests(unittest.TestCase):
