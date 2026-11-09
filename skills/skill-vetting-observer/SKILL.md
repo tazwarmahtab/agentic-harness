@@ -20,7 +20,7 @@ This is a **candidate governance skill**, not an automatically trusted policy en
 5. Candidate files require frontmatter name/description. Include a clear trigger, negative triggers, inputs, outputs, deterministically testable invariants, permissions, side effects, data classification, rollback, and version.
 6. Skill references must identify exact source versions/commit hashes, license and ownership, plus required tools. Do not install unpinned third-party code or assume a skill is licensed for redistribution.
 7. Hard rules: one central action/approval authority; explicit workstream ACL; source provenance for claims; exact-action human approval for external mutations; no success if telemetry or independent proof is missing.
-8. Never promote a skill or change a canonical policy from inside its own improvement attempt. Candidate editing and validation are different roles; the reviewer must not inherit the author's unreviewed assumptions.
+8. A skill under improvement cannot edit its evaluator, its locked rubric, its promotion policy or any approval grant. Never promote a skill or change a canonical policy from inside its own improvement attempt. Candidate editing and validation are different roles; the reviewer must not inherit the author's unreviewed assumptions.
 
 ## VET — independent, adversarial tests
 9. Run **static checks first**: frontmatter/manifest schema; forbidden side effects; prompt-injection red flags; external URLs/scripts; suspicious tool/secret/network instructions; source/license attribution; duplication and scope checks.
