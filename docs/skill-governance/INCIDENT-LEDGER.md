@@ -17,6 +17,7 @@ A past error is never erased. Store public-safe metadata here, and sensitive evi
 ## Register
 | ID | Incident | State | Reproduction | Prevention test | Independent review | Recurrence |
 |---|---|---|---|---|---|---|
+| UI-TRUTH-2026-11-09-001 | Unsupported claim that an authorization prompt was visible; direct UI evidence absent | OPEN / PREVENTION-CANDIDATE | User reported nothing visible; no UI screenshot or live inspection. Raw conversation evidence remains in its original private chat | New C11 held-out prompt; behavioral RED→GREEN still NOT RUN | Await independent evaluator on exact revision | UNKNOWN until future connector-login case is observed |
 | CI-2026-11-03-001 | [AOS GitHub Actions run failed before usable logs](https://github.com/tazwarmahtab/agentic-harness/issues/20) | OPEN / BLOCKED | Linked runs failed and job logs returned 404; root cause UNKNOWN | Require actual job-step logs, exact-SHA test/coverage/lint and security checks | Await independent reviewer after jobs run | UNKNOWN, recheck each protected PR |
 
 ## Mistake-closure invariants
