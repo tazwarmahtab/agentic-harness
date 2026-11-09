@@ -4,9 +4,39 @@ name: Netso AI Company smoke
   push:
     branches:
       - 'feat/netso-ai-company-v1'
+    paths:
+      - companies/netso-energy/**
+      - scripts/validate_netso_company.py
+      - tests/test_paperclip_integration.py
+      - tests/test_paperclip_agent.py
+      - tests/test_netso_customer.py
+      - aos/integrations/paperclip.py
+      - aos/integrations/paperclip_runtime.py
+      - aos/paperclip_agent.py
+      - aos/ventures/netso/**
+      - aos/harnesses/external/netso_legacy/**
+      - aos/services/netso_customer.py
+      - pyproject.toml
+      - uv.lock
+      - '.github/workflows/netso-ai-company-smoke.yml'
   pull_request:
     branches:
       - main
+    paths:
+      - companies/netso-energy/**
+      - scripts/validate_netso_company.py
+      - tests/test_paperclip_integration.py
+      - tests/test_paperclip_agent.py
+      - tests/test_netso_customer.py
+      - aos/integrations/paperclip.py
+      - aos/integrations/paperclip_runtime.py
+      - aos/paperclip_agent.py
+      - aos/ventures/netso/**
+      - aos/harnesses/external/netso_legacy/**
+      - aos/services/netso_customer.py
+      - pyproject.toml
+      - uv.lock
+      - '.github/workflows/netso-ai-company-smoke.yml'
   workflow_dispatch:
 
 jobs:
