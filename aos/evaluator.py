@@ -374,7 +374,15 @@ def run_golden_tests(
 
     files = glob.glob(f"{golden_dir}/*.json")
     if not files:
-        return {"ok": True, "tests": 0, "passed": 0, "failed": 0, "details": []}
+        # A missing golden suite cannot establish that validation succeeded.
+        return {
+            "ok": False,
+            "tests": 0,
+            "passed": 0,
+            "failed": 0,
+            "details": [],
+            "error": f"No golden fixtures found in {golden_dir}",
+        }
 
     results = []
     passed = 0
@@ -419,9 +427,8 @@ def run_golden_tests(
         "details": results,
     }
 
-    if fail_on_regression and not summary["ok"]:
-        sys.exit(1)
-
+    # The command-line entry point decides exit status *after* printing
+    # evidence. Library callers always receive the complete summary.
     return summary
 
 
@@ -448,6 +455,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     summary = run_golden_tests(args.golden_dir, args.fail_on_regression)
+
+    if summary.get("error"):
+        print(summary["error"], file=sys.stderr)
 
     if args.verbose:
         import json
