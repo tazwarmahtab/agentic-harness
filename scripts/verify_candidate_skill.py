@@ -52,6 +52,8 @@ def validate(root: Path) -> list[str]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (ValueError, OSError) as exc:
         return errors + [f"manifest invalid JSON: {exc}"]
+    if not isinstance(manifest, dict):
+        return errors + ["manifest must be a JSON object"]
     if manifest.get("name") != "skill-vetting-observer":
         errors.append("manifest skill name mismatch")
     if manifest.get("status") != "candidate_not_installed":
@@ -63,15 +65,22 @@ def validate(root: Path) -> list[str]:
         errors.append("promotion needs explicit human approval")
     if manifest.get("external_verification") != "required for claims about external outcomes":
         errors.append("external outcome verification policy missing")
-    if not manifest.get("not_for"):
-        errors.append("negative usage scope missing")
-    if not manifest.get("side_effects"):
-        errors.append("side effect disclosure missing")
+    for field, message in (
+        ("not_for", "negative usage scope missing or malformed"),
+        ("side_effects", "side effect disclosure missing or malformed"),
+    ):
+        values = manifest.get(field)
+        if not isinstance(values, list) or not values or not all(
+            isinstance(value, str) and value.strip() for value in values
+        ):
+            errors.append(message)
 
     try:
         suite = json.loads(eval_path.read_text(encoding="utf-8"))
     except (ValueError, OSError) as exc:
         return errors + [f"evaluation fixture JSON invalid: {exc}"]
+    if not isinstance(suite, dict):
+        return errors + ["evaluation fixture must be a JSON object"]
     cases = suite.get("cases", [])
     if suite.get("schema_version") != 1 or not isinstance(cases, list) or len(cases) < 8:
         errors.append("eval suite must have v1 schema and >=8 cases")
@@ -92,7 +101,15 @@ def validate(root: Path) -> list[str]:
             ids.add(case_id)
         if not isinstance(case.get("should_trigger"), bool):
             errors.append(f"case {index} missing boolean trigger expectation")
-        if not case.get("input") or not isinstance(case.get("expected"), list) or not case["expected"]:
+        prompt = case.get("input")
+        expected = case.get("expected")
+        if (
+            not isinstance(prompt, str)
+            or not prompt.strip()
+            or not isinstance(expected, list)
+            or not expected
+            or not all(isinstance(item, str) and item.strip() for item in expected)
+        ):
             errors.append(f"case {index} missing prompt/expected assertions")
         nontriggers += case.get("should_trigger") is False
         critical += case.get("risk") == "critical"
