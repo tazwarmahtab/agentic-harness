@@ -30,6 +30,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Validate candidate skill safety contract
+        run: python scripts/verify_candidate_skill.py
+
       - name: Run tests
         run: |
           python -m pytest -q --tb=short
