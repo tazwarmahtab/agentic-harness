@@ -614,8 +614,9 @@ class TestGateBlocking:
             )
             assert resolved.decision == GateDecision.SKIPPED
 
-    def test_pipeline_stops_on_gate_timeout(self):
-        """Pipeline returns 1 (stop) when a gate times out."""
+    @patch("aos.orchestrate.pipeline.OrchestratePipeline._invoke_skill", return_value=(0, "", ""))
+    def test_pipeline_stops_on_gate_timeout(self, mock_invoke_skill):
+        """Pipeline stops when a gate times out after the spec phase succeeds."""
         mock_gates = MagicMock()
         # First call returns SKIPPED (creates pending item)
         mock_gates.check.return_value = GateResult(
