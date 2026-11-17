@@ -204,6 +204,36 @@ class TestShellSafety:
     def test_blocks_mv_root(self, gateway: ToolGateway) -> None:
         result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "mv file /"})
         assert not result["ok"]
+        assert "Blocked" in result["error"]
+
+    def test_blocks_chmod_recursive_absolute(self, gateway: ToolGateway) -> None:
+        result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "chmod -R 777 /var"})
+        assert not result["ok"]
+        assert "Blocked" in result["error"]
+
+    def test_blocks_chmod_symbolic_root(self, gateway: ToolGateway) -> None:
+        result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "chmod u+x /"})
+        assert not result["ok"]
+        assert "Blocked" in result["error"]
+
+    def test_blocks_chown_with_flags_absolute(self, gateway: ToolGateway) -> None:
+        result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "chown -R user:group /srv"})
+        assert not result["ok"]
+        assert "Blocked" in result["error"]
+
+    def test_blocks_rm_operand_before_root(self, gateway: ToolGateway) -> None:
+        result = gateway.execute({"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "rm file /"})
+        assert not result["ok"]
+        assert "Blocked" in result["error"]
+
+    def test_allows_chmod_relative(self, gateway: ToolGateway, tmp_path, monkeypatch) -> None:
+        script = tmp_path / "run.sh"
+        script.write_text("#!/bin/sh\necho ok\n")
+        monkeypatch.chdir(tmp_path)
+        result = gateway.execute(
+            {"agent_id": "AGT-EXEC-COO", "action_type": "shell", "command": "chmod +x run.sh"}
+        )
+        assert result["ok"]
 
 
 # ---------------------------------------------------------------------------
