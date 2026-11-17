@@ -638,17 +638,17 @@ class ToolGateway:
     _logger = logging.getLogger("aos.tools")
 
     _BLOCKED_PATTERNS = [
-        (re.compile(r"rm\s+(-[a-zA-Z]*\s+)*(--?\w+\s+)*\/"), "rm on root path"),
+        (re.compile(r"rm\s+(?:\S+\s+)*\/"), "rm on root path"),
         (re.compile(r"mkfs\b"), "filesystem formatting"),
         (re.compile(r">\s*\/dev\/"), "write to /dev/"),
         (re.compile(r":\(\)\s*\{"), "fork bomb"),
         (re.compile(r"dd\s+if="), "dd disk operations"),
-        (re.compile(r"mv\s+.*\/\s"), "mv to root path"),
+        (re.compile(r"mv\s+.*\s\/(\s|$)"), "mv to root path"),
         (re.compile(r"curl\s.*\|\s*(ba)?sh"), "curl pipe to shell"),
         (re.compile(r"wget\s.*\|\s*(ba)?sh"), "wget pipe to shell"),
         (re.compile(r"python[23]?\s+-c"), "python -c execution"),
-        (re.compile(r"chmod\s+(-[a-zA-Z]*\s+)*\/"), "chmod on root path"),
-        (re.compile(r"chown\s+(-[a-zA-Z]*\s+)*\/"), "chown on root path"),
+        (re.compile(r"chmod\s+(?:\S+\s+)*\/"), "chmod on root path"),
+        (re.compile(r"chown\s+(?:\S+\s+)*\/"), "chown on root path"),
         (re.compile(r">\s*\/etc\/"), "write to /etc/"),
         (re.compile(r"eval\s*\("), "eval() execution"),
         (re.compile(r"exec\s*\("), "exec() execution"),

@@ -614,6 +614,19 @@ class TestGateBlocking:
             )
             assert resolved.decision == GateDecision.SKIPPED
 
+    @staticmethod
+    def _stub_phases(pipeline, *names):
+        """Replace phase runners with success stubs.
+
+        The gate tests exercise gate logic, not phase execution. Without
+        stubs, dry_run=False makes _run_spec invoke the real claude CLI
+        (which fails before the gate is reached), and dry_run=True makes
+        _is_auto_approved skip the gate entirely. Either way the gate
+        code path under test is never entered.
+        """
+        for name in names:
+            setattr(pipeline, name, MagicMock(return_value=True))
+
     def test_pipeline_stops_on_gate_timeout(self):
         """Pipeline returns 1 (stop) when a gate times out."""
         mock_gates = MagicMock()
@@ -631,6 +644,8 @@ class TestGateBlocking:
             skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False
         )
         pipeline = OrchestratePipeline(ctx, mock_gates)
+        # Stub the spec phase so the run reaches the spec gate
+        self._stub_phases(pipeline, "_run_spec")
 
         rc = pipeline.run()
         assert rc == 1  # stopped at spec gate timeout
@@ -646,11 +661,25 @@ class TestGateBlocking:
             gate=Gate.SPEC, decision=GateDecision.APPROVED, item_id="GATE-002"
         )
 
-        ctx = _make_ctx(skip_spec=False, gates={"spec"}, one_liner="test")
+        # dry_run=False so the gate is not auto-approved before the check
+        ctx = _make_ctx(
+            skip_spec=False, gates={"spec"}, one_liner="test", dry_run=False
+        )
         pipeline = OrchestratePipeline(ctx, mock_gates)
+        # Stub every phase runner so only the gate decides the outcome
+        self._stub_phases(
+            pipeline,
+            "_run_spec",
+            "_run_mar",
+            "_run_implement",
+            "_run_doubt",
+            "_run_sprint_review",
+            "_run_ship",
+        )
 
         rc = pipeline.run()
         assert rc == 0  # continued past spec gate
+        mock_gates.wait_for_decision.assert_called_once()
 
 
 class TestAutoFlag:
