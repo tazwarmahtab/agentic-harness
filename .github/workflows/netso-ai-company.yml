@@ -3,6 +3,21 @@ name: Netso AI Company validation
 on:
   pull_request:
     branches: [main, master]
+    paths:
+      - companies/netso-energy/**
+      - scripts/validate_netso_company.py
+      - tests/test_paperclip_integration.py
+      - tests/test_paperclip_agent.py
+      - tests/test_netso_customer.py
+      - aos/integrations/paperclip.py
+      - aos/integrations/paperclip_runtime.py
+      - aos/paperclip_agent.py
+      - aos/ventures/netso/**
+      - aos/harnesses/external/netso_legacy/**
+      - aos/services/netso_customer.py
+      - pyproject.toml
+      - uv.lock
+      - '.github/workflows/netso-ai-company.yml'
   workflow_dispatch:
 
 jobs:
