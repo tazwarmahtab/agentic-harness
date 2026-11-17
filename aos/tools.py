@@ -643,7 +643,7 @@ class ToolGateway:
         (re.compile(r">\s*\/dev\/"), "write to /dev/"),
         (re.compile(r":\(\)\s*\{"), "fork bomb"),
         (re.compile(r"dd\s+if="), "dd disk operations"),
-        (re.compile(r"mv\s+.*\/(\s|$)"), "mv to root path"),
+        (re.compile(r"mv\s+.*\s\/(\s|$)"), "mv to root path"),
         (re.compile(r"curl\s.*\|\s*(ba)?sh"), "curl pipe to shell"),
         (re.compile(r"wget\s.*\|\s*(ba)?sh"), "wget pipe to shell"),
         (re.compile(r"python[23]?\s+-c"), "python -c execution"),
