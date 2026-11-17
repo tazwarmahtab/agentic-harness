@@ -4,8 +4,7 @@ The core bug: approval_queue accumulates via operator.add but was never
 pruned. should_execute() saw ALL historical items and blocked execution
 permanently.
 
-The fix: resolved_approval_ids tracks which items were approved/rejected.
-should_execute() only blocks on genuinely pending items.
+Resolved IDs are bookkeeping. Only authoritative explicit approval can unblock execution.
 """
 
 from __future__ import annotations
@@ -49,8 +48,8 @@ class TestShouldExecute:
         }
         assert should_execute(state) == "log"
 
-    def test_handoffs_with_resolved_approvals_returns_execute(self) -> None:
-        """FIX-03: resolved approvals should NOT block execution."""
+    def test_resolved_ids_without_authority_stay_blocked(self) -> None:
+        """A historical resolved ID is not proof of approval."""
         state = {
             "handoffs": [{"type": "task", "agent_id": "A"}],
             "approval_queue": [
@@ -58,7 +57,7 @@ class TestShouldExecute:
             ],
             "resolved_approval_ids": ["APR-0001"],
         }
-        assert should_execute(state) == "execute"
+        assert should_execute(state) == "log"
 
     def test_mixed_pending_and_resolved_returns_log(self) -> None:
         """Only genuinely pending items block execution."""
@@ -72,7 +71,7 @@ class TestShouldExecute:
         }
         assert should_execute(state) == "log"
 
-    def test_all_resolved_returns_execute(self) -> None:
+    def test_all_resolved_without_authority_returns_log(self) -> None:
         state = {
             "handoffs": [{"type": "task", "agent_id": "A"}],
             "approval_queue": [
@@ -81,7 +80,7 @@ class TestShouldExecute:
             ],
             "resolved_approval_ids": ["APR-0001", "APR-0002"],
         }
-        assert should_execute(state) == "execute"
+        assert should_execute(state) == "log"
 
     def test_empty_handoffs_with_resolved_approvals_returns_log(self) -> None:
         """No handoffs = skip to log regardless of approval status."""
@@ -159,8 +158,8 @@ class TestApprovalGatesNode:
             result = approval_gates_node(state)
         assert result["approval_gates_output"]["total_pending"] == 0
 
-    def test_items_not_in_queue_are_filtered(self) -> None:
-        """Items whose IDs are in resolved_approval_ids should be filtered."""
+    def test_resolved_items_without_authority_still_block(self) -> None:
+        """Resolved IDs must not substitute for authoritative decisions."""
         state = self._make_state(
             approval_queue=[
                 {"id": "APR-0001", "action": "task 1"},
@@ -173,10 +172,10 @@ class TestApprovalGatesNode:
             m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         output = result["approval_gates_output"]
-        assert output["total_pending"] == 1
-        assert output["items"][0]["id"] == "APR-0002"
+        assert output["total_pending"] == 2
+        assert output["items"][0]["id"] == "APR-0001"
 
-    def test_all_resolved_returns_zero_pending(self) -> None:
+    def test_all_resolved_without_authority_still_block(self) -> None:
         state = self._make_state(
             approval_queue=[
                 {"id": "APR-0001", "action": "task 1"},
@@ -188,7 +187,7 @@ class TestApprovalGatesNode:
         with pytest.MonkeyPatch.context() as m:
             m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
-        assert result["approval_gates_output"]["total_pending"] == 0
+        assert result["approval_gates_output"]["total_pending"] == 2
 
     def test_emits_newly_resolved_ids(self) -> None:
         """Items in queue but not in pending list → emitted as newly_resolved."""
@@ -211,8 +210,8 @@ class TestApprovalGatesNode:
         # Should emit the resolved ID
         assert item.id in result.get("resolved_approval_ids", [])
 
-    def test_no_queue_configured_falls_back_to_resolved_ids(self) -> None:
-        """When no ApprovalQueue is in config, only resolved_approval_ids is used."""
+    def test_no_queue_configured_fails_closed(self) -> None:
+        """Unavailable authority keeps all requested approvals blocking."""
         state = self._make_state(
             approval_queue=[
                 {"id": "APR-0001", "action": "task 1"},
@@ -225,5 +224,5 @@ class TestApprovalGatesNode:
             m.setattr("aos.graph.get_config", lambda: cfg)
             result = approval_gates_node(state)
         output = result["approval_gates_output"]
-        assert output["total_pending"] == 1
-        assert output["items"][0]["id"] == "APR-0002"
+        assert output["total_pending"] == 2
+        assert output["items"][0]["id"] == "APR-0001"
