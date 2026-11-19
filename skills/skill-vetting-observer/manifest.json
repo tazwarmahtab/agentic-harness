@@ -1,0 +1,41 @@
+{
+  "name": "skill-vetting-observer",
+  "version": "0.1.0-candidate",
+  "status": "candidate_not_installed",
+  "owner": "agent-infrastructure",
+  "workstream": "agent-infrastructure",
+  "source": "repo-local candidate",
+  "scope": [
+    "candidate skill review",
+    "incident regression",
+    "observation integrity"
+  ],
+  "not_for": [
+    "production execution",
+    "autonomous promotion",
+    "cross-workspace data access",
+    "policy editing",
+    "payments"
+  ],
+  "side_effects": [
+    "read-only review; proposal files on a review branch only"
+  ],
+  "requires_human_approval": [
+    "shared library promotion",
+    "external tool mutation",
+    "policy/rubric changes",
+    "new paid services"
+  ],
+  "proof_needed": [
+    "source and license",
+    "static vet",
+    "representative evals",
+    "held-out negative cases",
+    "independent review",
+    "exact-SHA CI",
+    "rollback"
+  ],
+  "external_verification": "required for claims about external outcomes",
+  "evaluation_file": "references/eval-cases.json",
+  "incident_ledger": "../../docs/skill-governance/INCIDENT-LEDGER.md"
+}
