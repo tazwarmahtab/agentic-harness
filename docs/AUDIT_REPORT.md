@@ -203,7 +203,7 @@ python -m aos validate --harness executive --venture netso
 ```
 
 **Use the CFO agent for financial analysis:**
-The `AGT-EXEC-CFO` agent is hard-wired to validate against ground truth constants (DSCR 2.25x, PPA BDT 10/kWh, TVR 12.98, savings 23%). Any output from this agent that contradicts these values is a hard-fail violation.
+The `AGT-EXEC-CFO` agent is hard-wired to validate against ground truth constants (DSCR 2.25x, an internal PPA validation constant (not a published tariff or offer), TVR 12.98, savings 23%). Any output from this agent that contradicts these values is a hard-fail violation.
 
 **Use the dashboard:**
 The Odysseus dashboard provides real-time visibility into harness execution, approval queues, DSCR monitoring, and Netso customer data (generation, savings, billing, portfolio).
@@ -242,7 +242,7 @@ The system can be repurposed for deal pipeline management:
 - **Legal harness** → NDA drafting, LOI tracking, PPA reviews
 - **Executive harness** → CEO-level deal review with CFO + Legal + Risk approval gates
 
-Configure constants in `aos/ventures/<venture>/` and the evaluator will hard-fail any output that deviates from your ground truth (just like it does for Netso's BDT 10/kWh PPA).
+Configure constants in `aos/ventures/<venture>/` and the evaluator will hard-fail any output that deviates from your ground truth (just like it does for Netso's internal PPA validation constant (not a published tariff or offer)).
 
 ### 6.5 For Cross-Harness Coordination
 
