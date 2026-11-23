@@ -3,7 +3,7 @@
 ## Long Term Layer
 
 ### company_facts
-- **legal_entity_name**: Netso Energy
+- **legal_entity_name**: Transo Limited (trading as Netso Energy)
 - **primary_market**: Bangladesh RMG sector rooftop solar (BOO/OPEX)
 - **primary_customer**: CGS (Chattogram Garments)
 - **tariff_category**: MT-2 (Medium Tension)
